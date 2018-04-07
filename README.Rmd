@@ -1,0 +1,26 @@
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##",
+  fig.path = "README-",
+  error = TRUE
+)
+library(ggbg)
+```
+# ggbg - GGPlot Extensions
+
+[![](https://travis-ci.org/brodieG/ggbg.svg?branch=master)](https://travis-ci.org/brodieG/ggbg)
+[![](https://codecov.io/github/brodieG/ggbg/coverage.svg?branch=master)](https://codecov.io/github/brodieG/ggbg?branch=master)
+[![](http://www.r-pkg.org/badges/version/ggbg)](https://cran.r-project.org/package=ggbg)
+
+Counterparts to R string manipulation functions that account for the effects of
+ANSI text formatting control sequences.
+
+## Acknowledgments
+
+* R Core for developing and maintaining such a wonderful language.
+* CRAN maintainers, for patiently shepherding packages onto CRAN and maintaining
+  the repository, and Uwe Ligges in particular for maintaining
+  [Winbuilder](http://win-builder.r-project.org/).
