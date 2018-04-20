@@ -15,8 +15,7 @@ library(ggbg)
 [![](https://codecov.io/github/brodieG/ggbg/coverage.svg?branch=master)](https://codecov.io/github/brodieG/ggbg?branch=master)
 [![](http://www.r-pkg.org/badges/version/ggbg)](https://cran.r-project.org/package=ggbg)
 
-Counterparts to R string manipulation functions that account for the effects of
-ANSI text formatting control sequences.
+`ggplot2` Extensions.
 
 ## Acknowledgments
 

@@ -1,6 +1,6 @@
 ## Copyright (C) 2018  Brodie Gaslam
 ##
-## This file is part of "ggbg - Ggplot Extensions"
+## This file is part of "ggbg - Assorted Ggplot Extensions"
 ##
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -14,7 +14,10 @@
 ##
 ## Go to <https://www.r-project.org/Licenses/GPL-2> for a copy of the license.
 
+#' Assorted GGPlot Extensions
+#'
 #' @docType package
+#' @import ggplot2
 #' @name ggbg
 
 NULL

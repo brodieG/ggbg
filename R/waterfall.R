@@ -4,6 +4,8 @@
 #' base of each bar starts where the top of the previous bar ended.  This is
 #' effectively equivalent to a stacked bar chart that has been spread on the x
 #' axis.
+#'
+#' @inheritParams ggplot2::geom_bar
 
 geom_waterfall <- function(
   mapping = NULL, data = NULL,
@@ -30,12 +32,8 @@ geom_waterfall <- function(
   )
 }
 
-
-#' @rdname ggplot2-ggproto
-#' @format NULL
-#' @usage NULL
+#' @rdname ggbg-ggproto
 #' @export
-#' @include geom-rect.r
 
 GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
 
@@ -51,7 +49,13 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
   },
 
   draw_panel = function(self, data, panel_params, coord, width = NULL) {
-    # Hack to ensure that width is detected as a parameter
+    # width=NULL is hack to ensure that width is detected as a parameter as
+    # otherwise it gets trimmed by param trimming process in `draw_layer`
+
+    # In order for our waterfall to work, we need to compute the cumulative
+    # values; one question is whether the data is correctly sorted.
+
+    browser()
     ggproto_parent(GeomRect, self)$draw_panel(data, panel_params, coord)
   }
 )
