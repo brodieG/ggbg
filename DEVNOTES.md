@@ -1,5 +1,54 @@
 # Developer Notes
 
+## Introduction
+
+I wrote this document while figuring out how to write my own custom geoms for
+`ggplot`.  The existing documentation available through `?Geom` and
+`browseVignettes('ggplot2')` was a great starting point for me, but I found
+myself wanting more context and details than it provides.
+
+This is unofficial documentation based on my interpretation of the sources as of
+~4/18/2018.  It may become out-of-date as `ggplot2` evolves.
+
+This document assumes the reader is familiar with how to use `ggplot2` for
+plotting purposes.
+
+## Ggplot Basics - an Extension Developer Perspective
+
+### It's The Printing, Stupid
+
+In order to create and display a `ggplot` plot we go through two major steps:
+
+1. Specification (`ggplot() + ...`): user specifies what the plot
+   should look like with `geom_*`, `stat_*`, `scale_*`, etc..
+2. Generation and rendering, typically triggered by printing a `ggplot`
+   object.
+
+As a `ggplot` user you are mostly concerned with 1.  As a `ggplot` extension
+developer, you are also concerned with the plot generation step.  This is
+were `ggplot` does most of the work.  You can look at `ggplot2:::print.ggplot`
+to see the major steps involved, which can be summarized as:
+
+1. Build (`ggplot_build`): analyzes and transforms data into a format suited for
+   translation into graphical objects:
+    1. Assigns facet panels.
+    2. Computes aesthetic values from data and `aes(...)` specifications.
+    3. Assigns groups.
+    4. Rescales data if non linear scales are specified.
+    5. Computes and maps statistics.
+    6. Transforms special aesthetics (e.g. `width` to `xmin`-`xmax`).
+    7. Adjusts positions (e.g. dodging/stacking with `$compute_positions`).
+    8. Adds default aesthetics as needed.
+2. Graphical Object Construction (`ggplot_gtable`):
+    1. Applies coordinate transformations (if necessary)
+    2. Translate the data into shapes, colors, positions, etc.
+3. Rendering (`grid.draw`): display the resulting plot in a viewport.
+
+The plot
+generation step triggered by `print.ggplot` can be broken into:
+
+
+
 ## Alternate Docs
 
 ### On `gg_proto`
@@ -11,6 +60,33 @@ Things to know:
 * When member functions are invoked they are always automatically provided with
   a `self` object if `self` is part of the signature (you can probably still
   access `self` even if it isn't in the sig, need to test).
+
+### Ggplot Basics
+
+### Mapping
+
+
+### Rendering
+
+
+
+Extending `ggplot` requires influencing how steps 1. and 2. are carried out.
+This is done by creating layer functions (e.g. `geom_*` or `stat_*`) functions that return layers containing custom `Geom*` or `Stat*` objects.
+
+
+
+```
+ ## For reference, `sys.calls()` from a debugged `setup_data`:
+ $ : language function (x, ...)  UseMethod("print")(x)
+ $ : language print.ggplot(x)
+ $ : language ggplot_build(x)
+ $ : language by_layer(function(l, d) l$compute_geom_1(d))
+ $ : language f(l = layers[[i]], d = data[[i]])
+ $ : language l$compute_geom_1(d)
+ $ : language f(..., self = self)
+ $ : language self$geom$setup_data(data, c(self$geom_params, self$aes_params))
+ $ : language f(...)
+```
 
 ### Geom Basics
 
@@ -25,15 +101,15 @@ To implement a geom you need:
 translating your data into graphical objects.  In `ggplot` these graphical
 objects are called "grobs", short for Grid Graphical Objects, because they are
 encoded in a format defined by the `grid` R package.  In order to create your
-own geoms you will need to learn how to use `grid`, or how to re-use existing
-`Geom*` objects to generate grobs suited for your purposes.
+own geoms you will need to learn how to use `grid`, or alternatively to re-use
+existing `Geom*` objects to generate grobs suited for your purposes.  For
+example in this package we re-use `GeomRect` for `GeomWaterfall`.
 
 `Geom*` objects are implemented using `ggproto`, a `ggplot2` specific Object
 Oriented framework.  `ggproto` is derived from the `proto` R OOP package.
 
 
-creating
-the Grid Objects (aka "grobs")  
+
 
 ## Doc Issues
 
@@ -55,7 +131,20 @@ You need to generate your first set of docs before you use any of the `ggproto`
 calls because those are evaluated at package load time, and will break
 documentation (and NAMESPACE) generation.
 
-### Extending Ggplot 2 vignette
+
+## Extending Ggplot 2 vignette
+
+### What `ggplot2` Does
+
+### Creating Geoms
+
+The `setup_data` and `draw_panel` functions we referenced above are part of the
+`Geom*` `ggproto` objects.
+
+`setup_data` is used to convert parameters / aesthetics that are not in a format
+amenable to plotting, to one that is.  One prime example is converting `width`
+and `height` to `xmin/xmax` and `ymin/ymax` values.
+
 
 In "Creating a new Geom", `draw_panel` is described as having 3 parameters,
 instead of the 4 + (in particular starting with `self`) in other docs and in the
@@ -76,7 +165,9 @@ unnamed parameters that in theory should match up to `data`, `panel_params`,
 
 * `data`: A data.frame with all the aesthetic values as specified via `aes`.
   The column names corresponding to the aesthetic names, not the original data
-  frame column names.
+  frame column names.  Additionally contains `PANEL`, `group` (set to -1 if
+  there are no groups), and any default aesthetics specified in
+  `Geom*$default_aes`.
 * `panel_params`: named list, the intersection of parameters provided to the
   `geom_*` function with the formals of the `draw_panel` method, although you
   can customize `Geom` objects to return a specific eligible parameter list.

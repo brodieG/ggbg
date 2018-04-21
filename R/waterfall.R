@@ -57,7 +57,26 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
   required_aes = c("x", "y"),
 
   setup_data = function(self, data, params) {
-    check_req_aes(self, data)
+    if(!all(c("x", "y")) %in% names(data))
+      stop(
+        "geom_waterfall requires aesthetics ",
+        paste0(setdiff(c("x", "y"), names(data)), sep=", ")
+      )
+
+    # Compute the x offsets, start by ordering by x values
+    if(nrow(data)) {
+      x.o <- order(data[["x"]])
+      data.o <- data[x.o, ]
+      y.cum <- cumsum(data.o[["y"]])
+      y.cum.lag <- c(0, head(y.cum, -1L))
+      data.o[["ymin"]] <- pmin(y.cum, y.cum.lag)
+      data.o[["ymax"]] <- pmax(y.cum, y.cum.lag)
+      data <- data.o[rank(x.o),]
+    }
+
+
+    y.ordered <- data[["y"]][x.o]
+
     data$width <- data$width %||%
       params$width %||% (resolution(data$x, FALSE) * 0.9)
     transform(data,

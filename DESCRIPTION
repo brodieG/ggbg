@@ -4,7 +4,11 @@ Description: Collection of ggplot extensions.
 Version: 0.0.0.9001
 Authors@R: c(
     person("Brodie", "Gaslam", email="brodie.gaslam@yahoo.com",
-    role=c("aut", "cre"))
+    role=c("aut", "cre")),
+    person(
+      "Hadley", "Wickham", email="hadley@rstudio.com", role=c("cph"),
+      comment="see R/ggplot2.R"
+    )
     )
 Depends:
     R (>= 3.1.0)
@@ -18,7 +22,9 @@ Suggests:
     unitizer
 RoxygenNote: 6.0.1
 Roxygen: list(markdown = TRUE)
-Collate: 
+Collate:
     'ggbg-package.R'
+    'ggplot2.R'
     'proto.R'
+    'utils.R'
     'waterfall.R'
