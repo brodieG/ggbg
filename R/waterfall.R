@@ -66,7 +66,9 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
     # Compute the x offsets, start by ordering by x values
 
     if(nrow(data)) {
-      x.o <- order(data[["x"]])
+      x.o <- order(
+        data[["x"]], sign(data[["y"]]), data[["PANEL"]], data["group"]
+      )
       data.o <- data[x.o, ]
       y.cum <- cumsum(data.o[["y"]])
       y.cum.lag <- c(0, head(y.cum, -1L))
