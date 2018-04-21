@@ -57,13 +57,14 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
   required_aes = c("x", "y"),
 
   setup_data = function(self, data, params) {
-    if(!all(c("x", "y")) %in% names(data))
+    if(!all(c("x", "y") %in% names(data)))
       stop(
         "geom_waterfall requires aesthetics ",
         paste0(setdiff(c("x", "y"), names(data)), sep=", ")
       )
 
     # Compute the x offsets, start by ordering by x values
+
     if(nrow(data)) {
       x.o <- order(data[["x"]])
       data.o <- data[x.o, ]
@@ -73,16 +74,18 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
       data.o[["ymax"]] <- pmax(y.cum, y.cum.lag)
       data <- data.o[rank(x.o),]
     }
-
-
-    y.ordered <- data[["y"]][x.o]
-
     data$width <- data$width %||%
       params$width %||% (resolution(data$x, FALSE) * 0.9)
-    transform(data,
-      ymin = pmin(y, 0), ymax = pmax(y, 0),
+
+    data <- transform(data,
       xmin = x - width / 2, xmax = x + width / 2, width = NULL
     )
+    # not strictly necessary, but seems good form to call the parent panel
+    # setup
+
+    res <- ggproto_parent(GeomRect, self)$setup_data(data, params)
+    browser()
+    res
   },
 
   draw_panel = function(self, data, panel_params, coord, width = NULL) {
@@ -93,7 +96,6 @@ GeomWaterfall <- ggproto("GeomWaterfall", GeomRect,
     # In order for our waterfall to work, we need to compute the cumulative
     # values; one question is whether the data is correctly sorted.
 
-    browser()
     ggproto_parent(GeomRect, self)$draw_panel(data, panel_params, coord)
   }
 )
