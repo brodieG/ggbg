@@ -2,13 +2,15 @@
 #' Stack objects in a Waterfall
 #'
 #'
-#' @inheritParams position_identity
+#' @inheritParams ggplot2::position_dodge
+#' @inheritParams ggplot2::position_stack
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
 #'   there are multiple bars for a single x value.
 
 position_waterfall <- function(
   width = NULL,
   preserve = c("total", "single"),
+  reverse = FALSE,
   dodge = FALSE
 ) {
   if(!is.logical(dodge) || !length(dodge) == 1 || is.na(dodge))
@@ -17,6 +19,7 @@ position_waterfall <- function(
   ggproto(NULL, PositionWaterfall,
     width = width,
     preserve = match.arg(preserve),
+    reverse = reverse,
     dodge = dodge
   )
 }
@@ -32,11 +35,16 @@ PositionWaterfall <- ggproto(
   "PositionWaterfall", Position,
   name = "position_waterfall",
   width = NULL,
+  reverse = TRUE,
   preserve = "total",
   dodge = FALSE,
 
   setup_params = function(self, data) {
-    if (is.null(data$xmin) && is.null(data$xmax) && is.null(self$width)) {
+    if(
+      (is.null(data$xmin) || is.null(data$xmax)) &&
+      is.null(data$width) &&
+      is.null(self$width)
+    ) {
       warning("Width not defined. Set with `position_waterfall(width = ?)`",
         call. = FALSE)
     }
@@ -47,7 +55,8 @@ PositionWaterfall <- ggproto(
     }
     list(
       width = self$width,
-      n = n
+      n = n,
+      dodge = self$dodge
     )
   },
   # try to make sure that data has x, xmin, xmax, and ymin and ymax
@@ -137,11 +146,24 @@ PositionWaterfall <- ggproto(
       )
       data
     } else {
-      # group by xmin, and then stack / dodge
+      # group by xmin, and then stack / dodge, we also need to track the
+      # cumulative height of the previous bars
+
+      data <- data[
+        order(data[["xmin"]], data[["group"]] * if(params$reverse) -1 else 1),
+      ]
+
+      y.cum <- cumsum(data[["y"]])
+      y.cum.max <- tapply(y.cum, data[["xmin"]], max)
+      prev.max <- c(0, head(y.cum.max, -1))
 
       d.s <- split(data, data[["xmin"]])
 
-
+      d.s.proc <- Map(
+        pos_waterfall, df=d.s, width=params$width, dodge=params$dodge,
+        y.start=prev.max, na=params$n
+      )
+      do.call(rbind, d.s.proc)
     }
   }
 )
@@ -156,24 +178,30 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
       "Internal error: failed computing 'position_waterfall' due to ",
       "unexpected `n`, contact maintainer."
     )
-    df
   } else {
-    # For stacking, we need negatives and positives segregated.  We also need
-    # the baseline y
+    # renumber the groups; we want to use the order they came in as they should
+    # have been sorted
 
 
+    if(dodge) {
+      # dodge mode; lifted directly from ggplot2/R/position-dodge.R
+      #
+      # Find the center for each group, then use that to calculate xmin and xmax
+
+      groupidx <- match(df[["group"]], unique(df[["group"]]))
+      d_width <- max(df$xmax - df$xmin)
+      df$x <- df$x + width * ((groupidx - 0.5) / n - .5)
+      df$xmin <- df$x - d_width / n / 2
+      df$xmax <- df$x + d_width / n / 2
+
+    } else {
+      # stack mode, need to segregate positives and negatives
+      df <- df[order(sign(df[["y"]])), ]
+    }
+    y.cum <- cumsum(df[["y"]])
+    y.cum.lag <- c(0, head(y.cum, -1L))
+    df[["ymin"]] <- pmin(y.cum, y.cum.lag) + y.start
+    df[["ymax"]] <- pmax(y.cum, y.cum.lag) + y.start
   }
-
-  d_width <- max(df$xmax - df$xmin)
-
-  # Have a new group index from 1 to number of groups.
-  # This might be needed if the group numbers in this set don't include all of 1:n
-  groupidx <- match(df$group, sort(unique(df$group)))
-
-  # Find the center for each group, then use that to calculate xmin and xmax
-  df$x <- df$x + width * ((groupidx - 0.5) / n - .5)
-  df$xmin <- df$x - d_width / n / 2
-  df$xmax <- df$x + d_width / n / 2
-
   df
 }

@@ -36,3 +36,14 @@ unitizer_sect("basic", {
   ggplot(dat5, aes(x=x, y=y)) + geom_waterfall(position="identity")
 
 })
+unitizer_sect("corner cases", {
+  # zero row data frame
+  # zero col data frame
+  # weird aes:
+  #   * provide xmin xor xmax
+  #   * width conflicts (provide in geom, position, and data), in particular
+  #     geom width vs dodge width need to be controllable independently.
+  #   * height
+  # vjust and hjust
+  # reverse order
+})
