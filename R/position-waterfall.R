@@ -87,7 +87,7 @@ PositionWaterfall <- ggproto(
       data$width <- data$width %||%
         params$width %||% (resolution(data$x, FALSE) * 0.9)
 
-      if(!is.numeric(data[["width"]]) || isTRUE(any(data[["width"]]) < 0))
+      if(!is.numeric(data[["width"]]) || isTRUE(any(data[["width"]] < 0)))
         warning(
           "Non-numeric or negative `width` values provided to `", self$name,
           "`, this may cause unexpected outcomes."
