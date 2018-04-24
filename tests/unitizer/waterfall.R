@@ -35,6 +35,9 @@ unitizer_sect("basic", {
   dat5 <- data.frame(x=1:3, y=c(1, -2, 4))
   ggplot(dat5, aes(x=x, y=y)) + geom_waterfall(position="identity")
 
+  dat <- data.frame(x=10:1, y=1:10)
+  p0 <- ggplot(dat) + geom_bar(position=position_waterfall())
+
 })
 unitizer_sect("corner cases", {
   # zero row data frame

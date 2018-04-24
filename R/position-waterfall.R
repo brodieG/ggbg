@@ -4,6 +4,7 @@
 #'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
+#' @export
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
 #'   there are multiple bars for a single x value.
 
@@ -56,7 +57,8 @@ PositionWaterfall <- ggproto(
     list(
       width = self$width,
       n = n,
-      dodge = self$dodge
+      dodge = self$dodge,
+      reverse = self$reverse
     )
   },
   # try to make sure that data has x, xmin, xmax, and ymin and ymax
@@ -160,8 +162,8 @@ PositionWaterfall <- ggproto(
       d.s <- split(data, data[["xmin"]])
 
       d.s.proc <- Map(
-        pos_waterfall, df=d.s, width=params$width, dodge=params$dodge,
-        y.start=prev.max, na=params$n
+        pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
+        y.start=prev.max, n=list(params$n)
       )
       do.call(rbind, d.s.proc)
     }
@@ -190,6 +192,7 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
 
       groupidx <- match(df[["group"]], unique(df[["group"]]))
       d_width <- max(df$xmax - df$xmin)
+      if(is.null(width)) width <- d_width
       df$x <- df$x + width * ((groupidx - 0.5) / n - .5)
       df$xmin <- df$x - d_width / n / 2
       df$xmax <- df$x + d_width / n / 2

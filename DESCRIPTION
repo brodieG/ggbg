@@ -27,4 +27,5 @@ Collate:
     'ggplot2.R'
     'proto.R'
     'utils.R'
-    'waterfall.R'
+    'geom-waterfall.R'
+    'position-waterfall.R'
