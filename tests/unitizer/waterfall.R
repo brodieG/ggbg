@@ -1,45 +1,60 @@
 
 library(ggplot2)
+library(ggbg)
 
 unitizer_sect("basic", {
-  dat <- data.frame(x=10:1, y=1:10)
-  p0 <- ggplot(dat) + geom_waterfall()
-  ggplot_build(p0)
-  p1 <- ggplot(dat, aes(x=x, y=y)) + geom_waterfall(position="dodge")
-  x <- ggplot_build(p1)
+  dat <- data.frame(x=3:1, y=1:3)
 
-  dat2 <- dat
-  dat2[5, "x"] <- 5L
+  gb.0 <- ggplot(dat, aes(x=x, y=y))
+  p0 <- gb.0 + geom_col(position=position_waterfall())
+  ggplot_build(p0)[["data"]]
 
-  ggplot(dat2, aes(x=x, y=y)) +
-    geom_waterfall(position="dodge", color="white")
+  p1 <- gb.0 + geom_col(position="waterfall")
+  ggplot_build(p1)[["data"]]
 
-  ggplot(dat2, aes(x=x, y=y)) +
-    geom_waterfall(position=position_dodge2(), color="white")
+  p2 <- ggplot(dat, aes(x=x)) + geom_bar(position="waterfall")
+  ggplot_build(p2)[["data"]]
 
-  dat3 <- dat2
-  dat3[5, "y"] <- -2L
+  # add overlapping values
 
-  ggplot(dat3, aes(x=x, y=y)) + 
-    geom_waterfall(color="red", position="dodge")
+  dat2 <- data.frame(
+    x=c(3, 2, 2, 2, 1, 1), y=1:6, grp=rep(c("A", "B", "C"), lenght.out=6)
+  )
+  gb.1 <- ggplot(dat2, aes(x=x, y=y, fill=grp))
+  p3 <- gb.1 + geom_col(position="waterfall")
+  ggplot_build(p3)[["data"]]
 
-  dat4 <- dat2
-  dat4[6, "y"] <- -2L
+  p4 <- gb.1 + geom_col(position=position_waterfall(dodge=TRUE))
+  ggplot_build(p4)[["data"]]
 
-  ggplot(dat3, aes(x=x, y=y)) + 
-    geom_waterfall(color="red", position="dodge")
+  # negative values
 
+  dat3 <- data.frame(
+    x=c(3, 2, 2, 2, 1, 1),
+    y=c(-3, 1, 4, -6, -1, 10),
+    grp=rep(c("A", "B", "C"), lenght.out=6)
+  )
+  gb.2 <- ggplot(dat3, aes(x=x, y=y, fill=grp))
 
-  # Negative values
+  p5 <- gb.2 + geom_col(position="waterfall")
+  ggplot_build(p5)[["data"]]
 
-  dat5 <- data.frame(x=1:3, y=c(1, -2, 4))
-  ggplot(dat5, aes(x=x, y=y)) + geom_waterfall(position="identity")
+  p6 <- gb.2 + geom_col(position=position_waterfall(dodge=TRUE))
+  ggplot_build(p6)[["data"]]
 
-  dat <- data.frame(x=10:1, y=1:10)
-  p0 <- ggplot(dat) + geom_bar(position=position_waterfall())
+  # preserve
 
+  pw.pres.dodge <- position_waterfall(dodge=TRUE, preserve="single")
+  p7 <- gb.2 + geom_col(position=pw.pres.dodge)
+  ggplot_build(p7)[["data"]]
+})
+unitizer_sect("other geoms", {
+  p8 <- gb.0 + geom_point(position=position_waterfall())
+
+  NULL
 })
 unitizer_sect("corner cases", {
+  NULL
   # zero row data frame
   # zero col data frame
   # weird aes:
@@ -49,4 +64,5 @@ unitizer_sect("corner cases", {
   #   * height
   # vjust and hjust
   # reverse order
+  # start somewhere other than zero
 })
