@@ -185,7 +185,7 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
     # have been sorted
 
 
-    if(dodge) {
+    df <- if(dodge) {
       # dodge mode; lifted directly from ggplot2/R/position-dodge.R
       #
       # Find the center for each group, then use that to calculate xmin and xmax
@@ -197,14 +197,22 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
       df$xmin <- df$x - d_width / n / 2
       df$xmax <- df$x + d_width / n / 2
 
+      stack_waterfall(df, y.start)
     } else {
       # stack mode, need to segregate positives and negatives
-      df <- df[order(sign(df[["y"]])), ]
+
+      rbind(
+        stack_waterfall(df[df[["y"]] <= 0, , drop=FALSE], y.start),
+        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start)
+      )
     }
-    y.cum <- cumsum(df[["y"]])
-    y.cum.lag <- c(0, head(y.cum, -1L))
-    df[["ymin"]] <- pmin(y.cum, y.cum.lag) + y.start
-    df[["ymax"]] <- pmax(y.cum, y.cum.lag) + y.start
   }
+  df
+}
+stack_waterfall <- function(df, y.start) {
+  y.cum <- cumsum(df[["y"]])
+  y.cum.lag <- c(0, head(y.cum, -1L))
+  df[["ymin"]] <- pmin(y.cum, y.cum.lag) + y.start
+  df[["ymax"]] <- pmax(y.cum, y.cum.lag) + y.start
   df
 }
