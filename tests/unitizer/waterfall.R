@@ -24,7 +24,7 @@ unitizer_sect("basic", {
   p3 <- gb.1 + geom_col(position="waterfall")
   ggplot_build(p3)[["data"]]
 
-  p4 <- gb.1 + geom_col(position=position_waterfall(dodge=TRUE))
+  p4 <- gb.1 + geom_col(position=position_waterfall(dodge=FALSE))
   ggplot_build(p4)[["data"]]
 
   # negative values
@@ -36,24 +36,29 @@ unitizer_sect("basic", {
   )
   gb.2 <- ggplot(dat3, aes(x=x, y=y, fill=grp))
 
-  p5 <- gb.2 + geom_col(position="waterfall")
+  p5 <- gb.2 + geom_col(position=position_waterfall(dodge=FALSE))
   ggplot_build(p5)[["data"]]
 
-  p6 <- gb.2 + geom_col(position=position_waterfall(dodge=TRUE))
+  p6 <- gb.2 + geom_col(position="waterfall")
   ggplot_build(p6)[["data"]]
+
+  p6a <- gb.2 + geom_col(position=position_waterfall(reverse=TRUE))
+  ggplot_build(p6a)[["data"]]
 
   # preserve
 
-  pw.pres.dodge <- position_waterfall(dodge=TRUE, preserve="single")
+  pw.pres.dodge <- position_waterfall(preserve="single")
   p7 <- gb.2 + geom_col(position=pw.pres.dodge)
   ggplot_build(p7)[["data"]]
 })
 unitizer_sect("other geoms", {
+  library(ggplot2)
+  library(ggbg)
   dat <- data.frame(x=3:1, y=1:3)
   gb.0 <- ggplot(dat, aes(x=x, y=y))
   p8 <- gb.0 + geom_point(position=position_waterfall())
 
-  NULL
+  ggplot_build(p8)[["data"]]
 })
 unitizer_sect("corner cases", {
   NULL

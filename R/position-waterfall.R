@@ -12,7 +12,7 @@ position_waterfall <- function(
   width = NULL,
   preserve = c("total", "single"),
   reverse = FALSE,
-  dodge = FALSE
+  dodge = TRUE
 ) {
   if(!is.logical(dodge) || !length(dodge) == 1 || is.na(dodge))
     stop("`dodge` should be TRUE or FALSE")
@@ -36,9 +36,9 @@ PositionWaterfall <- ggproto(
   "PositionWaterfall", Position,
   name = "position_waterfall",
   width = NULL,
-  reverse = TRUE,
+  reverse = FALSE,
   preserve = "total",
-  dodge = FALSE,
+  dodge = TRUE,
 
   setup_params = function(self, data) {
     if(
@@ -127,16 +127,17 @@ PositionWaterfall <- ggproto(
 
       data <- data[
         order(data[["xmin"]], data[["group"]] * if(params$reverse) -1 else 1),
+        , drop=FALSE
       ]
       y.cum <- cumsum(data[["y"]])
-      y.cum.max <- tapply(y.cum, data[["xmin"]], max)
-      prev.max <- c(0, head(y.cum.max, -1))
+      y.cum.last <- tapply(y.cum, data[["xmin"]], tail, 1L)
+      prev.last <- c(0, head(y.cum.last, -1))
 
       d.s <- split(data, data[["xmin"]])
 
       d.s.proc <- Map(
         pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
-        y.start=prev.max, n=list(params$n), reverse=params$reverse
+        y.start=prev.last, n=list(params$n)
       )
       do.call(rbind, d.s.proc)
     }
@@ -146,7 +147,7 @@ PositionWaterfall <- ggproto(
 # Dodge overlapping interval.
 # Assumes that each set has the same horizontal position.
 
-pos_waterfall <- function(df, width, dodge, y.start, reverse, n = NULL) {
+pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
   if (is.null(n)) n <- length(unique(df[["group"]]))
   if(!is.numeric(n) || length(n) != 1L || is.na(n) || n < 0) {
     warning(
@@ -163,24 +164,28 @@ pos_waterfall <- function(df, width, dodge, y.start, reverse, n = NULL) {
       #
       # Find the center for each group, then use that to calculate xmin and xmax
 
-      groupidx <- match(df[["group"]], unique(df[["group"]]))
-      d_width <- max(df$xmax - df$xmin)
-      if(is.null(width)) width <- d_width
-      df$x <- df$x + width * ((groupidx - 0.5) / n - .5)
-      df$xmin <- df$x - d_width / n / 2
-      df$xmax <- df$x + d_width / n / 2
-
+      if(n > 1) {
+        if(!all(df[["group"]] > 0 & df[["group"]] <= n)) {
+          warning(
+            "Internal Error: unexpected group numbers in 'position_waterfall'.",
+            "  Dodging disabled, contact maintainer."
+          )
+        } else {
+          d_width <- max(df$xmax - df$xmin)
+          if(is.null(width)) width <- d_width
+          df$x <- df$x + width * ((df[["group"]] - 0.5) / n - .5)
+          df$xmin <- df$x - d_width / n / 2
+          df$xmax <- df$x + d_width / n / 2
+        }
+      }
       stack_waterfall(df, y.start)
     } else {
       # stack mode, need to segregate positives and negatives
 
-      df.pos <- df[df[["y"]] >= 0, , drop=FALSE]
-      df.neg <- df[df[["y"]] < 0, , drop=FALSE]
-
-      df.a <- if(reverse) df.pos else df.neg
-      df.b <- if(!reverse) df.pos else df.neg
-
-      rbind(stack_waterfall(df.a, y.start), stack_waterfall(df.b, y.start))
+      rbind(
+        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start),
+        stack_waterfall(df[df[["y"]] < 0, , drop=FALSE], y.start)
+      )
     }
   }
   df
@@ -191,7 +196,7 @@ stack_waterfall <- function(df, y.start) {
   y.lead <- head(y.cum, -1L)
   y.lag <- tail(y.cum, -1L)
   df[["y"]] <- y.lag
-  df[["ymin"]] <- df[["ymin"]] + pmin(y.lead, y.lag)
-  df[["ymax"]] <- df[["ymax"]] + pmax(y.lead, y.lag)
+  df[["ymin"]] <- pmin(y.lead, df[["y"]])
+  df[["ymax"]] <- pmax(y.lead, df[["y"]])
   df
 }
