@@ -49,6 +49,8 @@ unitizer_sect("basic", {
   ggplot_build(p7)[["data"]]
 })
 unitizer_sect("other geoms", {
+  dat <- data.frame(x=3:1, y=1:3)
+  gb.0 <- ggplot(dat, aes(x=x, y=y))
   p8 <- gb.0 + geom_point(position=position_waterfall())
 
   NULL
@@ -62,6 +64,7 @@ unitizer_sect("corner cases", {
   #   * width conflicts (provide in geom, position, and data), in particular
   #     geom width vs dodge width need to be controllable independently.
   #   * height
+  #   * provide ymin and ymax, but not y
   # vjust and hjust
   # reverse order
   # start somewhere other than zero

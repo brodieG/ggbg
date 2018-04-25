@@ -19,7 +19,30 @@ each layer.
 
 ### stacking
 
-Just doesn't work.
+Need to figure out what the generic stacking mechanism is for various inputs:
+
+* `y`
+* `y` + `height`
+* `ymin` + `ymax`
+* `ymin` + `ymax` + `height`
+* `y` + `ymin` + `ymax`
+* `y` + `ymin` + `ymax` + `height`
+
+Let's take the case with `y` + `height`.  What is the desired outcome?  We want
+the graphical elements to align on top of each other.  So as soon as there is
+height there is the potential for an element to float off of the x-axis.  But
+then it becomes difficult to distinguish what it means for the waterfall to go
+up or down.  If not floating then it is obvious based on the sign of y.  If it
+is floating then it becomes a lot trickier as the semantics change completely.
+
+Alternate: If the entire "value" of our element is dictated purely by the `y`
+aesthetic this simplifies things a bit.  How do we handle conflicts with
+pre-existing `ymin` and `ymax` values?  We're going to hijack them, so if they
+already exist it is a bit of a problem.  And should we also force `height` to
+conform?  Seemingly no, both stack and dodge appear to operate purely by
+modifying `xmin/xmax/ymin/ymax`.
+
+So basically, we require a `y` value.  We don't care 
 
 ## Ggplot Doc Issues
 

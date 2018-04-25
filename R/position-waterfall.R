@@ -127,6 +127,11 @@ PositionWaterfall <- ggproto(
     } else if (
       !"y" %in% names(data) && isTRUE(all(c("ymin", "ymax") %in% names(data)))
     ) {
+      # TBD if this is right, it seems like it migth make more sense to take the
+      # values furthest from zero since nothing stacked yet; but what if
+      # ymin-ymax straddles zero?  Mean might be only meaningful thing to do
+      # here.
+
       if(isTRUE(any(data[["ymin"]] > data[["ymax"]])))
         warning(
           "Some `ymin` values are greater than `ymax` values for `", self$name,
@@ -210,9 +215,13 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
   df
 }
 stack_waterfall <- function(df, y.start) {
-  y.cum <- cumsum(df[["y"]])
-  y.cum.lag <- c(0, head(y.cum, -1L))
-  df[["ymin"]] <- pmin(y.cum, y.cum.lag) + y.start
-  df[["ymax"]] <- pmax(y.cum, y.cum.lag) + y.start
+  y.all <- c(y.start, df[["y"]])
+  y.cum <- cumsum(y.all)
+  y.lead <- head(y.all, -1L)
+  y.lag <- tail(y.all, -1L)
+  y.cum.lag <- tail(y.cum, -1)
+  df[["ymin"]] <- pmin(y.lead, y.lag)
+  df[["ymax"]] <- pmax(y.lead, y.lag)
+  df[["y"]] <-
   df
 }
