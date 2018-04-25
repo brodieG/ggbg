@@ -78,7 +78,7 @@ PositionWaterfall <- ggproto(
     } else if (
       "x" %in% names(data) && !isTRUE(all(c("xmin", "xmax") %in% names(data)))
     ) {
-      if(sum(c("xmin", "xmax") %in% names(data)) != 2)
+      if(sum(c("xmin", "xmax") %in% names(data)) == 1)
         warning(
           "Only one of `xmin` and `xmax` available to `", self$name, "`, ",
           "this may cause unexpected outcomes."
@@ -101,7 +101,7 @@ PositionWaterfall <- ggproto(
     if(
       "y" %in% names(data) && !isTRUE(all(c("ymin", "ymax") %in% names(data)))
     ) {
-      if(sum(c("ymin", "ymax") %in% names(data)) != 2)
+      if(sum(c("ymin", "ymax") %in% names(data)) == 1)
         warning(
           "Only one of `ymin` and `ymax` available to `", self$name, "`, ",
           "this may cause unexpected outcomes."
