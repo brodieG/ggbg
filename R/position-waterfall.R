@@ -98,46 +98,15 @@ PositionWaterfall <- ggproto(
     }
     # Deal with `y` vals
 
-    if(
-      "y" %in% names(data) && !isTRUE(all(c("ymin", "ymax") %in% names(data)))
-    ) {
-      if(sum(c("ymin", "ymax") %in% names(data)) == 1)
-        warning(
-          "Only one of `ymin` and `ymax` available to `", self$name, "`, ",
-          "this may cause unexpected outcomes."
-        )
-      if("height" %in% names(data) || "height" %in% names(params)) {
-        # height provided, so center on height; this doesn't really make that
-        # much sense in the context of a waterfall chart, but we provide the
-        # handling in the hopes that it does something reasonable to layers that
-        # provide it
-        data[["height"]] <- data[["height"]] %||% params[["height"]]
-        if(!is.numeric(data[["height"]]) || !isTRUE(all(data[["height"]] >= 0)))
-          warning(
-            "`height` values are not positive numeric in `", self$name,
-            "`, this may cause unexpected outcomes."
-          )
-        data[["ymin"]] <- data[["y"]] - data[["height"]] / 2
-        data[["ymax"]] <- data[["y"]] + data[["height"]] / 2
-      } else {
-        # no height, so use y value as top/bottom of bar, anchored at zero
-        data[["ymin"]] <- pmin(data[["y"]], 0)
-        data[["ymax"]] <- pmax(data[["y"]], 0)
+    if(!"y" %in% names(data)) {
+      # compute panel will issue a warning if "y" is missing, so no need to do
+      # it here
+      if(isTRUE(all(c("ymin", "ymax") %in% names(data)))) {
+        data[["y"]] <- (data[["ymin"]] + data[["ymax"]]) / 2
       }
-    } else if (
-      !"y" %in% names(data) && isTRUE(all(c("ymin", "ymax") %in% names(data)))
-    ) {
-      # TBD if this is right, it seems like it migth make more sense to take the
-      # values furthest from zero since nothing stacked yet; but what if
-      # ymin-ymax straddles zero?  Mean might be only meaningful thing to do
-      # here.
-
-      if(isTRUE(any(data[["ymin"]] > data[["ymax"]])))
-        warning(
-          "Some `ymin` values are greater than `ymax` values for `", self$name,
-          "`, this may cause unexpected outcomes."
-        )
-      data[["y"]] <- (data[["ymin"]] + data[["ymax"]]) / 2
+    } else {
+      data[["ymin"]] <- pmin(data[["y"]], 0)
+      data[["ymax"]] <- pmax(data[["y"]], 0)
     }
     data
   },
@@ -159,7 +128,6 @@ PositionWaterfall <- ggproto(
       data <- data[
         order(data[["xmin"]], data[["group"]] * if(params$reverse) -1 else 1),
       ]
-
       y.cum <- cumsum(data[["y"]])
       y.cum.max <- tapply(y.cum, data[["xmin"]], max)
       prev.max <- c(0, head(y.cum.max, -1))
@@ -168,7 +136,7 @@ PositionWaterfall <- ggproto(
 
       d.s.proc <- Map(
         pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
-        y.start=prev.max, n=list(params$n)
+        y.start=prev.max, n=list(params$n), reverse=params$reverse
       )
       do.call(rbind, d.s.proc)
     }
@@ -178,7 +146,7 @@ PositionWaterfall <- ggproto(
 # Dodge overlapping interval.
 # Assumes that each set has the same horizontal position.
 
-pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
+pos_waterfall <- function(df, width, dodge, y.start, reverse, n = NULL) {
   if (is.null(n)) n <- length(unique(df[["group"]]))
   if(!is.numeric(n) || length(n) != 1L || is.na(n) || n < 0) {
     warning(
@@ -206,10 +174,13 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
     } else {
       # stack mode, need to segregate positives and negatives
 
-      rbind(
-        stack_waterfall(df[df[["y"]] <= 0, , drop=FALSE], y.start),
-        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start)
-      )
+      df.pos <- df[df[["y"]] >= 0, , drop=FALSE]
+      df.neg <- df[df[["y"]] < 0, , drop=FALSE]
+
+      df.a <- if(reverse) df.pos else df.neg
+      df.b <- if(!reverse) df.pos else df.neg
+
+      rbind(stack_waterfall(df.a, y.start), stack_waterfall(df.b, y.start))
     }
   }
   df
@@ -217,11 +188,10 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
 stack_waterfall <- function(df, y.start) {
   y.all <- c(y.start, df[["y"]])
   y.cum <- cumsum(y.all)
-  y.lead <- head(y.all, -1L)
-  y.lag <- tail(y.all, -1L)
-  y.cum.lag <- tail(y.cum, -1)
-  df[["ymin"]] <- pmin(y.lead, y.lag)
-  df[["ymax"]] <- pmax(y.lead, y.lag)
-  df[["y"]] <-
+  y.lead <- head(y.cum, -1L)
+  y.lag <- tail(y.cum, -1L)
+  df[["y"]] <- y.lag
+  df[["ymin"]] <- df[["ymin"]] + pmin(y.lead, y.lag)
+  df[["ymax"]] <- df[["ymax"]] + pmax(y.lead, y.lag)
   df
 }
