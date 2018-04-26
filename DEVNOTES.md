@@ -42,7 +42,8 @@ already exist it is a bit of a problem.  And should we also force `height` to
 conform?  Seemingly no, both stack and dodge appear to operate purely by
 modifying `xmin/xmax/ymin/ymax`.
 
-So basically, we require a `y` value.  We don't care 
+So basically, we require a `y` value.  If `ymax/min` values exist we over-write
+them with the adjustments, so height values will probably stop working?
 
 ## Ggplot Doc Issues
 

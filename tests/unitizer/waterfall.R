@@ -52,13 +52,30 @@ unitizer_sect("basic", {
   ggplot_build(p7)[["data"]]
 })
 unitizer_sect("other geoms", {
-  library(ggplot2)
-  library(ggbg)
   dat <- data.frame(x=3:1, y=1:3)
   gb.0 <- ggplot(dat, aes(x=x, y=y))
   p8 <- gb.0 + geom_point(position=position_waterfall())
 
   ggplot_build(p8)[["data"]]
+})
+unitizer_sect("vjust and labels", {
+  pwv0.5 <- position_waterfall('waterfall', vjust=0.5)
+  pwv1.0 <- position_waterfall('waterfall', vjust=1)
+
+  p9 <- gb.2 +
+    geom_col(position='waterfall') +
+    geom_text(aes(label=y), position=pwv0.5) +
+    geom_text(aes(label=cumsum(y)), position=pwv0.5) +
+
+  ggplot_build(p9)[["data"]]
+
+  p9 <- gb.2 +
+    geom_col(position='waterfall') +
+    geom_text(aes(label=y), position='waterfall', vjust=0.5)
+    geom_text(aes(label=y), position='waterfall', vjust=0.5)
+
+
+
 })
 unitizer_sect("corner cases", {
   NULL

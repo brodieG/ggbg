@@ -70,6 +70,8 @@ generation step triggered by `print.ggplot` can be broken into:
 
 * Internal aesthetics
 * Special variables (`group`, `panel`)
+  * `group` are "integer" values from 1 to n where n is the number of groups, or
+    -1 if there aren't any groups.
 * Computed variables (`..level..`)
 
 ## Position Adjustments

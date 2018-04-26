@@ -12,15 +12,19 @@ position_waterfall <- function(
   width = NULL,
   preserve = c("total", "single"),
   reverse = FALSE,
-  dodge = TRUE
+  dodge = TRUE,
+  vjust = 1
 ) {
   if(!is.logical(dodge) || !length(dodge) == 1 || is.na(dodge))
     stop("`dodge` should be TRUE or FALSE")
+  if(!is.numeric(vjust) || length(vjust) != 1 || is.na(vjust))
+    stop("`vjust` should be scalar numeric")
 
   ggproto(NULL, PositionWaterfall,
     width = width,
     preserve = match.arg(preserve),
     reverse = reverse,
+    vjust=vjust,
     dodge = dodge
   )
 }
@@ -39,6 +43,7 @@ PositionWaterfall <- ggproto(
   reverse = FALSE,
   preserve = "total",
   dodge = TRUE,
+  vjust = 1,
 
   setup_params = function(self, data) {
     if (identical(self$preserve, "total")) {
@@ -50,7 +55,8 @@ PositionWaterfall <- ggproto(
       width = self$width,
       n = n,
       dodge = self$dodge,
-      reverse = self$reverse
+      reverse = self$reverse,
+      vjust = self$vjust
     )
   },
   # try to make sure that data has x, xmin, xmax, and ymin and ymax
@@ -129,7 +135,7 @@ PositionWaterfall <- ggproto(
 
       d.s.proc <- Map(
         pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
-        y.start=prev.last, n=list(params$n)
+        y.start=prev.last, n=list(params$n), vjust=params$vjust
       )
       do.call(rbind, d.s.proc)
     }
@@ -139,7 +145,7 @@ PositionWaterfall <- ggproto(
 # Dodge overlapping interval.
 # Assumes that each set has the same horizontal position.
 
-pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
+pos_waterfall <- function(df, width, dodge, y.start, vjust, n = NULL) {
   if (is.null(n)) {
     group.u <- unique(df[["group"]])
     n <- length(unique(df[["group"]]))
@@ -172,25 +178,27 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
           df$xmax <- df$x + d_width / n / 2
         }
       }
-      stack_waterfall(df, y.start)
+      stack_waterfall(df, y.start, vjust)
     } else {
       # stack mode, need to segregate positives and negatives
 
       rbind(
-        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start),
-        stack_waterfall(df[df[["y"]] < 0, , drop=FALSE], y.start)
+        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start, vjust),
+        stack_waterfall(df[df[["y"]] < 0, , drop=FALSE], y.start, vjust)
       )
     }
   }
   df
 }
-stack_waterfall <- function(df, y.start) {
+stack_waterfall <- function(df, y.start, vjust) {
   y.all <- c(y.start, df[["y"]])
   y.cum <- cumsum(y.all)
   y.lead <- head(y.cum, -1L)
   y.lag <- tail(y.cum, -1L)
+  df$y <- (1 - vjust) * df$ymin + vjust * df$ymax
   df[["y"]] <- y.lag
   df[["ymin"]] <- pmin(y.lead, df[["y"]])
   df[["ymax"]] <- pmax(y.lead, df[["y"]])
+  df[["y"]] <- df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
   df
 }
