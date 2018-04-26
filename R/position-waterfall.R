@@ -148,24 +148,26 @@ PositionWaterfall <- ggproto(
 # Assumes that each set has the same horizontal position.
 
 pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
-  if (is.null(n)) n <- length(unique(df[["group"]]))
+  if (is.null(n)) {
+    group.u <- unique(df[["group"]])
+    n <- length(unique(df[["group"]]))
+    group.map <- match(df[["group"]], group.u)
+  } else {
+    group.map <- df[["group"]]
+  }
   if(!is.numeric(n) || length(n) != 1L || is.na(n) || n < 0) {
     warning(
       "Internal error: failed computing 'position_waterfall' due to ",
       "unexpected `n`, contact maintainer."
     )
   } else {
-    # renumber the groups; we want to use the order they came in as they should
-    # have been sorted
-
-
     df <- if(dodge) {
       # dodge mode; lifted directly from ggplot2/R/position-dodge.R
       #
       # Find the center for each group, then use that to calculate xmin and xmax
 
       if(n > 1) {
-        if(!all(df[["group"]] > 0 & df[["group"]] <= n)) {
+        if(!all(group.map > 0 & group.map <= n)) {
           warning(
             "Internal Error: unexpected group numbers in 'position_waterfall'.",
             "  Dodging disabled, contact maintainer."
@@ -173,7 +175,7 @@ pos_waterfall <- function(df, width, dodge, y.start, n = NULL) {
         } else {
           d_width <- max(df$xmax - df$xmin)
           if(is.null(width)) width <- d_width
-          df$x <- df$x + width * ((df[["group"]] - 0.5) / n - .5)
+          df$x <- df$x + width * ((group.map - 0.5) / n - .5)
           df$xmin <- df$x - d_width / n / 2
           df$xmax <- df$x + d_width / n / 2
         }
