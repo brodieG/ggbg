@@ -41,14 +41,6 @@ PositionWaterfall <- ggproto(
   dodge = TRUE,
 
   setup_params = function(self, data) {
-    if(
-      (is.null(data$xmin) || is.null(data$xmax)) &&
-      is.null(data$width) &&
-      is.null(self$width)
-    ) {
-      warning("Width not defined. Set with `position_waterfall(width = ?)`",
-        call. = FALSE)
-    }
     if (identical(self$preserve, "total")) {
       n <- NULL
     } else {
