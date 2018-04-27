@@ -1,9 +1,39 @@
 
-#' Stack objects in a Waterfall
+#' Cumulative Stacking of Objects
 #'
+#' A waterfall chart is a bar chart where each segment starts where the prior
+#' segment left off.  This is similar to a stacked chart, except that elements
+#' are offset along the `x` axis so that positive and negative values do not
+#' overlap.  Another similar type of chart is the candle stick plot, except
+#' those have "whiskers" and typically require you to specify the `ymin` and
+#' `ymax` values.
+#'
+#' `position_waterfall` creates waterfall charts when it is applied to
+#' `geom_col` or `geom_bar`.  You can apply it to any geom, although the results
+#' may not always make sense, especially with geoms that explicitly specify
+#' the `height`, `ymin`, and or `ymax` aesthetics.  The stacking is always
+#' computed from the `y` values.  Since stat layers are computed prior to
+#' position adjustments, you can also use `position_waterfall` with stats (e.g
+#' `stat_bin`, see examples).
 #'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
+#' @param dodge TRUE (default) or FALSE, controls how to resolve
+#'   elements that overlap on the `x` axis.  The default is to dodge them
+#'   to form mini-waterfalls within each `x` value, but you can chose to stack
+#'   them instead by setting `dodge=FALSE`.  Negative and positive values are
+#'   segregated prior to stacking so they do not overlap.  Interpreting
+#'   waterfall charts with stacked sub-groups is non-obvious, so we recommend
+#'   you use the default setting instead.
+#' @param vjust like the `vjust` parameter for [ggplot2::position_stack], except
+#'   that by default the direction of justification follows the direction of the
+#'   bar (see `vjust.mode`).
+#' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
+#'   results in the same behavior as in [ggplot2::position_stack].  "end" means
+#'   the justification is relative to the "end" of the waterfall bar.  So if a
+#'   waterfall bar is heading down (i.e. negative `y` value), the "end" is at
+#'   the bottom.  If it heading up (i.e. positive `y` value), the "end" is at
+#'   the top.  For positive `y` values "end" and "top" do the same thing.
 #' @export
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
 #'   there are multiple bars for a single x value.
