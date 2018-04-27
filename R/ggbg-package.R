@@ -18,6 +18,7 @@
 #'
 #' @docType package
 #' @import ggplot2
+#' @import vetr
 #' @name ggbg
 
 NULL

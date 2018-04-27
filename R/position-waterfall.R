@@ -45,10 +45,7 @@ position_waterfall <- function(
   dodge = TRUE,
   vjust = 1
 ) {
-  if(!is.logical(dodge) || !length(dodge) == 1 || is.na(dodge))
-    stop("`dodge` should be TRUE or FALSE")
-  if(!is.numeric(vjust) || length(vjust) != 1 || is.na(vjust))
-    stop("`vjust` should be scalar numeric")
+  vetr(dodge=LGL.1, vjust=NUM.1, vjust.mode=CHR.1 && . %in% c("top", "end"))
 
   ggproto(NULL, PositionWaterfall,
     width = width,
