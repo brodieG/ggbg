@@ -2,10 +2,10 @@
 % Please edit documentation in R/position-waterfall.R
 \name{position_waterfall}
 \alias{position_waterfall}
-\title{Stack objects in a Waterfall}
+\title{Cumulative Stacking of Objects}
 \usage{
 position_waterfall(width = NULL, preserve = c("total", "single"),
-  reverse = FALSE, dodge = FALSE)
+  reverse = FALSE, dodge = TRUE, vjust = 1, vjust.mode = "end")
 }
 \arguments{
 \item{width}{Dodging width, when different to the width of the individual
@@ -18,9 +18,42 @@ at a position, or the width of a single element?}
 \item{reverse}{If \code{TRUE}, will reverse the default stacking order.
 This is useful if you're rotating both the plot and legend.}
 
+\item{dodge}{TRUE (default) or FALSE, controls how to resolve
+elements that overlap on the \code{x} axis.  The default is to dodge them
+to form mini-waterfalls within each \code{x} value, but you can chose to stack
+them instead by setting \code{dodge=FALSE}.  Negative and positive values are
+segregated prior to stacking so they do not overlap.  Interpreting
+waterfall charts with stacked sub-groups is non-obvious, so we recommend
+you use the default setting instead.}
+
+\item{vjust}{like the \code{vjust} parameter for \link[ggplot2:position_stack]{ggplot2::position_stack}, except
+that by default the direction of justification follows the direction of the
+bar (see \code{vjust.mode}).}
+
+\item{vjust.mode}{character(1L), one of "end" (default), or "top" where "top"
+results in the same behavior as in \link[ggplot2:position_stack]{ggplot2::position_stack}.  "end" means
+the justification is relative to the "end" of the waterfall bar.  So if a
+waterfall bar is heading down (i.e. negative \code{y} value), the "end" is at
+the bottom.  If it heading up (i.e. positive \code{y} value), the "end" is at
+the top.  For positive \code{y} values "end" and "top" do the same thing.}
+
 \item{dodge}{TRUE or FALSE (default), whether to dodge waterfall bars when
 there are multiple bars for a single x value.}
 }
 \description{
-Stack objects in a Waterfall
+A waterfall chart is a bar chart where each segment starts where the prior
+segment left off.  This is similar to a stacked chart, except that elements
+are offset along the \code{x} axis so that positive and negative values do not
+overlap.  Another similar type of chart is the candle stick plot, except
+those have "whiskers" and typically require you to specify the \code{ymin} and
+\code{ymax} values.
+}
+\details{
+\code{position_waterfall} creates waterfall charts when it is applied to
+\code{geom_col} or \code{geom_bar}.  You can apply it to any geom, although the results
+may not always make sense, especially with geoms that explicitly specify
+the \code{height}, \code{ymin}, and or \code{ymax} aesthetics.  The stacking is always
+computed from the \code{y} values.  Since stat layers are computed prior to
+position adjustments, you can also use \code{position_waterfall} with stats (e.g
+\code{stat_bin}, see examples).
 }

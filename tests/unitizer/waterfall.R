@@ -59,13 +59,15 @@ unitizer_sect("other geoms", {
   ggplot_build(p8)[["data"]]
 })
 unitizer_sect("vjust and labels", {
-  pwv0.5 <- position_waterfall('waterfall', vjust=0.5)
-  pwv1.0 <- position_waterfall('waterfall', vjust=1)
 
-  p9 <- gb.2 +
+  p9 <-
+    ggplot(data[order(data[["x"]], data[["grp"]])]) +
     geom_col(position='waterfall') +
-    geom_text(aes(label=y), position=pwv0.5) +
-    geom_text(aes(label=cumsum(y)), position=pwv0.5) +
+    geom_text(aes(label=y), position='waterfall') +
+    geom_text(
+      aes(label=cumsum(y), vjust=ifelse(y < 0, -0.5, 1.5)),
+      position=position_waterfall(vjust=1)
+    )
 
   ggplot_build(p9)[["data"]]
 

@@ -27,7 +27,8 @@
 #'   you use the default setting instead.
 #' @param vjust like the `vjust` parameter for [ggplot2::position_stack], except
 #'   that by default the direction of justification follows the direction of the
-#'   bar (see `vjust.mode`).
+#'   bar (see `vjust.mode`).  This only has an effect on geoms with positions
+#'   like text, points, or lines.
 #' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
 #'   results in the same behavior as in [ggplot2::position_stack].  "end" means
 #'   the justification is relative to the "end" of the waterfall bar.  So if a
@@ -43,7 +44,8 @@ position_waterfall <- function(
   preserve = c("total", "single"),
   reverse = FALSE,
   dodge = TRUE,
-  vjust = 1
+  vjust = 0.5,
+  vjust.mode = "end"
 ) {
   vetr(dodge=LGL.1, vjust=NUM.1, vjust.mode=CHR.1 && . %in% c("top", "end"))
 
@@ -52,6 +54,7 @@ position_waterfall <- function(
     preserve = match.arg(preserve),
     reverse = reverse,
     vjust=vjust,
+    vjust.mode=vjust.mode,
     dodge = dodge
   )
 }
@@ -70,7 +73,8 @@ PositionWaterfall <- ggproto(
   reverse = FALSE,
   preserve = "total",
   dodge = TRUE,
-  vjust = 1,
+  vjust = 0.5,
+  vjust.mode="end",
 
   setup_params = function(self, data) {
     if (identical(self$preserve, "total")) {
@@ -83,7 +87,8 @@ PositionWaterfall <- ggproto(
       n = n,
       dodge = self$dodge,
       reverse = self$reverse,
-      vjust = self$vjust
+      vjust = self$vjust,
+      vjust.mode = self$vjust.mode
     )
   },
   # try to make sure that data has x, xmin, xmax, and ymin and ymax
@@ -162,7 +167,8 @@ PositionWaterfall <- ggproto(
 
       d.s.proc <- Map(
         pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
-        y.start=prev.last, n=list(params$n), vjust=params$vjust
+        y.start=prev.last, n=list(params$n), vjust=params$vjust,
+        vjust.mode=params$vjust.mode
       )
       do.call(rbind, d.s.proc)
     }
@@ -172,7 +178,9 @@ PositionWaterfall <- ggproto(
 # Dodge overlapping interval.
 # Assumes that each set has the same horizontal position.
 
-pos_waterfall <- function(df, width, dodge, y.start, vjust, n = NULL) {
+pos_waterfall <- function(
+  df, width, dodge, y.start, vjust, vjust.mode, n = NULL
+) {
   if (is.null(n)) {
     group.u <- unique(df[["group"]])
     n <- length(unique(df[["group"]]))
@@ -205,27 +213,35 @@ pos_waterfall <- function(df, width, dodge, y.start, vjust, n = NULL) {
           df$xmax <- df$x + d_width / n / 2
         }
       }
-      stack_waterfall(df, y.start, vjust)
+      stack_waterfall(df, y.start, vjust, vjust.mode)
     } else {
       # stack mode, need to segregate positives and negatives
 
+      df.pos <- df[df[["y"]] >= 0, , drop=FALSE]
+      df.neg <- df[df[["y"]] < 0, , drop=FALSE]
       rbind(
-        stack_waterfall(df[df[["y"]] >= 0, , drop=FALSE], y.start, vjust),
-        stack_waterfall(df[df[["y"]] < 0, , drop=FALSE], y.start, vjust)
+        stack_waterfall(df.pos, y.start, vjust, vjust.mode),
+        stack_waterfall(df.neg, y.start, vjust, vjust.mode)
       )
     }
   }
   df
 }
-stack_waterfall <- function(df, y.start, vjust) {
+stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
   y.all <- c(y.start, df[["y"]])
   y.cum <- cumsum(y.all)
   y.lead <- head(y.cum, -1L)
   y.lag <- tail(y.cum, -1L)
-  df$y <- (1 - vjust) * df$ymin + vjust * df$ymax
+
+  y.orig <- df[["y"]]
   df[["y"]] <- y.lag
   df[["ymin"]] <- pmin(y.lead, df[["y"]])
   df[["ymax"]] <- pmax(y.lead, df[["y"]])
-  df[["y"]] <- df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
+  # adjust v position
+  df[["y"]] <- ifelse(
+    y.orig < 0 & identical(vjust.mode, "end"),
+    df[["ymax"]] - vjust * (df[["ymax"]] - df[["ymin"]]),
+    df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
+  )
   df
 }
