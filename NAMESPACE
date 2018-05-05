@@ -2,6 +2,7 @@
 
 export(GeomWaterfall)
 export(PositionWaterfall)
+export(StatWaterfall)
 export(geom_waterfall)
 export(position_waterfall)
 import(ggplot2)

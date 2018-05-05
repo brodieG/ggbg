@@ -29,3 +29,4 @@ Collate:
     'utils.R'
     'geom-waterfall.R'
     'position-waterfall.R'
+    'stat-waterfall.R'

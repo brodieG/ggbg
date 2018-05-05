@@ -1,4 +1,11 @@
+
 # Developer Notes
+
+## Relevant docs
+
+* ggplot2 docs `?Geom`, etc.
+* ggplot2 vignette
+* [B. Rudis in-progress Book](https://rud.is/books/creating-ggplot2-extensions/)
 
 ## Waterfall
 
