@@ -5,7 +5,7 @@
 \alias{position_waterfall}
 \alias{StatWaterfall}
 \title{Cumulative Stacking of Objects}
-\format{An object of class \code{StatSum} (inherits from \code{Stat}, \code{ggproto}, \code{gg}) of length 4.}
+\format{An object of class \code{StatWaterfall} (inherits from \code{Stat}, \code{ggproto}, \code{gg}) of length 4.}
 \usage{
 position_waterfall(width = NULL, preserve = c("total", "single"),
   reverse = FALSE, dodge = TRUE, vjust = 0.5, vjust.mode = "end")

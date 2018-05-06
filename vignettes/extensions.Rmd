@@ -205,6 +205,8 @@ are supplied.
 Finally, since `draw_panel` is a `ggproto` method `self` will be provided if it
 is part of the `draw_panel` signature.
 
+## Deprecated Stuff
+
 ### `setup_data` vs `reparametrise`
 
 It seems like both those functions can be used for the same purpose.  For
@@ -212,4 +214,10 @@ example, in `GeomRect`, `setup_data` is explicitly used to convert width to
 `xmax/xmin`.
 
 Actually, looks like `reparameterise` doesn't exist anymore?
+
+draw_legend / draw_key
+
+## Grid Stuff
+
+You cannot use `gList` in the key/legend.  However, `grobTree` works.
 
