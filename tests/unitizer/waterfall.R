@@ -50,6 +50,14 @@ unitizer_sect("basic", {
   pw.pres.dodge <- position_waterfall(preserve="single")
   p7 <- gb.2 + geom_col(position=pw.pres.dodge)
   ggplot_build(p7)[["data"]]
+
+  # duplicate group values
+
+  p10 <- ggplot(rbind(dat, dat), aes(x=x, y=y)) +
+    geom_col(position="waterfall")
+
+  ggplot_build(p10)[["data"]]
+
 })
 unitizer_sect("other geoms", {
   dat <- data.frame(x=3:1, y=1:3)
@@ -60,22 +68,26 @@ unitizer_sect("other geoms", {
 })
 unitizer_sect("vjust and labels", {
 
+  dat5 <- rbind(
+    cbind(dat3, facet="X"),
+    cbind(transform(dat3, x=rev(x)), facet="Y")
+  )
   p9 <-
-    ggplot(data[order(data[["x"]], data[["grp"]])]) +
+    ggplot(dat5, aes(x=x, y=y, fill=grp)) +
     geom_col(position='waterfall') +
-    geom_text(aes(label=y), position='waterfall') +
+    geom_label(
+      aes(label=y, group=grp),
+      position='waterfall', color="gray", fill="white"
+    ) +
     geom_text(
-      aes(label=cumsum(y), vjust=ifelse(y < 0, -0.5, 1.5)),
-      position=position_waterfall(vjust=1)
-    )
+      aes(label=calc(ycum), vjust=ifelse(y < 0, 1.5, -0.5)),
+      position=position_waterfall(vjust=1),
+      stat="waterfall",
+      size=6
+    ) +
+    facet_wrap(~facet)
 
   ggplot_build(p9)[["data"]]
-
-  p9 <- gb.2 +
-    geom_col(position='waterfall') +
-    geom_text(aes(label=y), position='waterfall', vjust=0.5)
-    geom_text(aes(label=y), position='waterfall', vjust=0.5)
-
 
 
 })
