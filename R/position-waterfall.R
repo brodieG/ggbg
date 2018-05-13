@@ -14,14 +14,14 @@
 ##
 ## Go to <https://www.r-project.org/Licenses/GPL-2> for a copy of the license.
 
-#' Cumulative Stacking of Objects
+#' Stack Chart Elements on Cumulative Value
 #'
 #' A waterfall chart is a bar chart where each segment starts where the prior
 #' segment left off.  This is similar to a stacked bar chart, except that
-#' elements are offset along the `x` axis so that positive and negative values
-#' do not overlap.  Another similar type of chart is the candle stick plot,
-#' except those have "whiskers" and typically require you to manually specify
-#' the `ymin` and `ymax` values.
+#' elements the stacking does not reset across `x` values.  In effect, it is the
+#' visualization of a cumulative sum.  Another similar type of chart is the
+#' candle stick plot, except those have "whiskers" and typically require you to
+#' manually specify the `ymin` and `ymax` values.
 #'
 #' `position_waterfall` creates waterfall charts when it is applied to
 #' `geom_col` or `geom_bar`.  You can apply it to any geom, although the results
@@ -31,10 +31,17 @@
 #' position adjustments, you can also use `position_waterfall` with stats (e.g
 #' `stat_bin`, see examples).
 #'
-#' Most position adjustments modify positions of groups that otherwise
+#' We also implement a [StatWaterfall][ggbg-ggproto] `ggproto` object that
+#' can be accessed within `geom_*` calls by specifying `stat='waterfall'`.
+#' Unlike typical stat `ggproto` object, this one does not have a layer
+#' instantiation function (i.e. `stat_waterfall` does not exist).  The sole
+#' purpose of the stat is to compute the `ycum` aesthetic that can then be used
+#' by the `geom` layer (see the labeling examples).
+#'
+#' Most `position_*` adjustments modify positions of groups that otherwise
 #' would occupy the same space, leaving relative positions of groups unchanged.
-#' `position_waterfall` also changes relative positions of groups that would
-#' normally not occupy the same space.
+#' `position_waterfall` is different in as much as it also changes relative
+#' positions of groups that would normally not occupy the same space.
 #'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
@@ -43,21 +50,27 @@
 #'   to form mini-waterfalls within each `x` value, but you can chose to stack
 #'   them instead by setting `dodge=FALSE`.  Negative and positive values are
 #'   segregated prior to stacking so they do not overlap.  Interpreting
-#'   waterfall charts with stacked sub-groups is difficult, so we recommend
-#'   you use the default setting instead.  Observations within a group that
-#'   have the same `x` value are always stacked.
-#' @param vjust like the `vjust` parameter for [ggplot2::position_stack], except
-#'   that by default the direction of justification follows the direction of the
-#'   bar (see `vjust.mode`).  This only has an effect on geoms with positions
-#'   like text, points, or lines.  The default position is `0.5`, which places
-#'   elements midway through the height of the corresponding waterfall step.
-#'   The default value is convenient for labeling `geom_col` waterfalls.  Use
-#'   `1` to position at the "end" of each waterfall step.
+#'   waterfall charts with stacked sub-groups is difficult when they contain
+#'   negative values, so we recommend you use the default setting instead.
+#'   Observations within a group that have the same `x` value are always
+#'   stacked, so if you have both positive and negative values for any given `x`
+#'   value you may want to consider segregating the positives and negatives in
+#'   different groups.
+#' @param vjust like the `vjust` parameter for [`ggplot2::position_stack`],
+#'   except that by default the direction of justification follows the direction
+#'   of the bar (see `vjust.mode`), and the default value is `0.5` instead of
+#'   `1`.  This only has an effect on geoms with positions like text, points, or
+#'   lines.  The default setting places elements midway through the height of
+#'   the corresponding waterfall step.  The default value is convenient for
+#'   labeling `geom_col` waterfalls.  Use `1` to position at the "end" of each
+#'   waterfall step.  This is different to the `vjust` for geoms like
+#'   `geom_text` where `vjust=1` shift the text down, but it is consistent with
+#'   what [`gggplot2::position_stack`] does.
 #' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
-#'   results in the same behavior as in [ggplot2::position_stack].  "end" means
-#'   the justification is relative to the "end" of the waterfall bar.  So if a
-#'   waterfall bar is heading down (i.e. negative `y` value), the "end" is at
-#'   the bottom.  If it heading up (i.e. positive `y` value), the "end" is at
+#'   results in the same behavior as in [`ggplot2::position_stack`].  "end"
+#'   means the justification is relative to the "end" of the waterfall bar.  So
+#'   if a waterfall bar is heading down (i.e. negative `y` value), the "end" is
+#'   at the bottom.  If it heading up (i.e. positive `y` value), the "end" is at
 #'   the top.  For positive `y` values "end" and "top" do the same thing.
 #' @export
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
@@ -65,20 +78,26 @@
 #' @examples
 #' ## These examples are best run via `example(position_waterfall)`
 #' library(ggplot2)
-#' dat <- data.frame(x=1:3, y=1:3)
+#' dat <- data.frame(x=3:1, y=1:3)
 #' p1 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall')
 #'
 #' ## Add text or labels; defaults to middle waterfall position
 #' ## which can be modified with `vjust`
 #' p1 + geom_label(aes(label=x), position='waterfall')
 #'
-#' ## We use the `geom` `vjust` value AND the waterfall
-#' ## `vjust` value to get our labels to the top of the bar
-#' p1 + geom_label(
-#'   aes(label=x),
-#'   position=position_waterfall(vjust=1), # position vjust
-#'   vjust=0                               # geom vjust
+#' ## We can also add the cumulative running to the top of
+#' ## the bars with `stat='waterfall'` and position adjustments
+#' p1 + geom_label(aes(label=x), position='waterfall') +
+#'  geom_label(
+#'    stat="waterfall",        # adds `ycum` computed variable
+#'    aes(label=calc(ycum)),   # which we can use for label
+#'    position=position_waterfall(vjust=1), # text to end of column
+#'    vjust=0,                              # tweak so it's on top
 #' )
+#' ## A poor person's candlestick chart:
+#' dat.r.walk <- data.frame(x=1:20, y=rnorm(20))
+#' ggplot(dat.r.walk, aes(x=x, y=y, fill=y > 0)) +
+#'   geom_col(position='waterfall')
 #'
 #' ## We can use arbitrary geoms
 #' ggplot(dat, aes(x=x, y=y)) +
@@ -105,10 +124,6 @@
 #' ## negative values present
 #' p2 + geom_col(position=position_waterfall(dodge=FALSE))
 
-
-
-
-
 position_waterfall <- function(
   width = NULL,
   preserve = c("total", "single"),
@@ -131,6 +146,11 @@ position_waterfall <- function(
 
 ## Much of this code is lifted from ggplot2/R/position-dodge.R
 
+#' Compute Position Adjustments Based on Cumulative Value
+#'
+#' `PositionWaterfall` is the `ggproto` object used to generate the position
+#' adjustments that correspond to [position_waterfall].
+#'
 #' @rdname ggbg-ggproto
 #' @format NULL
 #' @usage NULL
@@ -184,8 +204,9 @@ PositionWaterfall <- ggproto(
           "this may cause unexpected outcomes."
         )
 
-      data$width <- data$width %||%
-        params$width %||% (resolution(data$x, FALSE) * 0.9)
+      data$width <- if(!is.null(data$width)) data$width else
+        if(!is.null(params$width)) params$width else
+        resolution(data$x, FALSE) * 0.9
 
       if(!is.numeric(data[["width"]]) || isTRUE(any(data[["width"]] < 0)))
         warning(

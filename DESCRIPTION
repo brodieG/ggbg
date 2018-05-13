@@ -24,10 +24,8 @@ RoxygenNote: 6.0.1
 Roxygen: list(markdown = TRUE)
 Collate:
     'ggbg-package.R'
-    'ggplot2.R'
     'proto.R'
     'utils.R'
     'geom-car.R'
-    'geom-waterfall.R'
     'position-waterfall.R'
     'stat-waterfall.R'
