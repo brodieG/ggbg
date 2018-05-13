@@ -24,17 +24,21 @@ at a position, or the width of a single element?}
 This is useful if you're rotating both the plot and legend.}
 
 \item{dodge}{TRUE (default) or FALSE, controls how to resolve
-elements that overlap on the \code{x} axis.  The default is to dodge them
+groups that overlap on the \code{x} axis.  The default is to dodge them
 to form mini-waterfalls within each \code{x} value, but you can chose to stack
 them instead by setting \code{dodge=FALSE}.  Negative and positive values are
 segregated prior to stacking so they do not overlap.  Interpreting
-waterfall charts with stacked sub-groups is non-obvious, so we recommend
-you use the default setting instead.}
+waterfall charts with stacked sub-groups is difficult, so we recommend
+you use the default setting instead.  Observations within a group that
+have the same \code{x} value are always stacked.}
 
 \item{vjust}{like the \code{vjust} parameter for \link[ggplot2:position_stack]{ggplot2::position_stack}, except
 that by default the direction of justification follows the direction of the
 bar (see \code{vjust.mode}).  This only has an effect on geoms with positions
-like text, points, or lines.}
+like text, points, or lines.  The default position is \code{0.5}, which places
+elements midway through the height of the corresponding waterfall step.
+The default value is convenient for labeling \code{geom_col} waterfalls.  Use
+\code{1} to position at the "end" of each waterfall step.}
 
 \item{vjust.mode}{character(1L), one of "end" (default), or "top" where "top"
 results in the same behavior as in \link[ggplot2:position_stack]{ggplot2::position_stack}.  "end" means
@@ -48,11 +52,11 @@ there are multiple bars for a single x value.}
 }
 \description{
 A waterfall chart is a bar chart where each segment starts where the prior
-segment left off.  This is similar to a stacked chart, except that elements
-are offset along the \code{x} axis so that positive and negative values do not
-overlap.  Another similar type of chart is the candle stick plot, except
-those have "whiskers" and typically require you to specify the \code{ymin} and
-\code{ymax} values.
+segment left off.  This is similar to a stacked bar chart, except that
+elements are offset along the \code{x} axis so that positive and negative values
+do not overlap.  Another similar type of chart is the candle stick plot,
+except those have "whiskers" and typically require you to manually specify
+the \code{ymin} and \code{ymax} values.
 
 This stat is intended only to be used to add the computed \code{ycum} aesthetic to
 the plot data.  It does not exist as a stand alone layer.
@@ -65,6 +69,11 @@ the \code{height}, \code{ymin}, and or \code{ymax} aesthetics.  The stacking is 
 computed from the \code{y} values.  Since stat layers are computed prior to
 position adjustments, you can also use \code{position_waterfall} with stats (e.g
 \code{stat_bin}, see examples).
+
+Most position adjustments modify positions of groups that otherwise
+would occupy the same space, leaving relative positions of groups unchanged.
+\code{position_waterfall} also changes relative positions of groups that would
+normally not occupy the same space.
 }
 \section{Computed variables}{
 
@@ -74,4 +83,47 @@ position adjustments, you can also use \code{position_waterfall} with stats (e.g
 }
 }
 
+\examples{
+## These examples are best run via `example(position_waterfall)`
+library(ggplot2)
+dat <- data.frame(x=1:3, y=1:3)
+p1 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall')
+
+## Add text or labels; defaults to middle waterfall position
+## which can be modified with `vjust`
+p1 + geom_label(aes(label=x), position='waterfall')
+
+## We use the `geom` `vjust` value AND the waterfall
+## `vjust` value to get our labels to the top of the bar
+p1 + geom_label(
+  aes(label=x),
+  position=position_waterfall(vjust=1), # position vjust
+  vjust=0                               # geom vjust
+)
+
+## We can use arbitrary geoms
+ggplot(dat, aes(x=x, y=y)) +
+  geom_point() +
+  geom_point(position=position_waterfall(vjust=1), color='red')
+
+## Or stats; here we turn a histogram into an ecdf plot
+dat.norm <- data.frame(x=rnorm(1000))
+ggplot(dat.norm, aes(x=x)) + geom_histogram(position='waterfall')
+ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
+
+## Data with groups
+dat3 <- data.frame(
+  x=c(3, 2, 2, 2, 1, 1), y=c(-3, 1, 4, -6, -1, 10),
+  grp=rep(c("A", "B", "C"), lenght.out=6)
+)
+p2 <- ggplot(dat3, aes(x=x, y=y, fill=grp))
+p2 + geom_col(position="waterfall")
+
+## Equal width columns
+p2 + geom_col(position=position_waterfall(preserve='single'))
+
+## Stacking groups is possible, bug hard to interpret when
+## negative values present
+p2 + geom_col(position=position_waterfall(dodge=FALSE))
+}
 \keyword{datasets}

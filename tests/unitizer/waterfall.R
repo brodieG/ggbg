@@ -54,7 +54,7 @@ unitizer_sect("basic", {
   # duplicate group values
 
   p10 <- ggplot(rbind(dat, dat), aes(x=x, y=y)) +
-    geom_col(position="waterfall")
+    geom_col(position="waterfall", color="white")
 
   ggplot_build(p10)[["data"]]
 
@@ -66,7 +66,7 @@ unitizer_sect("other geoms", {
 
   ggplot_build(p8)[["data"]]
 })
-unitizer_sect("vjust and labels", {
+unitizer_sect("vjust and labels and facets", {
 
   dat5 <- rbind(
     cbind(dat3, facet="X"),

@@ -1,12 +1,27 @@
+## Copyright (C) 2018  Brodie Gaslam
+##
+## This file is part of "ggbg - Assorted Ggplot Extensions"
+##
+## This program is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 2 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## Go to <https://www.r-project.org/Licenses/GPL-2> for a copy of the license.
 
 #' Cumulative Stacking of Objects
 #'
 #' A waterfall chart is a bar chart where each segment starts where the prior
-#' segment left off.  This is similar to a stacked chart, except that elements
-#' are offset along the `x` axis so that positive and negative values do not
-#' overlap.  Another similar type of chart is the candle stick plot, except
-#' those have "whiskers" and typically require you to specify the `ymin` and
-#' `ymax` values.
+#' segment left off.  This is similar to a stacked bar chart, except that
+#' elements are offset along the `x` axis so that positive and negative values
+#' do not overlap.  Another similar type of chart is the candle stick plot,
+#' except those have "whiskers" and typically require you to manually specify
+#' the `ymin` and `ymax` values.
 #'
 #' `position_waterfall` creates waterfall charts when it is applied to
 #' `geom_col` or `geom_bar`.  You can apply it to any geom, although the results
@@ -16,19 +31,28 @@
 #' position adjustments, you can also use `position_waterfall` with stats (e.g
 #' `stat_bin`, see examples).
 #'
+#' Most position adjustments modify positions of groups that otherwise
+#' would occupy the same space, leaving relative positions of groups unchanged.
+#' `position_waterfall` also changes relative positions of groups that would
+#' normally not occupy the same space.
+#'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
 #' @param dodge TRUE (default) or FALSE, controls how to resolve
-#'   elements that overlap on the `x` axis.  The default is to dodge them
+#'   groups that overlap on the `x` axis.  The default is to dodge them
 #'   to form mini-waterfalls within each `x` value, but you can chose to stack
 #'   them instead by setting `dodge=FALSE`.  Negative and positive values are
 #'   segregated prior to stacking so they do not overlap.  Interpreting
-#'   waterfall charts with stacked sub-groups is non-obvious, so we recommend
-#'   you use the default setting instead.
+#'   waterfall charts with stacked sub-groups is difficult, so we recommend
+#'   you use the default setting instead.  Observations within a group that
+#'   have the same `x` value are always stacked.
 #' @param vjust like the `vjust` parameter for [ggplot2::position_stack], except
 #'   that by default the direction of justification follows the direction of the
 #'   bar (see `vjust.mode`).  This only has an effect on geoms with positions
-#'   like text, points, or lines.
+#'   like text, points, or lines.  The default position is `0.5`, which places
+#'   elements midway through the height of the corresponding waterfall step.
+#'   The default value is convenient for labeling `geom_col` waterfalls.  Use
+#'   `1` to position at the "end" of each waterfall step.
 #' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
 #'   results in the same behavior as in [ggplot2::position_stack].  "end" means
 #'   the justification is relative to the "end" of the waterfall bar.  So if a
@@ -38,6 +62,52 @@
 #' @export
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
 #'   there are multiple bars for a single x value.
+#' @examples
+#' ## These examples are best run via `example(position_waterfall)`
+#' library(ggplot2)
+#' dat <- data.frame(x=1:3, y=1:3)
+#' p1 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall')
+#'
+#' ## Add text or labels; defaults to middle waterfall position
+#' ## which can be modified with `vjust`
+#' p1 + geom_label(aes(label=x), position='waterfall')
+#'
+#' ## We use the `geom` `vjust` value AND the waterfall
+#' ## `vjust` value to get our labels to the top of the bar
+#' p1 + geom_label(
+#'   aes(label=x),
+#'   position=position_waterfall(vjust=1), # position vjust
+#'   vjust=0                               # geom vjust
+#' )
+#'
+#' ## We can use arbitrary geoms
+#' ggplot(dat, aes(x=x, y=y)) +
+#'   geom_point() +
+#'   geom_point(position=position_waterfall(vjust=1), color='red')
+#'
+#' ## Or stats; here we turn a histogram into an ecdf plot
+#' dat.norm <- data.frame(x=rnorm(1000))
+#' ggplot(dat.norm, aes(x=x)) + geom_histogram(position='waterfall')
+#' ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
+#'
+#' ## Data with groups
+#' dat3 <- data.frame(
+#'   x=c(3, 2, 2, 2, 1, 1), y=c(-3, 1, 4, -6, -1, 10),
+#'   grp=rep(c("A", "B", "C"), lenght.out=6)
+#' )
+#' p2 <- ggplot(dat3, aes(x=x, y=y, fill=grp))
+#' p2 + geom_col(position="waterfall")
+#'
+#' ## Equal width columns
+#' p2 + geom_col(position=position_waterfall(preserve='single'))
+#'
+#' ## Stacking groups is possible, bug hard to interpret when
+#' ## negative values present
+#' p2 + geom_col(position=position_waterfall(dodge=FALSE))
+
+
+
+
 
 position_waterfall <- function(
   width = NULL,
