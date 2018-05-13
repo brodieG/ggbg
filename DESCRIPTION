@@ -4,11 +4,7 @@ Description: Collection of ggplot extensions.
 Version: 0.0.0.9001
 Authors@R: c(
     person("Brodie", "Gaslam", email="brodie.gaslam@yahoo.com",
-    role=c("aut", "cre")),
-    person(
-      "Hadley", "Wickham", email="hadley@rstudio.com", role=c("cph"),
-      comment="see R/ggplot2.R"
-    )
+    role=c("aut", "cre"))
     )
 Depends:
     R (>= 3.1.0)
