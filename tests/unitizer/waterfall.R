@@ -80,7 +80,7 @@ unitizer_sect("vjust and labels and facets", {
       position='waterfall', color="gray", fill="white"
     ) +
     geom_text(
-      aes(label=calc(ycum), vjust=ifelse(y < 0, 1.5, -0.5)),
+      aes(label=stat(ycum), vjust=ifelse(y < 0, 1.5, -0.5)),
       position=position_waterfall(vjust=1),
       stat="waterfall",
       size=6

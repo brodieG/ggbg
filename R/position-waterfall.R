@@ -90,7 +90,7 @@
 #' p1 + geom_label(aes(label=x), position='waterfall') +
 #'  geom_label(
 #'    stat="waterfall",        # adds `ycum` computed variable
-#'    aes(label=calc(ycum)),   # which we can use for label
+#'    aes(label=stat(ycum)),   # which we can use for label
 #'    position=position_waterfall(vjust=1), # text to end of column
 #'    vjust=0,                              # tweak so it's on top
 #' )
