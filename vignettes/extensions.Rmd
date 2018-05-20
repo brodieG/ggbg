@@ -55,8 +55,11 @@ summarized as:
     3. Assigns groups.
     4. Rescales data if non linear scales are specified.
     5. Computes and maps statistics.
-    6. Transforms special aesthetics (e.g. `width` to `xmin`-`xmax`).
+    6. Transforms special aesthetics (e.g. `width` to `xmin`-`xmax`)
+       (Layer$compute_geom_1 -> Geom$setup_data, check_required_aesthetic)
     7. Adjusts positions (e.g. dodging/stacking with `$compute_positions`).
+       (Layer$compute_positions ->
+       Position$setup_params/setup_data/compute_layer)
     8. Recompute scales.
     9. Adds default aesthetics as needed.
 2. Graphical Object Construction (`ggplot_gtable`):

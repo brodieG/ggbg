@@ -88,20 +88,35 @@ unitizer_sect("vjust and labels and facets", {
     facet_wrap(~facet)
 
   ggplot_build(p9)[["data"]]
-
-
 })
 unitizer_sect("corner cases", {
-  NULL
-  # zero row data frame
-  # zero col data frame
+
+  p11 <- ggplot(data.frame(x=numeric(), y=numeric())) +
+    geom_col(position='waterfall')
+  ggplot_build(p11)[["data"]]
+
+  p12 <- ggplot(data.frame()) + geom_col(position='waterfall')
+  ggplot_build(p12)[["data"]]
+
+  dat6 <- data.frame(x=3:1, xmin=3:1-.5, xmax=3:1+.5, y=1:3)
+  p13 <- ggplot(dat6, aes(x=x, xmin=xmin, xmax=xmax, y=y)) +
+    geom_col(position='waterfall')
+  ggplot_build(p13)[["data"]]
+
+  p14 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall', width=2)
+  ggplot_build(p14)
+
+  dat7 <- data.frame(x=4:1, y=1:4, grp=1:2)
+  p15 <- ggplot(dat, aes(x=x, y=y, fill=grp)) +
+    geom_col(position=position_waterfall(width=.5), width=2)
+
+  ggplot_build(p15)[["data"]]
+
   # weird aes:
-  #   * provide xmin xor xmax
   #   * width conflicts (provide in geom, position, and data), in particular
   #     geom width vs dodge width need to be controllable independently.
   #   * height
   #   * provide ymin and ymax, but not y
   # vjust and hjust
-  # reverse order
   # start somewhere other than zero
 })
