@@ -13,7 +13,7 @@ LazyData: true
 URL: https://github.com/brodieG/ggbg
 BugReports: https://github.com/brodieG/ggbg/issues
 Imports:
-    ggplot2
+    ggplot2 (>= 2.2.1.9000)
 Suggests:
     unitizer
 RoxygenNote: 6.0.1
