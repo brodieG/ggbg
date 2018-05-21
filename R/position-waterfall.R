@@ -18,7 +18,7 @@
 #'
 #' A waterfall chart is a bar chart where each segment starts where the prior
 #' segment left off.  This is similar to a stacked bar chart, except that
-#' elements the stacking does not reset across `x` values.  In effect, it is the
+#' the stacking does not reset across `x` values.  In effect, it is the
 #' visualization of a cumulative sum.  Another similar type of chart is the
 #' candle stick plot, except those have "whiskers" and typically require you to
 #' manually specify the `ymin` and `ymax` values.
@@ -27,9 +27,14 @@
 #' `geom_col` or `geom_bar`.  You can apply it to any geom, although the results
 #' may not always make sense, especially with geoms that explicitly specify
 #' the `height`, `ymin`, and or `ymax` aesthetics.  The stacking is always
-#' computed from the `y` values.  Since stat layers are computed prior to
-#' position adjustments, you can also use `position_waterfall` with stats (e.g
-#' `stat_bin`, see examples).
+#' computed from the `y` aesthetic  If your geom does not specify a `y`
+#' aesthetic it will be inferred as the midpoint of `ymin` and `ymax`.
+#' The order of the stacking is determined by the `x` aesthetic.  If only `xmin`
+#' and `xmax` aesthetics are present the `x` value will be inferred as the
+#' midpoint of those two.
+#'
+#' Since stat layers are computed prior to position adjustments, you can also
+#' use `position_waterfall` with stats (e.g `stat_bin`, see examples).
 #'
 #' We also implement a [StatWaterfall][ggbg-ggproto] `ggproto` object that
 #' can be accessed within `geom_*` calls by specifying `stat='waterfall'`.
@@ -37,6 +42,10 @@
 #' instantiation function (i.e. `stat_waterfall` does not exist).  The sole
 #' purpose of the stat is to compute the `ycum` aesthetic that can then be used
 #' by the `geom` layer (see the labeling examples).
+#'
+#' Internally `position_waterfall` requires the `y`, `ymin`, `ymax`, `x`,
+#' `xmin`, and `xmax` aesthetics, but it will infer the missing aesthetics if it
+#' is able to based on those present.
 #'
 #' Most `position_*` adjustments modify positions of groups that otherwise
 #' would occupy the same space, leaving relative positions of groups unchanged.
@@ -196,9 +205,10 @@ PositionWaterfall <- ggproto(
         )
       data$x <- (data$xmin + data$xmax) / 2
     } else if (
-      "x" %in% names(data) && !isTRUE(all(c("xmin", "xmax") %in% names(data)))
+      "x" %in% names(data) &&
+      !isTRUE(all(xcheck <- c("xmin", "xmax") %in% names(data)))
     ) {
-      if(sum(c("xmin", "xmax") %in% names(data)) == 1)
+      if(sum(xcheck) == 1)
         warning(
           "Only one of `xmin` and `xmax` available to `", self$name, "`, ",
           "this may cause unexpected outcomes."
@@ -219,13 +229,19 @@ PositionWaterfall <- ggproto(
     }
     # Deal with `y` vals
 
+    ycheck <- c("ymin", "ymax") %in% names(data)
     if(!"y" %in% names(data)) {
       # compute panel will issue a warning if "y" is missing, so no need to do
       # it here
-      if(isTRUE(all(c("ymin", "ymax") %in% names(data)))) {
+      if(isTRUE(all(ycheck))) {
         data[["y"]] <- (data[["ymin"]] + data[["ymax"]]) / 2
       }
-    } else {
+    } else if(!isTRUE(all(ycheck)) %in% names(data)) {
+      if(sum(ycheck) == 1)
+        warning(
+          "Only one of `ymin` and `ymax` available to `", self$name, "`, ",
+          "these values will be overwritten."
+        )
       data[["ymin"]] <- pmin(data[["y"]], 0)
       data[["ymax"]] <- pmax(data[["y"]], 0)
     }
@@ -243,18 +259,18 @@ PositionWaterfall <- ggproto(
       )
       data
     } else {
-      # group by xmin, and then stack / dodge, we also need to track the
+      # group by x, and then stack / dodge, we also need to track the
       # cumulative height of the previous bars
 
       data <- data[
-        order(data[["xmin"]], data[["group"]] * if(params$reverse) -1 else 1),
+        order(data[["x"]], data[["group"]] * if(params$reverse) -1 else 1),
         , drop=FALSE
       ]
       y.cum <- cumsum(data[["y"]])
-      y.cum.last <- tapply(y.cum, data[["xmin"]], tail, 1L)
+      y.cum.last <- tapply(y.cum, data[["x"]], tail, 1L)
       prev.last <- c(0, head(y.cum.last, -1))
 
-      d.s <- split(data, data[["xmin"]])
+      d.s <- split(data, data[["x"]])
 
       d.s.proc <- Map(
         pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
@@ -326,8 +342,8 @@ stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
 
   y.orig <- df[["y"]]
   df[["y"]] <- y.lag
-  df[["ymin"]] <- pmin(y.lead, df[["y"]])
-  df[["ymax"]] <- pmax(y.lead, df[["y"]])
+  df[["ymin"]] <- df[["ymin"]] + y.lead
+  df[["ymax"]] <- df[["ymax"]] + y.lead
   # adjust v position
   df[["y"]] <- ifelse(
     y.orig < 0 & identical(vjust.mode, "end"),

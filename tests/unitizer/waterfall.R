@@ -90,7 +90,7 @@ unitizer_sect("vjust and labels and facets", {
   ggplot_build(p9)[["data"]]
 })
 unitizer_sect("corner cases", {
-
+  # empty data
   p11 <- ggplot(data.frame(x=numeric(), y=numeric())) +
     geom_col(position='waterfall')
   ggplot_build(p11)[["data"]]
@@ -98,10 +98,19 @@ unitizer_sect("corner cases", {
   p12 <- ggplot(data.frame()) + geom_col(position='waterfall')
   ggplot_build(p12)[["data"]]
 
-  dat6 <- data.frame(x=3:1, xmin=3:1-.5, xmax=3:1+.5, y=1:3)
-  p13 <- ggplot(dat6, aes(x=x, xmin=xmin, xmax=xmax, y=y)) +
-    geom_col(position='waterfall')
+  # conflicting xmin/xmax; should just use these
+  dat6 <- data.frame(x=3:1, y=1:3)
+  dat6 <- transform(dat6, xmin=x-.6, xmax=x+.6, ymin=0, ymax=y+.5)
+  p13 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, ymax=ymax, ymin=ymin)) +
+    geom_rect(position='waterfall')
   ggplot_build(p13)[["data"]]
+
+
+  p14 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, y=y)) +
+    geom_tile(position='waterfall')
+  ggplot_build(p14)[["data"]]
+
+
 
   p14 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall', width=2)
   ggplot_build(p14)
@@ -119,4 +128,6 @@ unitizer_sect("corner cases", {
   #   * provide ymin and ymax, but not y
   # vjust and hjust
   # start somewhere other than zero
+  # a geom without x/y but with xmin/xmax
+  # factor / character x values
 })

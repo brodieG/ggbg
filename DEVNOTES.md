@@ -52,6 +52,10 @@ modifying `xmin/xmax/ymin/ymax`.
 So basically, we require a `y` value.  If `ymax/min` values exist we over-write
 them with the adjustments, so height values will probably stop working?
 
+Actually, more important than anything is not hijacking existing xmin/xmax
+values, so we just need to apply the stacking purely based on `y` values, and
+whatever happens happens.
+
 ## Ggplot Doc Issues
 
 ### ?Geom
