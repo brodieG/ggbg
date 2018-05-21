@@ -24,14 +24,16 @@
 #' manually specify the `ymin` and `ymax` values.
 #'
 #' `position_waterfall` creates waterfall charts when it is applied to
-#' `geom_col` or `geom_bar`.  You can apply it to any geom, although the results
-#' may not always make sense, especially with geoms that explicitly specify
-#' the `height`, `ymin`, and or `ymax` aesthetics.  The stacking is always
-#' computed from the `y` aesthetic  If your geom does not specify a `y`
-#' aesthetic it will be inferred as the midpoint of `ymin` and `ymax`.
-#' The order of the stacking is determined by the `x` aesthetic.  If only `xmin`
-#' and `xmax` aesthetics are present the `x` value will be inferred as the
-#' midpoint of those two.
+#' `geom_col` or `geom_bar`.  You can apply it to any geom, so long as the
+#' geom specifies a `y` aesthetic, although there is no guarantee the result
+#' will make sense for arbitrary geoms.  The stacking is always
+#' computed from the `y` aesthetic.  The order of the stacking is determined by
+#' the `x` aesthetic.
+#'
+#' If only `xmin` and `xmax` aesthetics are present the `x` value will be
+#' inferred as the midpoint of those two.  If the `xmin` and `xmax` aesthetics
+#' are missing `position_waterfall` will attempt to infer them from `x` and the
+#' provided or implicit `width`.
 #'
 #' Since stat layers are computed prior to position adjustments, you can also
 #' use `position_waterfall` with stats (e.g `stat_bin`, see examples).
@@ -42,10 +44,6 @@
 #' instantiation function (i.e. `stat_waterfall` does not exist).  The sole
 #' purpose of the stat is to compute the `ycum` aesthetic that can then be used
 #' by the `geom` layer (see the labeling examples).
-#'
-#' Internally `position_waterfall` requires the `y`, `ymin`, `ymax`, `x`,
-#' `xmin`, and `xmax` aesthetics, but it will infer the missing aesthetics if it
-#' is able to based on those present.
 #'
 #' Most `position_*` adjustments modify positions of groups that otherwise
 #' would occupy the same space, leaving relative positions of groups unchanged.
@@ -193,27 +191,22 @@ PositionWaterfall <- ggproto(
   # try to make sure that data has x, xmin, xmax, and ymin and ymax
 
   setup_data = function(self, data, params) {
-    # Deal with `x` vals
+    # Deal with `x` vals, we need special handling because there must be a width
+    # defined for dodging to occur.  Also, unlike `y` the semantics of the graph
+    # are not as dependent on those values (since it is the `y`s that stack) so
+    # we have more latitude in how we infer `x` values than `y`.
+
+    # We'll check again in compute panel that all the required aesthetics are
+    # present and punt if they are not.
 
     if (
       !"x" %in% names(data) & isTRUE(all(c("xmin", "xmax") %in% names(data)))
     ) {
-      if(isTRUE(any(data[["xmin"]] > data[["xmax"]])))
-        warning(
-          "Some `xmin` values are greater than `xmax` values for `", self$name,
-          "`, this may cause unexpected outcomes."
-        )
       data$x <- (data$xmin + data$xmax) / 2
     } else if (
       "x" %in% names(data) &&
-      !isTRUE(all(xcheck <- c("xmin", "xmax") %in% names(data)))
+      isTRUE(!any(c("xmin", "xmax") %in% names(data)))
     ) {
-      if(sum(xcheck) == 1)
-        warning(
-          "Only one of `xmin` and `xmax` available to `", self$name, "`, ",
-          "this may cause unexpected outcomes."
-        )
-
       data$width <- if(!is.null(data$width)) data$width else
         if(!is.null(params$width)) params$width else
         resolution(data$x, FALSE) * 0.9
@@ -227,37 +220,33 @@ PositionWaterfall <- ggproto(
       data[["xmin"]] <- data[["x"]] - data[["width"]] / 2
       data[["xmax"]] <- data[["x"]] + data[["width"]] / 2
     }
-    # Deal with `y` vals
-
-    ycheck <- c("ymin", "ymax") %in% names(data)
-    if(!"y" %in% names(data)) {
-      # compute panel will issue a warning if "y" is missing, so no need to do
-      # it here
-      if(isTRUE(all(ycheck))) {
-        data[["y"]] <- (data[["ymin"]] + data[["ymax"]]) / 2
-      }
-    } else if(!isTRUE(all(ycheck)) %in% names(data)) {
-      if(sum(ycheck) == 1)
-        warning(
-          "Only one of `ymin` and `ymax` available to `", self$name, "`, ",
-          "these values will be overwritten."
-        )
-      data[["ymin"]] <- pmin(data[["y"]], 0)
-      data[["ymax"]] <- pmax(data[["y"]], 0)
-    }
     data
   },
-  # as per setup_params, params should have width and n, though n could be null
+  # as per setup_params, @params should have width and n, though n could be null
   # if null, we want to take up the entire width
 
   compute_panel = function(self, data, params, scales) {
-    if(!all(c("xmin", "xmax", "x", "ymin", "ymax", "y") %in% names(data))) {
+    check.x <- c("xmin", "xmax") %in% names(data)
+    if(!all(check.x) && any(check.x)) {
       warning(
-        "Computed data for `", self$name,
-        "` must contain `x`, `xmin`, `xmax`, `y`, `ymin`, and `ymax` ",
-        "columns, and since it doesn't we cannot apply `", self$name, "`."
+        "One of 'xmin' and 'xmax' aesthetic is missing and we do not know ",
+        "how to infer the other one `", self$name, "` will not be applied."
       )
-      data
+    } else if (!all(check.x)) {
+      warning(
+        "'xmin' and 'xmax' aesthetics are missing and could not be inferred, `",
+        self$name, "` will not be applied."
+      )
+    } else if (!"x" %in% names(data)) {
+      warning(
+        "'x' aesthetic is missing and could not be inferred, `", self$name,
+        "` will not be applied."
+      )
+    } else if (!"y" %in% names(data)) {
+      warning(
+        "'y' aesthetic is missing and could not be inferred, `", self$name,
+        "` will not be applied."
+      )
     } else {
       # group by x, and then stack / dodge, we also need to track the
       # cumulative height of the previous bars
@@ -279,9 +268,9 @@ PositionWaterfall <- ggproto(
       )
       do.call(rbind, d.s.proc)
     }
+    data
   }
 )
-
 # Dodge overlapping interval.
 # Assumes that each set has the same horizontal position.
 
@@ -341,14 +330,26 @@ stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
   y.lag <- tail(y.cum, -1L)
 
   y.orig <- df[["y"]]
+  has.ymin <- any("ymin" == names(df))
+  has.ymax <- any("ymax" == names(df))
+
   df[["y"]] <- y.lag
-  df[["ymin"]] <- df[["ymin"]] + y.lead
-  df[["ymax"]] <- df[["ymax"]] + y.lead
-  # adjust v position
-  df[["y"]] <- ifelse(
-    y.orig < 0 & identical(vjust.mode, "end"),
-    df[["ymax"]] - vjust * (df[["ymax"]] - df[["ymin"]]),
-    df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
-  )
+
+  if(has.y.min) df[["ymin"]] <- df[["ymin"]] + y.lead
+  if(has.y.max) df[["ymax"]] <- df[["ymax"]] + y.lead
+
+  # adjust v position if we can.  Argh, we do need the ymin / ymax!!!!
+
+  if(has.y.min && has.y.max) {
+    df[["y"]] <- ifelse(
+      y.orig < 0 & identical(vjust.mode, "end"),
+      df[["ymax"]] - vjust * (df[["ymax"]] - df[["ymin"]]),
+      df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
+    )
+  }
+  # if we added ymin/ymax get rid of them
+
+  if(!has.ymin) df[["ymin"]] <- NULL
+  if(!has.ymax) df[["ymax"]] <- NULL
   df
 }

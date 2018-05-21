@@ -98,15 +98,16 @@ unitizer_sect("corner cases", {
   p12 <- ggplot(data.frame()) + geom_col(position='waterfall')
   ggplot_build(p12)[["data"]]
 
-  # ymin/max; should just use these
+  # variations on missing data
   dat6 <- data.frame(x=3:1, y=1:3)
   dat6 <- transform(dat6, xmin=x-.6, xmax=x+.6, ymin=0, ymax=y)
+
   p13 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, ymax=ymax, ymin=ymin)) +
     geom_rect(position='waterfall')
   ggplot_build(p13)[["data"]]
 
-  p14 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, ymax=ymax*2, ymin=ymax*2-1)) +
-    geom_rect(position='waterfall')
+  p14 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, y=y)) +
+    ggbg:::geom_null(position='waterfall')
   ggplot_build(p14)[["data"]]
 
 
