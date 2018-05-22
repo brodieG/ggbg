@@ -177,7 +177,7 @@ PositionWaterfall <- ggproto(
     if (identical(self$preserve, "total")) {
       n <- NULL
     } else {
-      n <- max(table(data$xmin))
+      n <- max(table(data[["x"]]))
     }
     list(
       width = self$width,
@@ -209,7 +209,7 @@ PositionWaterfall <- ggproto(
     ) {
       data$width <- if(!is.null(data$width)) data$width else
         if(!is.null(params$width)) params$width else
-        resolution(data$x, FALSE) * 0.9
+        
 
       if(!is.numeric(data[["width"]]) || isTRUE(any(data[["width"]] < 0)))
         warning(
@@ -300,8 +300,22 @@ pos_waterfall <- function(
             "  Dodging disabled, contact maintainer."
           )
         } else {
-          d_width <- max(df$xmax - df$xmin)
-          if(is.null(width)) width <- d_width
+          # Need to deal with:
+          # - non-specified width
+          # - different dodge width relative to actual width
+          # - what 
+
+          d_width <- if(!is.null(width)) {
+            width
+          } else if(!is.null(df[["width"]])) {
+            df[["width"]]
+          } else if(all(c("xmin", "xmax") %in% names(df))) {
+            df[["xmax"]] - df[["xmin"]]
+          } else {
+            resolution(data[["x"]], FALSE) * 0.9
+          }
+          d_width <- rep(d_width, length.out=nrow(df))
+
           df$x <- df$x + width * ((group.map - 0.5) / n - .5)
           df$xmin <- df$x - d_width / n / 2
           df$xmax <- df$x + d_width / n / 2

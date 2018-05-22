@@ -54,7 +54,30 @@ them with the adjustments, so height values will probably stop working?
 
 Actually, more important than anything is not hijacking existing xmin/xmax
 values, so we just need to apply the stacking purely based on `y` values, and
-whatever happens happens.
+whatever happens happens.  The only sensible stacking is then on geoms that
+don't explicitly specify `ymin`/`ymax` values, or if they do, where the `y`
+is the same as `ymax` if it is positive, and the same as `ymin` if it is
+negative.
+
+### Dodging
+
+This is actually a bit tricky for objects that come in with a width.  For
+something like a bar where we don't explicitly define the width, it's
+straightforward.  Same when the width are all the same.  It gets a lot harder
+when we have different widths across different elements.  Probably need to use
+the widest element as the target width, and then allocate relative to that.  If
+we do "preserve" single, then use the same measure for all.
+
+Some complications given how this is done currently where there is limited
+flexibility for different widths, etc.  If everything is given widths to begin
+with, we'll need to scale them all to fit within some width.  Annoying
+scenarios:
+
+* some widths are missing or ridiculous
+* widths are not all the same, or all different
+* need to communicate what the overall max width is, which means changing how
+  setup params works right now since it runs before setup data
+* reconciling dodging width with actual width
 
 ## Ggplot Doc Issues
 
