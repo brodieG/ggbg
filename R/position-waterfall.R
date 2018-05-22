@@ -230,21 +230,21 @@ PositionWaterfall <- ggproto(
     if(!all(check.x) && any(check.x)) {
       warning(
         "One of 'xmin' and 'xmax' aesthetic is missing and we do not know ",
-        "how to infer the other one `", self$name, "` will not be applied."
+        "how to infer the other one; `", self$name, "` will not be applied."
       )
     } else if (!all(check.x)) {
       warning(
-        "'xmin' and 'xmax' aesthetics are missing and could not be inferred, `",
+        "'xmin' and 'xmax' aesthetics are missing and could not be inferred; `",
         self$name, "` will not be applied."
       )
     } else if (!"x" %in% names(data)) {
       warning(
-        "'x' aesthetic is missing and could not be inferred, `", self$name,
+        "'x' aesthetic is missing and could not be inferred; `", self$name,
         "` will not be applied."
       )
     } else if (!"y" %in% names(data)) {
       warning(
-        "'y' aesthetic is missing and could not be inferred, `", self$name,
+        "'y' aesthetic is missing and could not be inferred; `", self$name,
         "` will not be applied."
       )
     } else {
@@ -266,7 +266,7 @@ PositionWaterfall <- ggproto(
         y.start=prev.last, n=list(params$n), vjust=params$vjust,
         vjust.mode=params$vjust.mode
       )
-      do.call(rbind, d.s.proc)
+      data <- do.call(rbind, d.s.proc)
     }
     data
   }
@@ -291,8 +291,6 @@ pos_waterfall <- function(
     )
   } else {
     df <- if(dodge) {
-      # dodge mode; lifted directly from ggplot2/R/position-dodge.R
-      #
       # Find the center for each group, then use that to calculate xmin and xmax
 
       if(n > 1) {
@@ -330,26 +328,19 @@ stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
   y.lag <- tail(y.cum, -1L)
 
   y.orig <- df[["y"]]
-  has.ymin <- any("ymin" == names(df))
-  has.ymax <- any("ymax" == names(df))
+  y.min <- pmin(y.lead, y.lag)
+  y.max <- pmax(y.lead, y.lag)
 
   df[["y"]] <- y.lag
 
-  if(has.y.min) df[["ymin"]] <- df[["ymin"]] + y.lead
-  if(has.y.max) df[["ymax"]] <- df[["ymax"]] + y.lead
+  # adjust v position
 
-  # adjust v position if we can.  Argh, we do need the ymin / ymax!!!!
-
-  if(has.y.min && has.y.max) {
-    df[["y"]] <- ifelse(
-      y.orig < 0 & identical(vjust.mode, "end"),
-      df[["ymax"]] - vjust * (df[["ymax"]] - df[["ymin"]]),
-      df[["ymin"]] + vjust * (df[["ymax"]] - df[["ymin"]])
-    )
-  }
-  # if we added ymin/ymax get rid of them
-
-  if(!has.ymin) df[["ymin"]] <- NULL
-  if(!has.ymax) df[["ymax"]] <- NULL
+  df[["y"]] <- ifelse(
+    y.orig < 0 & identical(vjust.mode, "end"),
+    y.max - vjust * (y.max - y.min),
+    y.min + vjust * (y.max - y.min)
+  )
+  if("ymin" %in% names(df)) df[["ymin"]] <- y.min
+  if("ymax" %in% names(df)) df[["ymax"]] <- y.max
   df
 }

@@ -99,6 +99,7 @@ unitizer_sect("corner cases", {
   ggplot_build(p12)[["data"]]
 
   # variations on missing data
+
   dat6 <- data.frame(x=3:1, y=1:3)
   dat6 <- transform(dat6, xmin=x-.6, xmax=x+.6, ymin=0, ymax=y)
 
@@ -107,24 +108,35 @@ unitizer_sect("corner cases", {
   ggplot_build(p13)[["data"]]
 
   p14 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, y=y)) +
-    ggbg:::geom_null(position='waterfall')
+    ggbg:::geom_null(position=position_waterfall(vjust=1))
   ggplot_build(p14)[["data"]]
 
-
-  p14 <- ggplot(dat6, aes(xmin=xmin, xmax=xmax, y=y)) +
-    geom_tile(position='waterfall')
-  ggplot_build(p14)[["data"]]
-
-
-
-  p14 <- ggplot(dat, aes(x=x, y=y)) + geom_col(position='waterfall', width=2)
-  ggplot_build(p14)
-
-  dat7 <- data.frame(x=4:1, y=1:4, grp=1:2)
-  p15 <- ggplot(dat, aes(x=x, y=y, fill=grp)) +
-    geom_col(position=position_waterfall(width=.5), width=2)
-
+  p15 <- ggplot(dat6, aes(xmin=xmin, y=y)) +
+    ggbg:::geom_null(position="waterfall")
   ggplot_build(p15)[["data"]]
+
+  p16 <- ggplot(dat6, aes(xmin=xmin, x=x, y=y)) +
+    ggbg:::geom_null(position="waterfall")
+  ggplot_build(p16)[["data"]]
+
+  p17 <- ggplot(dat6, aes(x=x, y=y, ymin=ymin)) +
+    ggbg:::geom_null(position="waterfall")
+  ggplot_build(p17)[["data"]]
+
+  # conflicting widths
+
+  dat7 <- data.frame(
+    x=rep(2:1, 2), y=1:4, grp=rep(c('A', 'B'), each=2), width=1:4
+  )
+  p18 <- ggplot(dat7, aes(x=x, y=y, fill=grp)) +
+    geom_col(position=position_waterfall(width=0.5)) +
+    geom_point(position=position_waterfall(width=0.5))
+  ggplot_build(p18)[["data"]]
+
+  p19 <- ggplot(dat7, aes(x=x, y=y, fill=grp, width=width)) +
+    geom_col(position=position_waterfall(width=0.5)) +
+    geom_point(position=position_waterfall(width=0.5))
+
 
   # weird aes:
   #   * width conflicts (provide in geom, position, and data), in particular
