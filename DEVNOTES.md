@@ -79,6 +79,21 @@ scenarios:
   setup params works right now since it runs before setup data
 * reconciling dodging width with actual width
 
+Width of elements at x value should be width of widest at that value?  But it is
+possible for specific groups to have different widths at different x values?  Do
+we just not support this?  Or only not support it in preserve mode?  Yes, I
+think this is what we do.
+
+Do we support missing `x`?  In theory we can do this with `x` + `width`, or
+`xmin` + `xmax`.  I guess we should.  We need something that will dodge/adjust
+any of `x`, `xmin`, `xmax` if they exist.
+
+* Geom width is `xmax` - `xmin`.
+* If there is no geom width, then use the dodge width.
+* Preserve only works if all the widths are the same.
+* If there is no dodge width, use the geom width.
+
+
 ## Ggplot Doc Issues
 
 ### ?Geom
