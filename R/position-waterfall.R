@@ -50,6 +50,28 @@
 #' `position_waterfall` is different in as much as it also changes relative
 #' positions of groups that would normally not occupy the same space.
 #'
+#' @section Dodging:
+#'
+#' Unlike most `position_*` adjustments, `position_waterfall` adjust positions
+#' across different `x` values.  However, we still need to resolve `x`
+#' value overlaps.  The default approach is to apply the same type of adjustment
+#' across groups within any given `x` value.  This stacks and dodges elements.
+#' The dodging is done based on any `xmin` / `xmax` aesthetics if they are
+#' present, and if not based on the `width` aesthetic.
+#'
+#' Dodging involves changing the `width` of the geom and also shifting the
+#' `geom` horizontally.  Width adjustments will always be made based on the
+#' `xmin`/`xmax`/`width` aesthetic, irrespective of whether you specify the
+#' dodge `width` parameter of `position_waterfall`.  Horizontal shifts can be
+#' controlled separately by using `position_waterfall(width=...)`.  Unlike the
+#' `width` parameter specified via geom/stat `mapping` (e.g. `aes(width=...)`),
+#' `position_waterfall(width=...)` affects only the horizontal shifting of
+#' groups with equal `x` values.
+#'
+#' Alternatively you can turn off dodging within `x` values by setting
+#' `position_waterfall(dodge=FALSE)` which will result in stacking within each
+#' `x` value.
+#'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
 #' @param dodge TRUE (default) or FALSE, controls how to resolve
@@ -166,44 +188,47 @@ position_waterfall <- function(
 PositionWaterfall <- ggproto(
   "PositionWaterfall", Position,
   name = "position_waterfall",
-  width = NULL,
-  width.geom = NULL,
+  width = NULL,              # dodge width
+  width.geom.unique = NULL,  # all geoms have same width
   width.default = 1,
   reverse = FALSE,
   preserve = "total",
   dodge = TRUE,
   vjust = 0.5,
   vjust.mode="end",
-  has.x.width=FALSE,
-  groups=integer(),
+  has.x.width=FALSE,         # xmin and xmax are present and reasonable
+  has.width=FALSE,           # width aesthetic present and reasonable
+  groups=integer(),          # all possible groups
 
   setup_params = function(self, data) {
     x.check <- all(c("xmin", "xmax") %in% names(data))
-    self$has.x.width <-
+    self[['has.x.width']] <-
       is.numeric(data[["xmin"]]) && is.numeric(data[["xmax"]]) &&
       !anyNA(data[['xmin']]) && !anyNA(data[['xmax']]) &&
       all(data[['xmax']] >= data[['xmin']])
 
-    if(!self$has.x.width && any(x.check)) {
+    if(!self[['has.x.width']] && any(x.check)) {
       warning(
         "Cannot interpret 'xmin' and 'xmax' aesthetics either because ",
         "one of them is missing, either contains missing values, either ",
         "is not numeric, or some 'xmax' values are less than the corresponding ",
         "'xmin' values.  Geom width adjustments will not be applied by `",
-        self$name, "`."
+        self[['name']], "`."
       )
     }
-    if(is.null(width.geom)) {
+    width.geom.unique <- self[['width.geom.unique']]
+    if(is.null(width.geom.unique)) {
       # We want to know if the geom comes with a consistent width on `xmin` and
       # `xmax` (those should have been created by Geom$setup_data by this point)
 
-      if(self$has.x.width) {
+      if(self[['has.x.width']]) {
         width.tmp <- unique(data[["xmax"]] - data[["xmin"]])
         if(length(width.tmp) == 1 && !is.na(width.tmp) && width.tmp > 0)
-          width.geom <- width.tmp
+          width.geom.unique <- width.tmp
       }
     }
-    if(isTRUE(preserve == 'single') && is.null(width.geom)) {
+    preserve <- self[['preserve']]
+    if(isTRUE(preserve == 'single') && is.null(width.geom.unique)) {
       warning(
         "`preserve='single'` for `", self$name, "` only works if all widths ",
         "for a layer as implied by 'xmin' and 'xmax' are the same, positive, ",
@@ -212,24 +237,37 @@ PositionWaterfall <- ggproto(
       preserve <- "total"
     }
     if("x" %in% names(data)) {
-      self$width.default = resolution(data[['x']], FALSE) * 0.9
+      self[['width.default']] = resolution(data[['x']], FALSE) * 0.9
+    }
+    if(
+      "width" %in% names(data) && is.numeric(data[['width']]) &&
+      all(data[['width']] > 0)
+    ) {
+      self[['has.width']] <- TRUE
+    } else if('width' %in% names(data) && !has.x.width && is.null(width)) {
+      warning(
+        "'width' aesthetic contains values that are not strictly positive ",
+        "numerics, so it cannot be used for dodging."
+      )
     }
     list(
-      width = self$width,
-      preserve = self$preserve,
-      dodge = self$dodge,
-      reverse = self$reverse,
-      vjust = self$vjust,
-      vjust.mode = self$vjust.mode,
-      width.geom = width.geom,
-      width.default = self$width.default,
-      has.x.with = self$has.x.width,
+      width = self[['width']],
+      preserve = self[['preserve']],
+      dodge = self[['dodge']],
+      reverse = self[['reverse']],
+      vjust = self[['vjust']],
+      vjust.mode = self[['vjust.mode']],
+      width.geom.unique = width.geom.unique,
+      width.default = self[['width.default']],
+      has.x.width = self[['has.x.width']],
+      has.width = self[['has.width']],
       groups=sort(unique(data[['group']]))
     )
   },
   # We don't want to modify the data at this point because we don't want to add
   # aesthetics to the data frame, so we'll do everything at the compute panel
-  # step
+  # step.  This is out of an abundance of caution to avoid messing with
+  # downstream rendering of geoms.
 
   setup_data = function(self, data, params) {
     data
@@ -248,151 +286,137 @@ PositionWaterfall <- ggproto(
     #
     # If preserve == 'single' && width.geom availablejjjjjjj
 
-    stop("x may not be available")
+    # We need a geom width, and we need a dodge width.
+
 
     check.x <- c("xmin", "xmax") %in% names(data)
-
-    if(isTRUE(params$preserve == 'single')) {
-      g.width <- params$geom.width
-
+    x <- if("x" %in% names(data)) data[['x']]
+    else if (params[['has.x.width']]) (data[['xmax']] - data[['xmin']]) / 2
+    else {
+      warning(
+        "Either 'x', or 'xmin' and 'xmax' must be specified; `",
+        self$name, "` will not be applied"
+      )
     }
-    if(!all(check.x) && any(check.x)) {
-      warning(
-        "One of 'xmin' and 'xmax' aesthetic is missing and we do not know ",
-        "how to infer the other one; `", self$name, "` will not be applied."
-      )
-    } else if (!all(check.x)) {
-      warning(
-        "'xmin' and 'xmax' aesthetics are missing and could not be inferred; `",
-        self$name, "` will not be applied."
-      )
-    } else if (!"x" %in% names(data)) {
-      warning(
-        "'x' aesthetic is missing and could not be inferred; `", self$name,
-        "` will not be applied."
-      )
-    } else if (!"y" %in% names(data)) {
-      warning(
-        "'y' aesthetic is missing and could not be inferred; `", self$name,
-        "` will not be applied."
-      )
-    } else {
-      # group by x, and then stack / dodge, we also need to track the
-      # cumulative height of the previous bars
+    if(!is.null(x)) {
+      if(!"y" %in% names(data)) {
+        warning(
+          "'y' aesthetic is missing and could not be inferred; `", self$name,
+          "` will not be applied."
+        )
+      } else {
+        # group by x, and then stack / dodge, we also need to track the
+        # cumulative height of the previous bars
 
-      data <- data[
-        order(data[["x"]], data[["group"]] * if(params$reverse) -1 else 1),
-        , drop=FALSE
-      ]
-      y.cum <- cumsum(data[["y"]])
-      y.cum.last <- tapply(y.cum, data[["x"]], tail, 1L)
-      prev.last <- c(0, head(y.cum.last, -1))
+        data <- data[
+          order(x, data[["group"]] * if(params[['reverse']]) -1 else 1), ,
+          drop=FALSE
+        ]
+        y.cum <- cumsum(data[["y"]])
+        y.cum.last <- tapply(y.cum, x, tail, 1L)
+        prev.last <- c(0, head(y.cum.last, -1))
 
-      d.s <- split(data, data[["x"]])
+        d.s <- split(data, x)
 
-      d.s.proc <- Map(
-        pos_waterfall, df=d.s, width=list(params$width), dodge=params$dodge,
-        y.start=prev.last, n=list(params$n), vjust=params$vjust,
-        vjust.mode=params$vjust.mode, groups=params$groups
-      )
-      data <- do.call(rbind, d.s.proc)
+        d.s.proc <- mapply(
+          pos_waterfall,
+          df=d.s,
+          y.start=prev.last,
+          MoreArgs=list(
+            width=params[['width']],
+            width.geom.unique=params[['width.geom.unique']],
+            dodge=params[['dodge']],
+            has.x.width=params[['has.x.width']],
+            has.width=params[['has.width']],
+            vjust=params[['vjust']],
+            vjust.mode=params[['vjust.mode']],
+            groups=params[['groups']],
+            preserve=params[['preserve']]
+          ),
+          SIMPLIFY=FALSE
+        )
+        data <- do.call(rbind, d.s.proc)
+      }
     }
     data
   }
 )
-# Dodge overlapping interval.
-# Assumes that each set has the same horizontal position.
+## Recompute widths based on group size
+
+calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
+  # possible for there to be multiple values within a group, so pick max,
+  # and make sure everything sorted by integer value of group map
+  group.widths <- tapply(
+    widths, factor(group.map, levels=seq_along(groups)), max
+  )
+  group.widths <- group.widths[order(as.integer(names(group.widths)))]
+
+  if(identical(preserve, 'single')) {
+    width.scale <- width.geom.unique * length(groups)
+    group.widths[is.na(group.widths)] <- width.geom.unique / width.scale
+  } else {
+    width.scale <- sum(group.widths)
+    width.geom.unique <- max(group.widths)
+    group.widths[is.na(group.widths)] <- 0
+  }
+  widths.fin <- widths / width.scale * width.geom.unique
+  list(width=widths.fin, group.widths=group.widths)
+}
+# Dodging can handle different width as well as overlapping intervals.  Stacking
+# is done relative to the `x` value (or midpoint of `xmin`/`xmax`)
 
 pos_waterfall <- function(
-  df, width, width.geom, width.default, dodge, y.start, vjust, vjust.mode,
-  n, has.x.width, groups
+  df, width, width.geom.unique, width.default, dodge, y.start,
+  vjust, vjust.mode, has.x.width, has.width, groups, preserve
 ) {
   group.map <- match(df[['group']], groups)
 
   df <- if(dodge) {
-    d.widths <- if(!is.null(width)) rep(width, length.out=nrow(df))
-      else if (!is.null(width.geom)) rep(width.geom, length.out=nrow(df))
-      else if (!identical(preserve, single) && has.x.width)
-        df[['xmax']] - df[['xmin']]
+    geom.widths.raw <- if(has.x.width)
+      df[['xmax']] - df[['xmin']] else if(has.width) df[['width']]
+
+    dodge.widths.raw <- if(!is.null(width)) rep(width, length.out=nrow(df))
+      else if (!is.null(geom.widths.raw)) geom.widths.raw
       else rep(width.default, length.out=nrow(df))
 
-    # If the geoms have defined xmin/xmax then adjust them for the dodging
-    # effect (which will make them narrower)
+    geom.widths <- if(!is.null(geom.widths.raw))
+      calc_width(
+        geom.widths.raw, width.geom.unique, group.map, groups, preserve
+      )
+    dodge.widths <- calc_width(
+      dodge.widths.raw, width.geom.unique, group.map, groups, preserve
+    )
+    # Adjust the width sizes based on geom.widths
+
+    if(!is.null(geom.widths.raw)) {
+      if(has.x.width) {
+        width.ratio <- geom.widths[['width']] / geom.widths.raw
+        xmid <- df[['xmin']] + geom.widths.raw / 2
+        df[['xmin']] <- xmid - geom.widths[['width']] / 2
+        df[['xmax']] <- xmid + geom.widths[['width']] / 2
+      }
+      if(has.width) {
+        df[['width']] <- geom.widths[['width']]
+      }
+    }
+    # Adjust positions based on dodge width.  For each group the dodge amount is
+    # the difference between it's middle and the middle of the total width.
+
+    dodge.width.total <- sum(dodge.widths[['group.widths']])
+    dodge.width.mid <- dodge.width.total / 2
+    dodge.width.cum <- cumsum(dodge.widths[['group.widths']])
+    dodge.width.lead <- c(0, head(dodge.width.cum, -1))
+    dodge.width.offset.group <-
+      ((dodge.width.cum + dodge.width.lead) / 2) - dodge.width.mid
+
+    dodge.width.offset <- dodge.width.offset.group[group.map]
 
     if(has.x.width) {
-      widths <- df[['xmax']] - df[['xmin']]
-      # possible for there to be multiple values within a group; take the max
-      # width
-
-      group.widths <- tapply(widths, group.map, max)
-
-      if(identical(preserve, 'single')) {
-        width.scale <- width.geom * n
-      } else {
-        width.scale <- sum(group.widths)
-        width.geom <- max(group.widths)
-      }
-      widths.fin <- widths / width.scale * width.geom
-      df.mid <- df[['xmin']] + widths / 2
-      df[['xmin']] <- df.mid - widths.fin / 2
-      df[['xmax']] <- df.mid + widths.fin / 2
+      df[['xmin']] <- df[['xmin']] + dodge.width.offset
+      df[['xmax']] <- df[['xmax']] + dodge.width.offset
     }
-    # Now compute dodge widths, which may be done with a different width than
-    # the `xmin` / `xmax` one if one was specified
-
-    if(identical(preserve, 'single')) {
-      d.width.geom <- d.widths
-      d.width.scale <- width.geom * n
-    } else {
-      d.width.scale <- sum(d.widths)
-      d.width.geom <- max(d.widths)
-    }
-    d.widths.fin <- d.widths / d.width.scale * d.width.geom
-
-    # and the dodge offsets.
-
-    grp.ord <- match(df[['group']], unique(df[['group']]))
-
-
-
-
-    g.width <- if(!is.null(width.geom)) width.geom
-      else if (
-        is.numeric(data[['xmin']]) && is.numeric(data[['xmax']])
-
-    if(is.null(width
-    if(!is.null(width.geom))
-
-    #
-    # Find the center for each group, then use that to calculate xmin and xmax
-
-    if(n > 1) {
-      if(!all(group.map > 0 & group.map <= n)) {
-        warning(
-          "Internal Error: unexpected group numbers in 'position_waterfall'.",
-          "  Dodging disabled, contact maintainer."
-        )
-      } else {
-        # Need to deal with:
-        # - non-specified width
-        # - different dodge width relative to actual width
-        # - what
-
-        d_width <- if(!is.null(width)) {
-          width
-        } else if(!is.null(df[["width"]])) {
-          df[["width"]]
-        } else if(all(c("xmin", "xmax") %in% names(df))) {
-          df[["xmax"]] - df[["xmin"]]
-        } else {
-          resolution(data[["x"]], FALSE) * 0.9
-        }
-        d_width <- rep(d_width, length.out=nrow(df))
-
-        df$x <- df$x + width * ((group.map - 0.5) / n - .5)
-        df$xmin <- df$x - d_width / n / 2
-        df$xmax <- df$x + d_width / n / 2
-      }
+    if("x" %in% names(df) && is.numeric(df[['x']])) {
+      df[['x']] <- df[['x']] + dodge.width.offset
     }
     stack_waterfall(df, y.start, vjust, vjust.mode)
   } else {
@@ -404,16 +428,6 @@ pos_waterfall <- function(
       stack_waterfall(df.pos, y.start, vjust, vjust.mode),
       stack_waterfall(df.neg, y.start, vjust, vjust.mode)
     )
-  }
-if (is.null(n)) {
-    group.u <- unique(df[["group"]])
-    n <- length(unique(df[["group"]]))
-    group.map <- match(df[["group"]], group.u)
-  } else {
-    group.map <- df[["group"]]
-  }
-
-  } else {
   }
   df
 }
