@@ -379,7 +379,10 @@ calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
     width.geom.unique <- max(group.widths)
   }
   widths.fin <- widths / width.scale * width.geom.unique
-  list(width=widths.fin, group.widths=group.widths, scale=width.scale)
+  list(
+    width=widths.fin, group.widths=group.widths,
+    scale=width.geom.unique / width.scale
+  )
 }
 # Dodging can handle different width as well as overlapping intervals.  Stacking
 # is done relative to the `x` value (or midpoint of `xmin`/`xmax`)
@@ -428,7 +431,7 @@ pos_waterfall <- function(
     dodge.width.offset.group <-
       ((dodge.width.cum + dodge.width.lead) / 2) - dodge.width.mid
 
-    dodge.width.offset <- dodge.width.offset.group[group.map] /
+    dodge.width.offset <- dodge.width.offset.group[group.map] *
       dodge.widths[['scale']]
 
     if(has.x.width) {
