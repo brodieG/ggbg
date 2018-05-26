@@ -308,10 +308,10 @@ PositionWaterfall <- ggproto(
         # group by x, and then stack / dodge, we also need to track the
         # cumulative height of the previous bars
 
-        data <- data[
-          order(x, data[["group"]] * if(params[['reverse']]) -1 else 1), ,
-          drop=FALSE
-        ]
+        ord.idx <- order(x, data[["group"]] * if(params[['reverse']]) -1 else 1)
+        data <- data[ord.idx , , drop=FALSE]
+        x <- x[ord.idx]
+
         y.cum <- cumsum(data[["y"]])
         y.cum.last <- tapply(y.cum, x, tail, 1L)
         prev.last <- c(0, head(y.cum.last, -1))
