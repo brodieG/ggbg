@@ -26,3 +26,4 @@ Collate:
     'geom-car.R'
     'position-waterfall.R'
     'stat-waterfall.R'
+    'load.R'

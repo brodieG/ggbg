@@ -159,7 +159,8 @@ position_waterfall <- function(
   reverse = FALSE,
   dodge = TRUE,
   vjust = 0.5,
-  vjust.mode = "end"
+  vjust.mode = "end",
+  signif = getOption('ggbg.signif')
 ) {
   vetr(dodge=LGL.1, vjust=NUM.1, vjust.mode=CHR.1 && . %in% c("top", "end"))
 
@@ -169,7 +170,8 @@ position_waterfall <- function(
     reverse = reverse,
     vjust=vjust,
     vjust.mode=vjust.mode,
-    dodge = dodge
+    dodge = dodge,
+    signif = signif
   )
 }
 
@@ -198,9 +200,21 @@ PositionWaterfall <- ggproto(
   vjust.mode="end",
   has.x.width=FALSE,         # xmin and xmax are present and reasonable
   has.width=FALSE,           # width aesthetic present and reasonable
-  groups=integer(),          # all possible groups
+  groups=integer(),          # all possible groups,
+  # significance for x values to compute, width, overlap, etc.
+  signif=11,
 
   setup_params = function(self, data) {
+
+    signif <- self[['signif']]
+    if(
+      !is.numeric(signif) || length(signif) != 1 || is.na(signif) ||
+      signif < 1 || signif > 22
+    )
+      stop("Argument `signif` must be scalar integer between 1 and 22")
+
+    signif <- as.integer(signif)
+
     x.check <- all(c("xmin", "xmax") %in% names(data))
     self[['has.x.width']] <-
       is.numeric(data[["xmin"]]) && is.numeric(data[["xmax"]]) &&
@@ -222,7 +236,8 @@ PositionWaterfall <- ggproto(
       # `xmax` (those should have been created by Geom$setup_data by this point)
 
       if(self[['has.x.width']]) {
-        width.tmp <- unique(data[["xmax"]] - data[["xmin"]])
+        width.tmp <-
+          unique(signif(data[["xmax"]] - data[["xmin"]], digits=signif))
         if(length(width.tmp) == 1 && !is.na(width.tmp) && width.tmp > 0)
           width.geom.unique <- width.tmp
       }
@@ -237,7 +252,8 @@ PositionWaterfall <- ggproto(
       preserve <- "total"
     }
     if("x" %in% names(data)) {
-      self[['width.default']] = resolution(data[['x']], FALSE) * 0.9
+      self[['width.default']] =
+        signif(resolution(data[['x']], FALSE) * 0.9, digits=signif)
     }
     if(
       "width" %in% names(data) && is.numeric(data[['width']]) &&
@@ -261,7 +277,8 @@ PositionWaterfall <- ggproto(
       width.default = self[['width.default']],
       has.x.width = self[['has.x.width']],
       has.width = self[['has.width']],
-      groups=sort(unique(data[['group']]))
+      groups=sort(unique(data[['group']])),
+      signif=signif
     )
   },
   # We don't want to modify the data at this point because we don't want to add
@@ -290,8 +307,9 @@ PositionWaterfall <- ggproto(
 
 
     check.x <- c("xmin", "xmax") %in% names(data)
-    x <- if("x" %in% names(data)) data[['x']]
-    else if (params[['has.x.width']]) (data[['xmax']] - data[['xmin']]) / 2
+    x <- if("x" %in% names(data)) signif(data[['x']], digits=params[['signif']])
+    else if (params[['has.x.width']])
+      signif((data[['xmax']] - data[['xmin']]) / 2, digits=params[['signif']])
     else {
       warning(
         "Either 'x', or 'xmin' and 'xmax' must be specified; `",
@@ -331,7 +349,8 @@ PositionWaterfall <- ggproto(
             vjust=params[['vjust']],
             vjust.mode=params[['vjust.mode']],
             groups=params[['groups']],
-            preserve=params[['preserve']]
+            preserve=params[['preserve']],
+            signif=params[['signif']]
           ),
           SIMPLIFY=FALSE
         )
@@ -355,19 +374,19 @@ calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
     width.scale <- width.geom.unique * length(groups)
     group.widths[is.na(group.widths)] <- width.geom.unique / width.scale
   } else {
+    group.widths[is.na(group.widths)] <- 0
     width.scale <- sum(group.widths)
     width.geom.unique <- max(group.widths)
-    group.widths[is.na(group.widths)] <- 0
   }
   widths.fin <- widths / width.scale * width.geom.unique
-  list(width=widths.fin, group.widths=group.widths)
+  list(width=widths.fin, group.widths=group.widths, scale=width.scale)
 }
 # Dodging can handle different width as well as overlapping intervals.  Stacking
 # is done relative to the `x` value (or midpoint of `xmin`/`xmax`)
 
 pos_waterfall <- function(
   df, width, width.geom.unique, width.default, dodge, y.start,
-  vjust, vjust.mode, has.x.width, has.width, groups, preserve
+  vjust, vjust.mode, has.x.width, has.width, groups, preserve, signif
 ) {
   group.map <- match(df[['group']], groups)
 
@@ -400,7 +419,7 @@ pos_waterfall <- function(
       }
     }
     # Adjust positions based on dodge width.  For each group the dodge amount is
-    # the difference between it's middle and the middle of the total width.
+    # the difference between its middle and the middle of the total width.
 
     dodge.width.total <- sum(dodge.widths[['group.widths']])
     dodge.width.mid <- dodge.width.total / 2
@@ -409,7 +428,8 @@ pos_waterfall <- function(
     dodge.width.offset.group <-
       ((dodge.width.cum + dodge.width.lead) / 2) - dodge.width.mid
 
-    dodge.width.offset <- dodge.width.offset.group[group.map]
+    dodge.width.offset <- dodge.width.offset.group[group.map] /
+      dodge.widths[['scale']]
 
     if(has.x.width) {
       df[['xmin']] <- df[['xmin']] + dodge.width.offset

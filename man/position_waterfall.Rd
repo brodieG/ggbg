@@ -5,7 +5,8 @@
 \title{Stack Chart Elements on Cumulative Value}
 \usage{
 position_waterfall(width = NULL, preserve = c("total", "single"),
-  reverse = FALSE, dodge = TRUE, vjust = 0.5, vjust.mode = "end")
+  reverse = FALSE, dodge = TRUE, vjust = 0.5, vjust.mode = "end",
+  signif = getOption("ggbg.signif"))
 }
 \arguments{
 \item{width}{Dodging width, when different to the width of the individual
@@ -54,19 +55,26 @@ there are multiple bars for a single x value.}
 \description{
 A waterfall chart is a bar chart where each segment starts where the prior
 segment left off.  This is similar to a stacked bar chart, except that
-elements the stacking does not reset across \code{x} values.  In effect, it is the
+the stacking does not reset across \code{x} values.  In effect, it is the
 visualization of a cumulative sum.  Another similar type of chart is the
 candle stick plot, except those have "whiskers" and typically require you to
 manually specify the \code{ymin} and \code{ymax} values.
 }
 \details{
 \code{position_waterfall} creates waterfall charts when it is applied to
-\code{geom_col} or \code{geom_bar}.  You can apply it to any geom, although the results
-may not always make sense, especially with geoms that explicitly specify
-the \code{height}, \code{ymin}, and or \code{ymax} aesthetics.  The stacking is always
-computed from the \code{y} values.  Since stat layers are computed prior to
-position adjustments, you can also use \code{position_waterfall} with stats (e.g
-\code{stat_bin}, see examples).
+\code{geom_col} or \code{geom_bar}.  You can apply it to any geom, so long as the
+geom specifies a \code{y} aesthetic, although there is no guarantee the result
+will make sense for arbitrary geoms.  The stacking is always
+computed from the \code{y} aesthetic.  The order of the stacking is determined by
+the \code{x} aesthetic.
+
+If only \code{xmin} and \code{xmax} aesthetics are present the \code{x} value will be
+inferred as the midpoint of those two.  If the \code{xmin} and \code{xmax} aesthetics
+are missing \code{position_waterfall} will attempt to infer them from \code{x} and the
+provided or implicit \code{width}.
+
+Since stat layers are computed prior to position adjustments, you can also
+use \code{position_waterfall} with stats (e.g \code{stat_bin}, see examples).
 
 We also implement a \link[=ggbg-ggproto]{StatWaterfall} \code{ggproto} object that
 can be accessed within \code{geom_*} calls by specifying \code{stat='waterfall'}.
@@ -80,6 +88,30 @@ would occupy the same space, leaving relative positions of groups unchanged.
 \code{position_waterfall} is different in as much as it also changes relative
 positions of groups that would normally not occupy the same space.
 }
+\section{Dodging}{
+
+
+Unlike most \code{position_*} adjustments, \code{position_waterfall} adjust positions
+across different \code{x} values.  However, we still need to resolve \code{x}
+value overlaps.  The default approach is to apply the same type of adjustment
+across groups within any given \code{x} value.  This stacks and dodges elements.
+The dodging is done based on any \code{xmin} / \code{xmax} aesthetics if they are
+present, and if not based on the \code{width} aesthetic.
+
+Dodging involves changing the \code{width} of the geom and also shifting the
+\code{geom} horizontally.  Width adjustments will always be made based on the
+\code{xmin}/\code{xmax}/\code{width} aesthetic, irrespective of whether you specify the
+dodge \code{width} parameter of \code{position_waterfall}.  Horizontal shifts can be
+controlled separately by using \code{position_waterfall(width=...)}.  Unlike the
+\code{width} parameter specified via geom/stat \code{mapping} (e.g. \code{aes(width=...)}),
+\code{position_waterfall(width=...)} affects only the horizontal shifting of
+groups with equal \code{x} values.
+
+Alternatively you can turn off dodging within \code{x} values by setting
+\code{position_waterfall(dodge=FALSE)} which will result in stacking within each
+\code{x} value.
+}
+
 \examples{
 ## These examples are best run via `example(position_waterfall)`
 library(ggplot2)
