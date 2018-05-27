@@ -326,7 +326,7 @@ PositionWaterfall <- ggproto(
         # group by x, and then stack / dodge, we also need to track the
         # cumulative height of the previous bars
 
-        ord.idx <- order(x, data[["group"]] * if(params[['reverse']]) -1 else 1)
+        ord.idx <- order(x, data[['group']] * if(params[['reverse']]) -1 else 1)
         data <- data[ord.idx , , drop=FALSE]
         x <- x[ord.idx]
 
@@ -350,7 +350,8 @@ PositionWaterfall <- ggproto(
             vjust.mode=params[['vjust.mode']],
             groups=params[['groups']],
             preserve=params[['preserve']],
-            signif=params[['signif']]
+            signif=params[['signif']],
+            reverse=params[['reverse']]
           ),
           SIMPLIFY=FALSE
         )
@@ -372,7 +373,7 @@ calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
 
   if(identical(preserve, 'single')) {
     width.scale <- width.geom.unique * length(groups)
-    group.widths[is.na(group.widths)] <- width.geom.unique / width.scale
+    group.widths[is.na(group.widths)] <- width.geom.unique
   } else {
     group.widths[is.na(group.widths)] <- 0
     width.scale <- sum(group.widths)
@@ -389,9 +390,10 @@ calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
 
 pos_waterfall <- function(
   df, width, width.geom.unique, width.default, dodge, y.start,
-  vjust, vjust.mode, has.x.width, has.width, groups, preserve, signif
+  vjust, vjust.mode, has.x.width, has.width, groups, preserve, signif,
+  reverse
 ) {
-  group.map <- match(df[['group']], groups)
+  group.map <- match(df[['group']], sort(groups, decreasing=reverse))
 
   df <- if(dodge) {
     geom.widths.raw <- if(has.x.width)
