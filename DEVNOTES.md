@@ -92,6 +92,9 @@ any of `x`, `xmin`, `xmax` if they exist.
 * If there is no geom width, then use the dodge width.
 * Preserve only works if all the widths are the same.
 * If there is no dodge width, use the geom width.
+* Do we just ignore the `width` aesthetic if present?  Yes, under the assumption
+  that `xmin` and `xmax` will have been computed?  What if we don't have dodge
+  width?  Do we take `width` aesthetic before default dodge?
 
 
 ## Ggplot Doc Issues

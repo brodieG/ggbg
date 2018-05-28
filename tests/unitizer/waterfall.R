@@ -51,6 +51,11 @@ unitizer_sect("basic", {
   p7 <- gb.2 + geom_col(position=pw.pres.dodge)
   ggplot_build(p7)[["data"]]
 
+  pw.pres.dodge.rev <- position_waterfall(
+    preserve="single", reverse=TRUE
+  p7a <- gb.2 + geom_col(position=pw.pres.dodge.rev)
+  ggplot_build(p7a)[["data"]]
+
   # duplicate group values
 
   p10 <- ggplot(rbind(dat, dat), aes(x=x, y=y)) +

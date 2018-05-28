@@ -309,12 +309,16 @@ PositionWaterfall <- ggproto(
     check.x <- c("xmin", "xmax") %in% names(data)
     x <- if("x" %in% names(data)) signif(data[['x']], digits=params[['signif']])
     else if (params[['has.x.width']])
-      signif((data[['xmax']] - data[['xmin']]) / 2, digits=params[['signif']])
+      signif(
+        (data[['xmax']] - data[['xmin']]) / 2 + data[['xmin']],
+        digits=params[['signif']]
+      )
     else {
       warning(
         "Either 'x', or 'xmin' and 'xmax' must be specified; `",
-        self$name, "` will not be applied"
+        self$name, "` will not be applied."
       )
+      NULL
     }
     if(!is.null(x)) {
       if(!"y" %in% names(data)) {
@@ -334,6 +338,8 @@ PositionWaterfall <- ggproto(
         y.cum.last <- tapply(y.cum, x, tail, 1L)
         prev.last <- c(0, head(y.cum.last, -1))
 
+        # For each `x` value, compute stacking and dodging
+
         d.s <- split(data, x)
 
         d.s.proc <- mapply(
@@ -343,6 +349,7 @@ PositionWaterfall <- ggproto(
           MoreArgs=list(
             width=params[['width']],
             width.geom.unique=params[['width.geom.unique']],
+            width.default=params[['width.default']],
             dodge=params[['dodge']],
             has.x.width=params[['has.x.width']],
             has.width=params[['has.width']],
@@ -355,7 +362,11 @@ PositionWaterfall <- ggproto(
           ),
           SIMPLIFY=FALSE
         )
-        data <- do.call(rbind, d.s.proc)
+        # Re-assemble and restore order of data
+
+        data <- do.call(rbind, d.s.proc)[
+          order(seq(length.out=length(ord.idx))[ord.idx]), , drop=FALSE
+        ]
       }
     }
     data
