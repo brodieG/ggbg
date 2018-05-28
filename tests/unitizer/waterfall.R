@@ -53,6 +53,7 @@ unitizer_sect("basic", {
 
   pw.pres.dodge.rev <- position_waterfall(
     preserve="single", reverse=TRUE
+  )
   p7a <- gb.2 + geom_col(position=pw.pres.dodge.rev)
   ggplot_build(p7a)[["data"]]
 
@@ -70,6 +71,11 @@ unitizer_sect("other geoms", {
   p8 <- gb.0 + geom_point(position=position_waterfall())
 
   ggplot_build(p8)[["data"]]
+
+  p8a <- gb.0 + geom_tile(position='waterfall')
+  ggplot_build(p8a)[["data"]]
+
+  p8b <- gb.0 + geom_tile(width=2, height=2, position='waterfall')
 })
 unitizer_sect("vjust and labels and facets", {
 
@@ -141,7 +147,16 @@ unitizer_sect("corner cases", {
   p19 <- ggplot(dat7, aes(x=x, y=y, fill=grp, width=width)) +
     geom_col(position=position_waterfall(width=0.5)) +
     geom_point(position=position_waterfall(width=0.5))
+  ggplot_build(p19)[["data"]]
 
+  p20 <- ggplot(dat7, aes(x=x, y=y, fill=grp)) +
+    geom_col(position=position_waterfall(width=0.5), width=2) +
+    geom_point(position=position_waterfall(width=0.5))
+  ggplot_build(p20)[["data"]]
+
+  p21 <- ggplot(dat7, aes(x=x, y=y, fill=grp)) +
+    geom_col(position='waterfall', width=2)
+  ggplot_build(p21)[["data"]]
 
   # weird aes:
   #   * width conflicts (provide in geom, position, and data), in particular
