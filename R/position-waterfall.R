@@ -20,7 +20,7 @@
 #' segment left off.  This is similar to a stacked bar chart, except that
 #' the stacking does not reset across `x` values.  In effect, it is the
 #' visualization of a cumulative sum.  Another similar type of chart is the
-#' candle stick plot, except those have "whiskers" and typically require you to
+#' candlestick plot, except those have "whiskers" and typically require you to
 #' manually specify the `ymin` and `ymax` values.
 #'
 #' `position_waterfall` creates waterfall charts when it is applied to
@@ -28,7 +28,9 @@
 #' geom specifies a `y` aesthetic, although there is no guarantee the result
 #' will make sense for arbitrary geoms.  The stacking is always
 #' computed from the `y` aesthetic.  The order of the stacking is determined by
-#' the `x` aesthetic.
+#' the `x` aesthetic.  The actual position of the objects are also affected by
+#' `vjust`, and you may need to change the value of `vjust` if you are using
+#' `position_waterfall` with geoms other than columns.
 #'
 #' If only `xmin` and `xmax` aesthetics are present the `x` value will be
 #' inferred as the midpoint of those two.  If the `xmin` and `xmax` aesthetics
@@ -40,15 +42,10 @@
 #'
 #' We also implement a [StatWaterfall][ggbg-ggproto] `ggproto` object that
 #' can be accessed within `geom_*` calls by specifying `stat='waterfall'`.
-#' Unlike typical stat `ggproto` object, this one does not have a layer
+#' Unlike typical stat `ggproto` objects, this one does not have a layer
 #' instantiation function (i.e. `stat_waterfall` does not exist).  The sole
 #' purpose of the stat is to compute the `ycum` aesthetic that can then be used
 #' by the `geom` layer (see the labeling examples).
-#'
-#' Most `position_*` adjustments modify positions of groups that otherwise
-#' would occupy the same space, leaving relative positions of groups unchanged.
-#' `position_waterfall` is different in as much as it also changes relative
-#' positions of groups that would normally not occupy the same space.
 #'
 #' @section Dodging:
 #'
@@ -56,15 +53,14 @@
 #' across different `x` values.  However, we still need to resolve `x`
 #' value overlaps.  The default approach is to apply the same type of adjustment
 #' across groups within any given `x` value.  This stacks and dodges elements.
-#' The dodging is done based on any `xmin` / `xmax` aesthetics if they are
-#' present, and if not based on the `width` aesthetic.
 #'
 #' Dodging involves changing the `width` of the geom and also shifting the
 #' `geom` horizontally.  Width adjustments will always be made based on the
 #' `xmin`/`xmax`/`width` aesthetic, irrespective of whether you specify the
-#' dodge `width` parameter of `position_waterfall`.  Horizontal shifts can be
+#' dodge `position_waterfall(width=...)`.  Horizontal shifts can be
 #' controlled separately by using `position_waterfall(width=...)`.  Unlike the
-#' `width` parameter specified via geom/stat `mapping` (e.g. `aes(width=...)`),
+#' `width` parameter specified via geom/stat `mapping` that affects the display
+#' width of graphical elements (i.e. `aes(width=...)`),
 #' `position_waterfall(width=...)` affects only the horizontal shifting of
 #' groups with equal `x` values.
 #'
@@ -131,6 +127,7 @@
 #' ## We can use arbitrary geoms
 #' ggplot(dat, aes(x=x, y=y)) +
 #'   geom_point() +
+#'   geom_point(position='waterfall', color='blue') + # default vjust=0.5
 #'   geom_point(position=position_waterfall(vjust=1), color='red')
 #'
 #' ## Or stats; here we turn a histogram into an ecdf plot
