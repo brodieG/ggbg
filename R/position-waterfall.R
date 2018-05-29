@@ -320,8 +320,7 @@ PositionWaterfall <- ggproto(
     if(!is.null(x)) {
       if(!"y" %in% names(data)) {
         warning(
-          "'y' aesthetic is missing and could not be inferred; `", self$name,
-          "` will not be applied."
+          "'y' aesthetic is missing; `", self$name, "` will not be applied."
         )
       } else {
         # group by x, and then stack / dodge, we also need to track the
@@ -483,7 +482,7 @@ stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
     y.max - vjust * (y.max - y.min),
     y.min + vjust * (y.max - y.min)
   )
-  if("ymin" %in% names(df)) df[["ymin"]] <- y.min
-  if("ymax" %in% names(df)) df[["ymax"]] <- y.max
+  if("ymin" %in% names(df)) df[["ymin"]] <- df[["ymin"]] + y.lag - y.orig
+  if("ymax" %in% names(df)) df[["ymax"]] <- df[["ymax"]] + y.lag - y.orig
   df
 }
