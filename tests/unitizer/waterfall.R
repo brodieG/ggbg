@@ -64,6 +64,12 @@ unitizer_sect("basic", {
 
   ggplot_build(p10)[["data"]]
 
+  # non-numeric x values
+
+  dat3a <- transform(dat3, xchr=LETTERS[x])
+  p22 <- ggplot(dat3a, aes(x=xchr, y=y, fill=grp)) +
+    geom_col(position='waterfall')
+  ggplot_build(p22)[["data"]]
 })
 unitizer_sect("other geoms", {
   dat <- data.frame(x=3:1, y=1:3)
@@ -76,6 +82,17 @@ unitizer_sect("other geoms", {
   ggplot_build(p8a)[["data"]]
 
   p8b <- gb.0 + geom_tile(width=2, height=2, position='waterfall')
+  ggplot_build(p8b)[["data"]]
+
+  # geoms with multiple x/y values per group in one entity
+
+  dat8 <- data.frame(
+    x=c(1:3, 1:3), y=c(1,2,1,2,1,2), grp=rep(c("A", "B"), each=3)
+  )
+  p8c <- ggplot(dat8, aes(x=x, y=y, fill=grp)) +
+    geom_polygon(position='waterfall')
+  ggplot_build(p8c)[['data']]
+
 })
 unitizer_sect("vjust and labels and facets", {
 
@@ -158,13 +175,5 @@ unitizer_sect("corner cases", {
     geom_col(position='waterfall', width=2)
   ggplot_build(p21)[["data"]]
 
-  # weird aes:
-  #   * width conflicts (provide in geom, position, and data), in particular
-  #     geom width vs dodge width need to be controllable independently.
-  #   * height
-  #   * provide ymin and ymax, but not y
-  # vjust and hjust
   # start somewhere other than zero
-  # a geom without x/y but with xmin/xmax
-  # factor / character x values
 })
