@@ -26,10 +26,11 @@ p + geom_col()
 p + geom_col(position='waterfall')
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-![plot of chunk unnamed-chunk-3](README-unnamed-chunk-3-1.png)![plot of chunk unnamed-chunk-3](README-unnamed-chunk-3-2.png)
+![plot of chunk unnamed-chunk-3](man/figures/README-unnamed-chunk-3-1.png)![plot of chunk unnamed-chunk-3](man/figures/README-unnamed-chunk-3-2.png)
 </div>
 
 It is primarily intended for `geom_col`, but can be used with arbitrary geoms:
+
 
 ```r
 p2 <- p + geom_col(position='waterfall')
@@ -38,7 +39,7 @@ p2 + geom_point(position='waterfall') +
   geom_point(position=position_waterfall(vjust=1), color='red', size=4)
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-1.png)![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-2.png)
+![plot of chunk arbitrary-geom](man/figures/README-arbitrary-geom-1.png)![plot of chunk arbitrary-geom](man/figures/README-arbitrary-geom-2.png)
 </div>
 
 If you use arbitrary geoms you may need to adjust position with `vjust`.
@@ -52,7 +53,7 @@ ggplot(dat.norm, aes(x=x)) + stat_bin()
 ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-1.png)![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-2.png)
+![plot of chunk stat](man/figures/README-stat-1.png)![plot of chunk stat](man/figures/README-stat-2.png)
 </div>
 
 ## geom_car
@@ -74,7 +75,7 @@ theme(panel.background = element_rect(fill="#555555"),
   panel.grid.minor = element_blank())
 ```
 
-![plot of chunk unnamed-chunk-8](README-unnamed-chunk-8-1.png)
+![plot of chunk geom-car](man/figures/README-geom-car-1.png)
 
 ## Installation
 
