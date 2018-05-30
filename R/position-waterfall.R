@@ -197,7 +197,6 @@ position_waterfall <- function(
 #'
 #' @rdname ggbg-ggproto
 #' @format NULL
-#' @usage NULL
 #' @export
 
 PositionWaterfall <- ggproto(

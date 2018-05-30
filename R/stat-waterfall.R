@@ -19,12 +19,13 @@
 #' `StatWaterfall` is intended for use only via the `stat` parameter to other
 #' layers (e.g. `geom_...(stat='waterfall')`).  It will add a `ycum` aesthetic
 #' to the data which can then be used by the layer.  Unlike other `Stat`
-#' objects, it does not exist as a stand-alone layer.  Its main purpose is to
-#' generate the text for cumulative labels.  See [`position_waterfall`] for
-#' usage examples.
+#' objects, it does not exist as a stand-alone layer (i.e. `stat_waterfall` is
+#' not defined).  Its main purpose is to generate the text for cumulative
+#' labels.  See [`position_waterfall`] for usage examples.
 #'
 #' @export
 #' @rdname ggbg-ggproto
+#' @format NULL
 #' @seealso [`position_waterfall`] for usage examples.
 
 StatWaterfall <- ggproto("StatWaterfall", Stat,

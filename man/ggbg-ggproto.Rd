@@ -7,8 +7,9 @@
 \alias{PositionWaterfall}
 \alias{StatWaterfall}
 \title{ggbg ggproto Objects}
-\format{An object of class \code{StatWaterfall} (inherits from \code{Stat}, \code{ggproto}, \code{gg}) of length 4.}
 \usage{
+PositionWaterfall
+
 StatWaterfall
 }
 \description{
@@ -20,11 +21,13 @@ adjustments that correspond to \link{position_waterfall}.
 \code{StatWaterfall} is intended for use only via the \code{stat} parameter to other
 layers (e.g. \code{geom_...(stat='waterfall')}).  It will add a \code{ycum} aesthetic
 to the data which can then be used by the layer.  Unlike other \code{Stat}
-objects, it does not exist as a stand-alone layer.  Its main purpose is to
-generate the text for cumulative labels.  See \code{\link{position_waterfall}} for
-usage examples.
+objects, it does not exist as a stand-alone layer (i.e. \code{stat_waterfall} is
+not defined).  Its main purpose is to generate the text for cumulative
+labels.  See \code{\link{position_waterfall}} for usage examples.
 }
 \seealso{
+\code{\link[ggplot2:ggproto]{ggplot2::ggproto}} for details about \code{ggproto}.
+
 \code{\link{position_waterfall}} for usage examples.
 }
 \keyword{datasets}
