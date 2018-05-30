@@ -97,6 +97,14 @@
 #'   if a waterfall bar is heading down (i.e. negative `y` value), the "end" is
 #'   at the bottom.  If it heading up (i.e. positive `y` value), the "end" is at
 #'   the top.  For positive `y` values "end" and "top" do the same thing.
+#' @param signif integer(1L) between 1 and 22, defaults to 11, corresponds to
+#'   the `digits` parameter for [`signif`] and is used to reduce the precision
+#'   of numeric `x` aesthetic values so that stacking is not foiled by double
+#'   precision imprecision.
+#' @param y.start numeric(1L), defaults to 0, will be starting point for the
+#'   cumulative sum of `y` values.  This could be useful if you want to combine
+#'   waterfalls with other layers and need the waterfall to start at a specific
+#'   value.
 #' @export
 #' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
 #'   there are multiple bars for a single x value.
@@ -157,10 +165,13 @@ position_waterfall <- function(
   dodge = TRUE,
   vjust = 0.5,
   vjust.mode = "end",
-  signif = getOption('ggbg.signif')
+  signif = getOption('ggbg.signif'),
+  y.start = 0
 ) {
-  vetr(dodge=LGL.1, vjust=NUM.1, vjust.mode=CHR.1 && . %in% c("top", "end"))
-
+  vetr(
+    dodge=LGL.1, vjust=NUM.1, vjust.mode=CHR.1 && . %in% c("top", "end"),
+    signif=INT.1 && . >= 1 && . <= 22, y.start=NUM.1
+  )
   ggproto(NULL, PositionWaterfall,
     width = width,
     preserve = match.arg(preserve),
@@ -168,7 +179,8 @@ position_waterfall <- function(
     vjust=vjust,
     vjust.mode=vjust.mode,
     dodge = dodge,
-    signif = signif
+    signif = signif,
+    y.start = y.start
   )
 }
 
@@ -200,17 +212,11 @@ PositionWaterfall <- ggproto(
   groups=integer(),          # all possible groups,
   # significance for x values to compute, width, overlap, etc.
   signif=11,
+  y.start=0,
 
   setup_params = function(self, data) {
 
     signif <- self[['signif']]
-    if(
-      !is.numeric(signif) || length(signif) != 1 || is.na(signif) ||
-      signif < 1 || signif > 22
-    )
-      stop("Argument `signif` must be scalar integer between 1 and 22")
-
-    signif <- as.integer(signif)
 
     x.check <- all(c("xmin", "xmax") %in% names(data))
     self[['has.x.width']] <-
@@ -275,7 +281,8 @@ PositionWaterfall <- ggproto(
       has.x.width = self[['has.x.width']],
       has.width = self[['has.width']],
       groups=sort(unique(data[['group']])),
-      signif=signif
+      signif=signif,
+      y.start=self[['y.start']]
     )
   },
   # We don't want to modify the data at this point because we don't want to add
@@ -330,9 +337,9 @@ PositionWaterfall <- ggproto(
         data <- data[ord.idx , , drop=FALSE]
         x <- x[ord.idx]
 
-        y.cum <- cumsum(data[["y"]])
-        y.cum.last <- tapply(y.cum, x, tail, 1L)
-        prev.last <- c(0, head(y.cum.last, -1))
+        y.cum <- cumsum(c(params[['y.start']], data[["y"]]))
+        y.cum.last <- tapply(tail(y.cum, -1L), x, tail, 1L)
+        prev.last <- c(params[['y.start']], head(y.cum.last, -1))
 
         # For each `x` value, compute stacking and dodging
 

@@ -2,7 +2,7 @@
 library(ggplot2)
 library(ggbg)
 
-unitizer_sect("basic", {
+unitizer_sect("basic A", {
   dat <- data.frame(x=3:1, y=1:3)
 
   gb.0 <- ggplot(dat, aes(x=x, y=y))
@@ -71,7 +71,7 @@ unitizer_sect("basic", {
     geom_col(position='waterfall')
   ggplot_build(p22)[["data"]]
 })
-unitizer_sect("other geoms", {
+unitizer_sect("other geoms B ", {
   dat <- data.frame(x=3:1, y=1:3)
   gb.0 <- ggplot(dat, aes(x=x, y=y))
   p8 <- gb.0 + geom_point(position=position_waterfall())
@@ -92,10 +92,8 @@ unitizer_sect("other geoms", {
   p8c <- ggplot(dat8, aes(x=x, y=y, fill=grp)) +
     geom_polygon(position='waterfall')
   ggplot_build(p8c)[['data']]
-
 })
-unitizer_sect("vjust and labels and facets", {
-
+unitizer_sect("vjust and labels and facets C", {
   dat5 <- rbind(
     cbind(dat3, facet="X"),
     cbind(transform(dat3, x=rev(x)), facet="Y")
@@ -117,7 +115,16 @@ unitizer_sect("vjust and labels and facets", {
 
   ggplot_build(p9)[["data"]]
 })
-unitizer_sect("corner cases", {
+unitizer_sect("y offset D", {
+  pD1 <- gb.1 + geom_col(position=position_waterfall(y.start=5))
+  ggplot_build(pD1)[['data']]
+  pD2 <- gb.1 + geom_col(position=position_waterfall(y.start=-5))
+  ggplot_build(pD2)[['data']]
+  pD3 <- ggplot(dat2, aes(x=x, y=y)) +
+    geom_col(position=position_waterfall(y.start=-5)) + facet_wrap(~grp)
+  ggplot_build(pD3)[['data']]
+})
+unitizer_sect("corner cases E", {
   # empty data
   p11 <- ggplot(data.frame(x=numeric(), y=numeric())) +
     geom_col(position='waterfall')
@@ -174,6 +181,7 @@ unitizer_sect("corner cases", {
   p21 <- ggplot(dat7, aes(x=x, y=y, fill=grp)) +
     geom_col(position='waterfall', width=2)
   ggplot_build(p21)[["data"]]
-
-  # start somewhere other than zero
+})
+unitizer_sect("errors F", {
+  gb.0 + geom_col(position=position_waterfall(signif=-1))
 })
