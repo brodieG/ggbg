@@ -4,16 +4,7 @@ output: html_document
 ---
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, echo = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "##",
-  fig.path = "man/figures/README-",
-  error = TRUE
-)
-library(ggbg)
-library(ggplot2)
-```
+
 
 [![](https://travis-ci.org/brodieG/ggbg.svg?branch=master)](https://travis-ci.org/brodieG/ggbg)
 [![](https://codecov.io/github/brodieG/ggbg/coverage.svg?branch=master)](https://codecov.io/github/brodieG/ggbg?branch=master)
@@ -27,55 +18,41 @@ exercise for myself, so not all contents will be useful to others.
 A position adjustment that both stacks and dodges bars to create waterfall
 charts:
 
-```{r eval=FALSE}
+
+```r
 set.seed(1)
 p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0))
 p + geom_col()
 p + geom_col(position='waterfall')
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r echo=FALSE, fig.width=5, fig.height=4}
-set.seed(1)
-p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0)) +
-  guides(fill=FALSE)
-p + geom_col() + ggtitle('geom_col()')
-p + geom_col(position='waterfall') + ggtitle('geom_col(position="waterfall")')
-```
+![plot of chunk unnamed-chunk-3](README-unnamed-chunk-3-1.png)![plot of chunk unnamed-chunk-3](README-unnamed-chunk-3-2.png)
 </div>
 
 It is primarily intended for `geom_col`, but can be used with arbitrary geoms:
 
-```{r eval=FALSE}
+```r
 p2 <- p + geom_col(position='waterfall')
 p2 + geom_point(position='waterfall')
 p2 + geom_point(position='waterfall') +
   geom_point(position=position_waterfall(vjust=1), color='red', size=4)
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r arbitrary-geom, echo=FALSE, fig.width=5, fig.height=4}
-p2 <- p + geom_col(position='waterfall')
-p2 + geom_point(position='waterfall')
-p2 + geom_point(position='waterfall') +
-  geom_point(position=position_waterfall(vjust=1), color='red', size=4)
-```
+![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-1.png)![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-2.png)
 </div>
 
 If you use arbitrary geoms you may need to adjust position with `vjust`.
 
 It is can also be used with stats:
 
-```{r eval=FALSE}
+
+```r
 dat.norm <- data.frame(x=rnorm(1000))
 ggplot(dat.norm, aes(x=x)) + stat_bin()
 ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
 ```
 <div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r stat, echo=FALSE, fig.width=5, fig.height=4}
-dat.norm <- data.frame(x=rnorm(1000))
-ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30) + ggtitle('stat_bin()')
-ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30, position='waterfall') +
-  ggtitle('stat_bin(position="waterfall")')
-```
+![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-1.png)![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-2.png)
 </div>
 
 ## geom_car
@@ -83,7 +60,8 @@ ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30, position='waterfall') +
 Plot cars!  This geom was implemented on a lark as an answer to an [SO
 Question](https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979).
 
-```{r geom-car, fig.width=7, fig.height=2.5}
+
+```r
 ggplot(
   geom.car.data,  # ggbg data set
   aes(x=x, y=y, length=length, width=width, fill=label)
@@ -96,12 +74,15 @@ theme(panel.background = element_rect(fill="#555555"),
   panel.grid.minor = element_blank())
 ```
 
+![plot of chunk unnamed-chunk-8](README-unnamed-chunk-8-1.png)
+
 ## Installation
 
 This package is currently github-only.  You can get it with
 `devtools::install_github('brodieg/ggbg')` or:
 
-```{r eval=FALSE}
+
+```r
 f.dl <- tempfile()
 f.uz <- tempfile()
 github.url <- 'https://github.com/brodieG/ggbg/archive/master.zip'
