@@ -163,8 +163,8 @@ position_waterfall <- function(
   preserve = c("total", "single"),
   reverse = FALSE,
   dodge = TRUE,
-  vjust = 0.5,
-  vjust.mode = "end",
+  vjust = getOption('ggbg.vjust'),
+  vjust.mode = getOption('ggbg.vjust.mode'),
   signif = getOption('ggbg.signif'),
   y.start = 0
 ) {
