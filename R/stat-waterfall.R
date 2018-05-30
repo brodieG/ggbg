@@ -43,7 +43,7 @@ StatWaterfall <- ggproto("StatWaterfall", Stat,
 
       data.o <- data[dat.ord, , drop=FALSE]
       data.o[["ycum"]] <- cumsum(data.o[["y"]])
-      data <- data.o[rank(dat.ord), , drop=FALSE]
+      data <- data.o[rank(dat.ord, ties.method='first'), , drop=FALSE]
     }
     data
   }
