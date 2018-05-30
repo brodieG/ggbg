@@ -17,9 +17,11 @@ These are all the \code{ggproto} objects implemented by \code{ggbg}.
 \code{PositionWaterfall} is the \code{ggproto} object used to generate the position
 adjustments that correspond to \link{position_waterfall}.
 
-\code{StatWaterfall} is intended only to be used to add the computed \code{ycum}
-aesthetic to the plot data.  It does not exist as a stand-alone layer.  Its
-main use is to compute cumulative labels.  See \code{\link{position_waterfall}} for
+\code{StatWaterfall} is intended for use only via the \code{stat} parameter to other
+layers (e.g. \code{geom_...(stat='waterfall')}).  It will add a \code{ycum} aesthetic
+to the data which can then be used by the layer.  Unlike other \code{Stat}
+objects, it does not exist as a stand-alone layer.  Its main purpose is to
+generate the text for cumulative labels.  See \code{\link{position_waterfall}} for
 usage examples.
 }
 \seealso{

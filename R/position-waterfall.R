@@ -18,24 +18,18 @@
 #'
 #' A waterfall chart is a bar chart where each segment starts where the prior
 #' segment left off.  This is similar to a stacked bar chart, except that
-#' the stacking does not reset across `x` values.  In effect, it is the
-#' visualization of a cumulative sum.  Another similar type of chart is the
-#' candlestick plot, except those have "whiskers" and typically require you to
-#' manually specify the `ymin` and `ymax` values.
+#' the stacking does not reset across `x` values.  It is the visualization of a
+#' cumulative sum.  Another similar type of chart is the candlestick plot,
+#' except those have "whiskers", and typically require you to manually specify
+#' the `ymin` and `ymax` values.
 #'
 #' `position_waterfall` creates waterfall charts when it is applied to
 #' `geom_col` or `geom_bar`.  You can apply it to any geom, so long as the
-#' geom specifies a `y` aesthetic, although there is no guarantee the result
-#' will make sense for arbitrary geoms.  The stacking is always
-#' computed from the `y` aesthetic.  The order of the stacking is determined by
-#' the `x` aesthetic.  The actual position of the objects are also affected by
-#' `vjust`, and you may need to change the value of `vjust` if you are using
-#' `position_waterfall` with geoms other than columns.
-#'
-#' If only `xmin` and `xmax` aesthetics are present the `x` value will be
-#' inferred as the midpoint of those two.  If the `xmin` and `xmax` aesthetics
-#' are missing `position_waterfall` will attempt to infer them from `x` and the
-#' provided or implicit `width`.
+#' geom specifies a `y` aesthetic, and either an `x` aesthetic, or both
+#' `xmin` and `xmax` aesthetics.  It may not make sense to apply
+#' `position_waterfall` to arbitrary geoms, particularly those that represent
+#' single graphical elements with multiple x/y coordinates such as
+#' `geom_polygon`.
 #'
 #' Since stat layers are computed prior to position adjustments, you can also
 #' use `position_waterfall` with stats (e.g `stat_bin`, see examples).
@@ -47,6 +41,19 @@
 #' purpose of the stat is to compute the `ycum` aesthetic that can then be used
 #' by the `geom` layer (see the labeling examples).
 #'
+#' @section Stacking:
+#'
+#' The stacking is always computed on the `y` aesthetic.  The order of the
+#' stacking is determined by the `x` aesthetic.  The actual position of the
+#' objects are also affected by `vjust`, and you may need to change the value of
+#' `vjust` if you are using `position_waterfall` with geoms other than columns.
+#' For example, for dimensionless elements such as `geom_point` and `geom_text`,
+#' the default `vjust` of 0.5 leads to alignment at the midpoint between
+#' previous and subsequent values in the cumulative sequence.
+#'
+#' If only `xmin` and `xmax` aesthetics are present the `x` value will be
+#' inferred as the midpoint of those two.
+#'
 #' @section Dodging:
 #'
 #' Unlike most `position_*` adjustments, `position_waterfall` adjust positions
@@ -55,16 +62,13 @@
 #' across groups within any given `x` value.  This stacks and dodges elements.
 #'
 #' Dodging involves changing the `width` of the geom and also shifting the
-#' `geom` horizontally.  Width adjustments will always be made based on the
-#' `xmin`/`xmax`/`width` aesthetic, irrespective of whether you specify the
-#' dodge `position_waterfall(width=...)`.  Horizontal shifts can be
-#' controlled separately by using `position_waterfall(width=...)`.  Unlike the
-#' `width` parameter specified via geom/stat `mapping` that affects the display
-#' width of graphical elements (i.e. `aes(width=...)`),
-#' `position_waterfall(width=...)` affects only the horizontal shifting of
-#' groups with equal `x` values.
+#' `geom` horizontally.  Geom width adjustments will always be made based on the
+#' `xmin`/`xmax`/`width` aesthetics.  The shifting itself can be controlled
+#' separately with `position_waterfall(width=...)`.  That parameter should
+#' really be called `dodge.width` to avoid confusion with the geom `width`, but
+#' we left it as `width` for consistency with [`position_dodge`].
 #'
-#' Alternatively you can turn off dodging within `x` values by setting
+#' You you can turn off dodging within `x` values by setting
 #' `position_waterfall(dodge=FALSE)` which will result in stacking within each
 #' `x` value.
 #'

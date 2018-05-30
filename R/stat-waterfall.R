@@ -16,9 +16,11 @@
 
 #' Computes the `ycum` Aesthetic
 #'
-#' `StatWaterfall` is intended only to be used to add the computed `ycum`
-#' aesthetic to the plot data.  It does not exist as a stand-alone layer.  Its
-#' main use is to compute cumulative labels.  See [`position_waterfall`] for
+#' `StatWaterfall` is intended for use only via the `stat` parameter to other
+#' layers (e.g. `geom_...(stat='waterfall')`).  It will add a `ycum` aesthetic
+#' to the data which can then be used by the layer.  Unlike other `Stat`
+#' objects, it does not exist as a stand-alone layer.  Its main purpose is to
+#' generate the text for cumulative labels.  See [`position_waterfall`] for
 #' usage examples.
 #'
 #' @export

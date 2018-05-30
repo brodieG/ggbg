@@ -5,8 +5,9 @@
 \title{Stack Chart Elements on Cumulative Value}
 \usage{
 position_waterfall(width = NULL, preserve = c("total", "single"),
-  reverse = FALSE, dodge = TRUE, vjust = 0.5, vjust.mode = "end",
-  signif = getOption("ggbg.signif"))
+  reverse = FALSE, dodge = TRUE, vjust = getOption("ggbg.vjust"),
+  vjust.mode = getOption("ggbg.vjust.mode"),
+  signif = getOption("ggbg.signif"), y.start = 0)
 }
 \arguments{
 \item{width}{Dodging width, when different to the width of the individual
@@ -49,45 +50,61 @@ if a waterfall bar is heading down (i.e. negative \code{y} value), the "end" is
 at the bottom.  If it heading up (i.e. positive \code{y} value), the "end" is at
 the top.  For positive \code{y} values "end" and "top" do the same thing.}
 
+\item{signif}{integer(1L) between 1 and 22, defaults to 11, corresponds to
+the \code{digits} parameter for \code{\link{signif}} and is used to reduce the precision
+of numeric \code{x} aesthetic values so that stacking is not foiled by double
+precision imprecision.}
+
+\item{y.start}{numeric(1L), defaults to 0, will be starting point for the
+cumulative sum of \code{y} values.  This could be useful if you want to combine
+waterfalls with other layers and need the waterfall to start at a specific
+value.}
+
 \item{dodge}{TRUE or FALSE (default), whether to dodge waterfall bars when
 there are multiple bars for a single x value.}
 }
 \description{
 A waterfall chart is a bar chart where each segment starts where the prior
 segment left off.  This is similar to a stacked bar chart, except that
-the stacking does not reset across \code{x} values.  In effect, it is the
-visualization of a cumulative sum.  Another similar type of chart is the
-candle stick plot, except those have "whiskers" and typically require you to
-manually specify the \code{ymin} and \code{ymax} values.
+the stacking does not reset across \code{x} values.  It is the visualization of a
+cumulative sum.  Another similar type of chart is the candlestick plot,
+except those have "whiskers", and typically require you to manually specify
+the \code{ymin} and \code{ymax} values.
 }
 \details{
 \code{position_waterfall} creates waterfall charts when it is applied to
 \code{geom_col} or \code{geom_bar}.  You can apply it to any geom, so long as the
-geom specifies a \code{y} aesthetic, although there is no guarantee the result
-will make sense for arbitrary geoms.  The stacking is always
-computed from the \code{y} aesthetic.  The order of the stacking is determined by
-the \code{x} aesthetic.
-
-If only \code{xmin} and \code{xmax} aesthetics are present the \code{x} value will be
-inferred as the midpoint of those two.  If the \code{xmin} and \code{xmax} aesthetics
-are missing \code{position_waterfall} will attempt to infer them from \code{x} and the
-provided or implicit \code{width}.
+geom specifies a \code{y} aesthetic, and either an \code{x} aesthetic, or both
+\code{xmin} and \code{xmax} aesthetics.  It may not make sense to apply
+\code{position_waterfall} to arbitrary geoms, particularly those that represent
+single graphical elements with multiple x/y coordinates such as
+\code{geom_polygon}.
 
 Since stat layers are computed prior to position adjustments, you can also
 use \code{position_waterfall} with stats (e.g \code{stat_bin}, see examples).
 
 We also implement a \link[=ggbg-ggproto]{StatWaterfall} \code{ggproto} object that
 can be accessed within \code{geom_*} calls by specifying \code{stat='waterfall'}.
-Unlike typical stat \code{ggproto} object, this one does not have a layer
+Unlike typical stat \code{ggproto} objects, this one does not have a layer
 instantiation function (i.e. \code{stat_waterfall} does not exist).  The sole
 purpose of the stat is to compute the \code{ycum} aesthetic that can then be used
 by the \code{geom} layer (see the labeling examples).
-
-Most \code{position_*} adjustments modify positions of groups that otherwise
-would occupy the same space, leaving relative positions of groups unchanged.
-\code{position_waterfall} is different in as much as it also changes relative
-positions of groups that would normally not occupy the same space.
 }
+\section{Stacking}{
+
+
+The stacking is always computed on the \code{y} aesthetic.  The order of the
+stacking is determined by the \code{x} aesthetic.  The actual position of the
+objects are also affected by \code{vjust}, and you may need to change the value of
+\code{vjust} if you are using \code{position_waterfall} with geoms other than columns.
+For example, for dimensionless elements such as \code{geom_point} and \code{geom_text},
+the default \code{vjust} of 0.5 leads to alignment at the midpoint between
+previous and subsequent values in the cumulative sequence.
+
+If only \code{xmin} and \code{xmax} aesthetics are present the \code{x} value will be
+inferred as the midpoint of those two.
+}
+
 \section{Dodging}{
 
 
@@ -95,19 +112,15 @@ Unlike most \code{position_*} adjustments, \code{position_waterfall} adjust posi
 across different \code{x} values.  However, we still need to resolve \code{x}
 value overlaps.  The default approach is to apply the same type of adjustment
 across groups within any given \code{x} value.  This stacks and dodges elements.
-The dodging is done based on any \code{xmin} / \code{xmax} aesthetics if they are
-present, and if not based on the \code{width} aesthetic.
 
 Dodging involves changing the \code{width} of the geom and also shifting the
-\code{geom} horizontally.  Width adjustments will always be made based on the
-\code{xmin}/\code{xmax}/\code{width} aesthetic, irrespective of whether you specify the
-dodge \code{width} parameter of \code{position_waterfall}.  Horizontal shifts can be
-controlled separately by using \code{position_waterfall(width=...)}.  Unlike the
-\code{width} parameter specified via geom/stat \code{mapping} (e.g. \code{aes(width=...)}),
-\code{position_waterfall(width=...)} affects only the horizontal shifting of
-groups with equal \code{x} values.
+\code{geom} horizontally.  Geom width adjustments will always be made based on the
+\code{xmin}/\code{xmax}/\code{width} aesthetics.  The shifting itself can be controlled
+separately with \code{position_waterfall(width=...)}.  That parameter should
+really be called \code{dodge.width} to avoid confusion with the geom \code{width}, but
+we left it as \code{width} for consistency with \code{\link{position_dodge}}.
 
-Alternatively you can turn off dodging within \code{x} values by setting
+You you can turn off dodging within \code{x} values by setting
 \code{position_waterfall(dodge=FALSE)} which will result in stacking within each
 \code{x} value.
 }
@@ -139,6 +152,7 @@ ggplot(dat.r.walk, aes(x=x, y=y, fill=y > 0)) +
 ## We can use arbitrary geoms
 ggplot(dat, aes(x=x, y=y)) +
   geom_point() +
+  geom_point(position='waterfall', color='blue') + # default vjust=0.5
   geom_point(position=position_waterfall(vjust=1), color='red')
 
 ## Or stats; here we turn a histogram into an ecdf plot
