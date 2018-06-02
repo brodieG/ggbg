@@ -1,7 +1,3 @@
----
-title: "ggbg - GGPlot Extensions"
-output: md_document
----
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r, echo = FALSE}
@@ -14,6 +10,7 @@ knitr::opts_chunk$set(
 library(ggbg)
 library(ggplot2)
 ```
+## ggbg - Assorted Ggplot Extensions
 
 [![](https://travis-ci.org/brodieG/ggbg.svg?branch=master)](https://travis-ci.org/brodieG/ggbg)
 [![](https://codecov.io/github/brodieG/ggbg/coverage.svg?branch=master)](https://codecov.io/github/brodieG/ggbg?branch=master)
@@ -33,34 +30,30 @@ p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0))
 p + geom_col()
 p + geom_col(position='waterfall')
 ```
-<div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r echo=FALSE, fig.width=5, fig.height=4}
+```{r waterfall, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
 set.seed(1)
 p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0)) +
   guides(fill=FALSE)
 p + geom_col() + ggtitle('geom_col()')
 p + geom_col(position='waterfall') + ggtitle('geom_col(position="waterfall")')
 ```
-</div>
 
 It is primarily intended for `geom_col`, but can be used with arbitrary geoms:
 
 ```{r eval=FALSE}
-p2 <- p + geom_col(position='waterfall')
-p2 + geom_point(position='waterfall')
-p2 + geom_point(position='waterfall') +
-  geom_point(position=position_waterfall(vjust=1), color='red', size=4)
+p + geom_point()
+p + geom_point(position=position_waterfall(vjust=1))
 ```
-<div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r arbitrary-geom, echo=FALSE, fig.width=5, fig.height=4}
-p2 <- p + geom_col(position='waterfall')
-p2 + geom_point(position='waterfall')
-p2 + geom_point(position='waterfall') +
-  geom_point(position=position_waterfall(vjust=1), color='red', size=4)
+```{r geoms, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
+p + geom_point() + ggtitle('geom_point()')
+p + geom_point(position=position_waterfall(vjust=1)) +
+  ggtitle('geom_point(position=position_waterfall(vjust=1))')
 ```
-</div>
 
-If you use arbitrary geoms you may need to adjust position with `vjust`.
+If you use arbitrary geoms you may need to adjust position with `vjust` as we do
+here as otherwise the graphical elements are centered between the end of the
+previous cumulative value and the beginning of the next.  Please see
+`?position_watefall` for details.
 
 It is can also be used with stats:
 
@@ -69,14 +62,12 @@ dat.norm <- data.frame(x=rnorm(1000))
 ggplot(dat.norm, aes(x=x)) + stat_bin()
 ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
 ```
-<div style='max-width: 49%; text-align: center; white-space: nowrap;'>
-```{r stat, echo=FALSE, fig.width=5, fig.height=4}
+```{r stats, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
 dat.norm <- data.frame(x=rnorm(1000))
 ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30) + ggtitle('stat_bin()')
 ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30, position='waterfall') +
   ggtitle('stat_bin(position="waterfall")')
 ```
-</div>
 
 ## geom_car
 
@@ -135,6 +126,7 @@ unlink(c(f.dl, f.uz))
 * [Hadley Wickham](https://github.com/hadley/) for
   [devtools](https://cran.r-project.org/package=devtools) and with [Peter
   Danenberg](https://github.com/klutometis) for
+  [roxygen2](https://cran.r-project.org/package=roxygen2).
 * [Yihui Xie](https://github.com/yihui) for
   [knitr](https://cran.r-project.org/package=knitr) and  [J.J.
   Allaire](https://github.com/jjallaire) etal for
