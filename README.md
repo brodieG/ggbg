@@ -1,15 +1,6 @@
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, echo = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "##",
-  fig.path = "man/figures/README-",
-  error = TRUE
-)
-library(ggbg)
-library(ggplot2)
-```
+
 ## ggbg - Assorted Ggplot Extensions
 
 [![](https://travis-ci.org/brodieG/ggbg.svg?branch=master)](https://travis-ci.org/brodieG/ggbg)
@@ -24,31 +15,23 @@ exercise for myself, so not all contents will be useful to others.
 A position adjustment that both stacks and dodges bars to create waterfall
 charts:
 
-```{r eval=FALSE}
+
+```r
 set.seed(1)
 p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0))
 p + geom_col()
 p + geom_col(position='waterfall')
 ```
-```{r waterfall, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
-set.seed(1)
-p <- ggplot(data.frame(x=1:20, y=rnorm(20)), aes(x=x, y=y, fill=y > 0)) +
-  guides(fill=FALSE)
-p + geom_col() + ggtitle('geom_col()')
-p + geom_col(position='waterfall') + ggtitle('geom_col(position="waterfall")')
-```
+<img src="man/figures/README-waterfall-1.png" title="plot of chunk waterfall" alt="plot of chunk waterfall" width="49%" /><img src="man/figures/README-waterfall-2.png" title="plot of chunk waterfall" alt="plot of chunk waterfall" width="49%" />
 
 It is primarily intended for `geom_col`, but can be used with arbitrary geoms:
 
-```{r eval=FALSE}
+
+```r
 p + geom_point()
 p + geom_point(position=position_waterfall(vjust=1))
 ```
-```{r geoms, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
-p + geom_point() + ggtitle('geom_point()')
-p + geom_point(position=position_waterfall(vjust=1)) +
-  ggtitle('geom_point(position=position_waterfall(vjust=1))')
-```
+<img src="man/figures/README-geoms-1.png" title="plot of chunk geoms" alt="plot of chunk geoms" width="49%" /><img src="man/figures/README-geoms-2.png" title="plot of chunk geoms" alt="plot of chunk geoms" width="49%" />
 
 If you use arbitrary geoms you may need to adjust position with `vjust` as we do
 here as otherwise the graphical elements are centered between the end of the
@@ -57,26 +40,21 @@ previous cumulative value and the beginning of the next.  Please see
 
 It is can also be used with stats:
 
-```{r eval=FALSE}
+
+```r
 dat.norm <- data.frame(x=rnorm(1000))
 ggplot(dat.norm, aes(x=x)) + stat_bin()
 ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
 ```
-```{r stats, echo=FALSE, fig.width=5, fig.height=4, out.width='49%'}
-dat.norm <- data.frame(x=rnorm(1000))
-ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30) + ggtitle('stat_bin()')
-ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30, position='waterfall') +
-  ggtitle('stat_bin(position="waterfall")')
-```
-
-For more examples try `example(position_waterfall, package='ggbg')`.
+<img src="man/figures/README-stats-1.png" title="plot of chunk stats" alt="plot of chunk stats" width="49%" /><img src="man/figures/README-stats-2.png" title="plot of chunk stats" alt="plot of chunk stats" width="49%" />
 
 ## geom_car
 
 Plot cars!  This geom was implemented on a lark as an answer to an [SO
 Question](https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979).
 
-```{r geom-car, fig.width=7, fig.height=2.5}
+
+```r
 ggplot(
   geom.car.data,  # ggbg data set
   aes(x=x, y=y, length=length, width=width, fill=label)
@@ -89,12 +67,15 @@ theme(panel.background = element_rect(fill="#555555"),
   panel.grid.minor = element_blank())
 ```
 
+![plot of chunk geom-car](man/figures/README-geom-car-1.png)
+
 ## Installation
 
 This package is currently github-only.  You can get it with
 `devtools::install_github('brodieg/ggbg')` or:
 
-```{r eval=FALSE}
+
+```r
 f.dl <- tempfile()
 f.uz <- tempfile()
 github.url <- 'https://github.com/brodieG/ggbg/archive/master.zip'

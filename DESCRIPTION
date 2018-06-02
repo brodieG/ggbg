@@ -16,9 +16,11 @@ Imports:
     ggplot2 (>= 2.2.1.9000)
 Suggests:
     unitizer
-RoxygenNote: 6.0.1
+RoxygenNote: 6.0.1.9000
 Roxygen: list(markdown = TRUE)
+Encoding: UTF-8
 Collate:
+    'geom.car.data.R'
     'ggbg-package.R'
     'geom-null.R'
     'proto.R'
