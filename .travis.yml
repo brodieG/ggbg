@@ -8,6 +8,8 @@ sudo: false
 
 cache: packages
 
+r_github_packages: tidyverse/ggplot2
+
 r_packages:
   - covr
 
