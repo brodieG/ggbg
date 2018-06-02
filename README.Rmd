@@ -69,6 +69,8 @@ ggplot(dat.norm, aes(x=x)) + stat_bin(bins=30, position='waterfall') +
   ggtitle('stat_bin(position="waterfall")')
 ```
 
+For more examples try `example(position_waterfall, package='ggbg')`.
+
 ## geom_car
 
 Plot cars!  This geom was implemented on a lark as an answer to an [SO
