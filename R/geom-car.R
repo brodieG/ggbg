@@ -20,6 +20,9 @@
 
 # The `grid` grob actually responsible for rendering our car
 
+# nocov start
+# covr doesn't seem to correctly handle this
+
 carGrob <- function(x, y, length, width, gp) {
   grobTree(
     rectGrob(
@@ -29,6 +32,7 @@ carGrob <- function(x, y, length, width, gp) {
     rasterGrob(
       car.raster, x=x, y=y, hjust=.5, height=width, width=length
 ) ) }
+# nocov end
 
 #' Renders the `geom_car` Layer
 #'
