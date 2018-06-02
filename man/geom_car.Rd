@@ -39,7 +39,8 @@ It can also be a named logical vector to finely select the aesthetics to
 display.}
 }
 \description{
-A geom that displays cars.
+A geom that displays cars.  This geom was implemented on a lark as an answer
+to a \href{https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979}{question on SO}.
 }
 \section{Aesthetics}{
 
