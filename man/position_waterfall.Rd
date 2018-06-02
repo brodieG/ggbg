@@ -41,7 +41,7 @@ the corresponding waterfall step.  The default value is convenient for
 labeling \code{geom_col} waterfalls.  Use \code{1} to position at the "end" of each
 waterfall step.  This is different to the \code{vjust} for geoms like
 \code{geom_text} where \code{vjust=1} shift the text down, but it is consistent with
-what \code{\link[gggplot2:position_stack]{gggplot2::position_stack}} does.}
+what \code{\link[ggplot2:position_stack]{ggplot2::position_stack}} does.}
 
 \item{vjust.mode}{character(1L), one of "end" (default), or "top" where "top"
 results in the same behavior as in \code{\link[ggplot2:position_stack]{ggplot2::position_stack}}.  "end"
@@ -59,9 +59,6 @@ precision imprecision.}
 cumulative sum of \code{y} values.  This could be useful if you want to combine
 waterfalls with other layers and need the waterfall to start at a specific
 value.}
-
-\item{dodge}{TRUE or FALSE (default), whether to dodge waterfall bars when
-there are multiple bars for a single x value.}
 }
 \description{
 A waterfall chart is a bar chart where each segment starts where the prior
@@ -78,7 +75,8 @@ geom specifies a \code{y} aesthetic, and either an \code{x} aesthetic, or both
 \code{xmin} and \code{xmax} aesthetics.  It may not make sense to apply
 \code{position_waterfall} to arbitrary geoms, particularly those that represent
 single graphical elements with multiple x/y coordinates such as
-\code{geom_polygon}.
+\code{geom_polygon}.  \code{ymin}/\code{ymax} aesthetics will be shifted by the cumulative
+\code{y} value.
 
 Since stat layers are computed prior to position adjustments, you can also
 use \code{position_waterfall} with stats (e.g \code{stat_bin}, see examples).

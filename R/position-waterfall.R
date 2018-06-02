@@ -29,7 +29,8 @@
 #' `xmin` and `xmax` aesthetics.  It may not make sense to apply
 #' `position_waterfall` to arbitrary geoms, particularly those that represent
 #' single graphical elements with multiple x/y coordinates such as
-#' `geom_polygon`.
+#' `geom_polygon`.  `ymin`/`ymax` aesthetics will be shifted by the cumulative
+#' `y` value.
 #'
 #' Since stat layers are computed prior to position adjustments, you can also
 #' use `position_waterfall` with stats (e.g `stat_bin`, see examples).
@@ -74,6 +75,7 @@
 #'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
+#' @importFrom utils head tail
 #' @param dodge TRUE (default) or FALSE, controls how to resolve
 #'   groups that overlap on the `x` axis.  The default is to dodge them
 #'   to form mini-waterfalls within each `x` value, but you can chose to stack
@@ -94,7 +96,7 @@
 #'   labeling `geom_col` waterfalls.  Use `1` to position at the "end" of each
 #'   waterfall step.  This is different to the `vjust` for geoms like
 #'   `geom_text` where `vjust=1` shift the text down, but it is consistent with
-#'   what [`gggplot2::position_stack`] does.
+#'   what [`ggplot2::position_stack`] does.
 #' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
 #'   results in the same behavior as in [`ggplot2::position_stack`].  "end"
 #'   means the justification is relative to the "end" of the waterfall bar.  So
@@ -110,8 +112,6 @@
 #'   waterfalls with other layers and need the waterfall to start at a specific
 #'   value.
 #' @export
-#' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
-#'   there are multiple bars for a single x value.
 #' @examples
 #' ## These examples are best run via `example(position_waterfall)`
 #' library(ggplot2)

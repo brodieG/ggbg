@@ -4,7 +4,7 @@
 \name{ggbg}
 \alias{ggbg}
 \alias{ggbg-package}
-\title{Assorted GGPlot Extensions}
+\title{Assorted GGPlot Extensions.}
 \description{
-Assorted GGPlot Extensions
+Assorted GGPlot Extensions.
 }

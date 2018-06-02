@@ -27,6 +27,8 @@ A \code{function} will be called with a single argument,
 the plot data. The return value must be a \code{data.frame.}, and
 will be used as the layer data.}
 
+\item{...}{additional arguments passed on to \code{ggplot::layer}.}
+
 \item{inherit.aes}{If \code{FALSE}, overrides the default aesthetics,
 rather than combining with them. This is most useful for helper functions
 that define both data and aesthetics and shouldn't inherit behaviour from
