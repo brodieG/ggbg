@@ -87,6 +87,7 @@ GeomCar <- ggproto("GeomCar", Geom,
 #' to a [question on SO](https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979).
 #'
 #' @eval ggplot2:::rd_aesthetics("geom", "car")
+#' @param ... additional arguments passed on to `ggplot::layer`.
 #' @inheritParams ggplot2::layer
 #' @export
 #' @examples

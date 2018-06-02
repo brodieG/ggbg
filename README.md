@@ -48,6 +48,8 @@ ggplot(dat.norm, aes(x=x)) + stat_bin(position='waterfall')
 ```
 <img src="man/figures/README-stats-1.png" title="plot of chunk stats" alt="plot of chunk stats" width="49%" /><img src="man/figures/README-stats-2.png" title="plot of chunk stats" alt="plot of chunk stats" width="49%" />
 
+For more examples try `example(position_waterfall, package='ggbg')`.
+
 ## geom_car
 
 Plot cars!  This geom was implemented on a lark as an answer to an [SO
@@ -67,7 +69,7 @@ theme(panel.background = element_rect(fill="#555555"),
   panel.grid.minor = element_blank())
 ```
 
-![plot of chunk geom-car](man/figures/README-geom-car-1.png)
+<img src="man/figures/README-geom-car-1.png" title="plot of chunk geom-car" alt="plot of chunk geom-car" width="99%" />
 
 ## Installation
 

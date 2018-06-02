@@ -76,7 +76,7 @@ For more examples try `example(position_waterfall, package='ggbg')`.
 Plot cars!  This geom was implemented on a lark as an answer to an [SO
 Question](https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979).
 
-```{r geom-car, fig.width=7, fig.height=2.5}
+```{r geom-car, fig.width=7, fig.height=2.5, out.width='99%'}
 ggplot(
   geom.car.data,  # ggbg data set
   aes(x=x, y=y, length=length, width=width, fill=label)

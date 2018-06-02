@@ -1,20 +1,26 @@
 Package: ggbg
 Title: Assorted GGPlot Extensions
 Description: Collection of ggplot extensions.
-Version: 0.0.0.9001
+Version: 0.1.0
 Authors@R: c(
     person("Brodie", "Gaslam", email="brodie.gaslam@yahoo.com",
     role=c("aut", "cre"))
     )
 Depends:
-    R (>= 3.1.0)
+    R (>= 3.3.0)
 License: GPL (>=2)
 LazyData: true
 URL: https://github.com/brodieG/ggbg
 BugReports: https://github.com/brodieG/ggbg/issues
+VignetteBuilder: knitr
 Imports:
-    ggplot2 (>= 2.2.1.9000)
+    ggplot2 (>= 2.2.1.9000),
+    grid,
+    vetr,
+    utils
 Suggests:
+    knitr,
+    rmarkdown,
     unitizer
 RoxygenNote: 6.0.1.9000
 Roxygen: list(markdown = TRUE)

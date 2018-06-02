@@ -23,19 +23,14 @@ library(ggbg)
 
 I wrote this document while figuring out how to write my own custom geoms for
 `ggplot`.  The existing documentation available through `?Geom` and
-`browseVignettes('ggplot2')` was a great starting point for me, but I still
-had to dive pretty deep into the `ggplot2` sources before I felt I had all the
-information I needed to write extension.
+`browseVignettes('ggplot2')` was a great starting point for me, but I found
+myself wanting more context and details than it provides.
 
 This is unofficial documentation based on my interpretation of the sources as of
 ~4/18/2018.  It may become out-of-date as `ggplot2` evolves.
 
-This document assumes the reader has some basic familiarity with:
-
-* how to use `ggplot2` for plotting purposes.
-* `ggproto`, the object system used by `ggplot2` (see `?ggplot2::ggproto`, and
-  `browseVignettes('proto')` as `ggproto` is derived from `proto`).
-* `grid`
+This document assumes the reader is familiar with how to use `ggplot2` for
+plotting purposes.
 
 
 ## Ggplot Basics - an Extension Developer Perspective
@@ -45,9 +40,9 @@ This document assumes the reader has some basic familiarity with:
 In order to create and display a `ggplot` plot we go through two major steps:
 
 * Specification (`ggplot() + ...`): user specifies what the plot
-  should look like with `geom_*`, `stat_*`, `scale_*`, etc..
+   should look like with `geom_*`, `stat_*`, `scale_*`, etc..
 * Generation and rendering, typically triggered by printing a `ggplot`
-  object.
+   object.
 
 As a `ggplot` user you are mostly concerned with the specification of the plot.
 As a `ggplot` extension developer, you are also concerned with the plot
