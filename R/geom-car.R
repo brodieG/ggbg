@@ -79,7 +79,8 @@ GeomCar <- ggproto("GeomCar", Geom,
 )
 #' Cars
 #'
-#' A geom that displays cars.
+#' A geom that displays cars.  This geom was implemented on a lark as an answer
+#' to a [question on SO](https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979).
 #'
 #' @eval ggplot2:::rd_aesthetics("geom", "car")
 #' @inheritParams ggplot2::layer
