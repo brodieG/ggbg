@@ -14,17 +14,15 @@
 ##
 ## Go to <https://www.r-project.org/Licenses/GPL-2> for a copy of the license.
 
-#' Assorted GGPlot Extensions.
-#'
-#' @docType package
-#' @importFrom utils globalVariables
-#' @import ggplot2
-#' @import vetr
-#' @name ggbg
+# nocov start
+.onLoad <- function(libname, pkgname) {
 
-NULL
-
-# For `vetr`
-
-globalVariables(".")
-
+  .default.opts <- list(
+    ggbg.signif=11L,
+    ggbg.vjust.mode="end",
+    ggbg.vjust=0.5
+  )
+  existing.opts <- options()
+  options(.default.opts[setdiff(names(.default.opts), names(existing.opts))])
+}
+# nocov end

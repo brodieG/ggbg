@@ -1,0 +1,228 @@
+---
+title: "Writing Ggplot2 Extensions"
+author: "Brodie Gaslam"
+output:
+    rmarkdown::html_vignette:
+        toc: true
+        css: styles.css
+
+vignette: >
+  %\VignetteIndexEntry{extensions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+```{r global_options, echo=FALSE}
+knitr::opts_chunk$set(error=TRUE, comment=NA)
+library(ggbg)
+```
+
+<b>This document is under development</b>.
+
+## Introduction
+
+I wrote this document while figuring out how to write my own custom geoms for
+`ggplot`.  The existing documentation available through `?Geom` and
+`browseVignettes('ggplot2')` was a great starting point for me, but I found
+myself wanting more context and details than it provides.
+
+This is unofficial documentation based on my interpretation of the sources as of
+~4/18/2018.  It may become out-of-date as `ggplot2` evolves.
+
+This document assumes the reader is familiar with how to use `ggplot2` for
+plotting purposes.
+
+
+## Ggplot Basics - an Extension Developer Perspective
+
+### It's The Printing, Stupid
+
+In order to create and display a `ggplot` plot we go through two major steps:
+
+* Specification (`ggplot() + ...`): user specifies what the plot
+   should look like with `geom_*`, `stat_*`, `scale_*`, etc..
+* Generation and rendering, typically triggered by printing a `ggplot`
+   object.
+
+As a `ggplot` user you are mostly concerned with the specification of the plot.
+As a `ggplot` extension developer, you are also concerned with the plot
+generation step.  This is were `ggplot` does most of the work.  You can look at
+`ggplot2:::print.ggplot` to see the major steps involved, which can be
+summarized as:
+
+1. Build (`ggplot_build`): analyzes and transforms data into a format suited for
+   translation into graphical objects:
+    1. Assigns facet panels.
+    2. Computes aesthetic values from data and `aes(...)` specifications.
+    3. Assigns groups.
+    4. Rescales data if non linear scales are specified.
+    5. Computes and maps statistics.
+    6. Transforms special aesthetics (e.g. `width` to `xmin`-`xmax`)
+       (Layer$compute_geom_1 -> Geom$setup_data, check_required_aesthetic)
+    7. Adjusts positions (e.g. dodging/stacking with `$compute_positions`).
+       (Layer$compute_positions ->
+       Position$setup_params/setup_data/compute_layer)
+    8. Recompute scales.
+    9. Adds default aesthetics as needed.
+2. Graphical Object Construction (`ggplot_gtable`):
+    1. Applies coordinate transformations (if necessary)
+    2. Translate the data into shapes, colors, positions, etc.
+3. Rendering (`grid.draw`): display the resulting plot in a viewport.
+
+Need to discuss what is implemented via the `ggproto` objects.
+
+Each of the sub-steps in the build step is applied to every layer before moving
+to the next step with the `by_layer` function.  Additionally, each proto driven
+calculation follows this hierarchy:
+
+`(draw|compute)_layer`
+`(draw|compute)_panel`
+`(draw|compute)_group`
+
+The `*_layer` functions typically split the data by panel and forward each
+chunk to the corresponding `*_panel` function.  The base `ggproto` `*_panel`
+methods will split the data by group and forward it to the corresponding
+`*_group` function.  This allows you to override either the `*_panel` or the
+`*_group` function depending on what you are trying to do.
+
+## Understanding the `data` Object
+
+* Internal aesthetics
+* Special variables (`group`, `panel`)
+  * `group` are "integer" values from 1 to n where n is the number of groups, or
+    -1 if there aren't any groups.
+* Computed variables (`..level..`)
+
+## Position Adjustments
+
+Step 1.7 is carried out by modifying the coordinates in the data objects.
+Both `position_dodge` and `position_stack` group data by `xmin` coordinate value
+(either user provided, or derived from `x` and `width` or some such), and then
+resolve any `xmin` overlaps by allocating the available width for each distinct
+`group` (or should it be element?) within.
+
+## Alternate Docs
+
+### On `gg_proto`
+
+Things to know:
+
+* Objects that contain member functions and data
+* The members can be accessed like list objects `object$member`
+* When member functions are invoked they are always automatically provided with
+  a `self` object if `self` is part of the signature (you can probably still
+  access `self` even if it isn't in the sig, need to test).
+
+### Ggplot Basics
+
+### Mapping
+
+
+### Rendering
+
+
+
+Extending `ggplot` requires influencing how steps 1. and 2. are carried out.
+This is done by creating layer functions (e.g. `geom_*` or `stat_*`) functions that return layers containing custom `Geom*` or `Stat*` objects.
+
+
+
+```
+ ## For reference, `sys.calls()` from a debugged `setup_data`:
+ $ : language function (x, ...)  UseMethod("print")(x)
+ $ : language print.ggplot(x)
+ $ : language ggplot_build(x)
+ $ : language by_layer(function(l, d) l$compute_geom_1(d))
+ $ : language f(l = layers[[i]], d = data[[i]])
+ $ : language l$compute_geom_1(d)
+ $ : language f(..., self = self)
+ $ : language self$geom$setup_data(data, c(self$geom_params, self$aes_params))
+ $ : language f(...)
+```
+
+### Geom Basics
+
+To implement a geom you need:
+
+* A `geom_*` standard function
+* A `Geom*` object, possibly re-used from an existing geom
+
+### The `Geom*` Object
+
+`Geom*` objects such as `GeomPoint` or `GeomRect` are responsible for
+translating your data into graphical objects.  In `ggplot` these graphical
+objects are called "grobs", short for Grid Graphical Objects, because they are
+encoded in a format defined by the `grid` R package.  In order to create your
+own geoms you will need to learn how to use `grid`, or alternatively to re-use
+existing `Geom*` objects to generate grobs suited for your purposes.  For
+example in this package we re-use `GeomRect` for `GeomWaterfall`.
+
+`Geom*` objects are implemented using `ggproto`, a `ggplot2` specific Object
+Oriented framework.  `ggproto` is derived from the `proto` R OOP package.
+
+
+
+## Extending Ggplot 2 vignette
+
+### What `ggplot2` Does
+
+### Creating Geoms
+
+The `setup_data` and `draw_panel` functions we referenced above are part of the
+`Geom*` `ggproto` objects.
+
+`setup_data` is used to convert parameters / aesthetics that are not in a format
+amenable to plotting, to one that is.  One prime example is converting `width`
+and `height` to `xmin/xmax` and `ymin/ymax` values.
+
+
+In "Creating a new Geom", `draw_panel` is described as having 3 parameters,
+instead of the 4 + (in particular starting with `self`) in other docs and in the
+source.  Additionally, the `panel_scales` param appears to actually be
+`panel_params`, at least in the sample fun we used (but `?Geom` also references
+`panel_scales`).
+
+For `draw_panel` sigs, we have
+
+* `GeomPoint`: `function(data, panel_params, coord, na.rm = FALSE)`
+* `GeomRect`: `function(self, data, panel_params, coord)`
+* `Geom`: `function(self, data, panel_params, coord, ...)`
+
+From what I can infer from docs and source your function must accept at least
+three arguments.  `draw_layer` from `Geom` will call `draw_panel` with three
+unnamed parameters that in theory should match up to `data`, `panel_params`,
+`coord`.
+
+* `data`: A data.frame with all the aesthetic values as specified via `aes`.
+  The column names corresponding to the aesthetic names, not the original data
+  frame column names.  Additionally contains `PANEL`, `group` (set to -1 if
+  there are no groups), and any default aesthetics specified in
+  `Geom*$default_aes`.
+* `panel_params`: named list, the intersection of parameters provided to the
+  `geom_*` function with the formals of the `draw_panel` method, although you
+  can customize `Geom` objects to return a specific eligible parameter list.
+* `coord`: coord transformation functions?
+
+Additionally, named parameters that are the intersection of the parameters
+provided to the `geom_*` function by the user and the parameters of `draw_panel`
+are supplied.
+
+Finally, since `draw_panel` is a `ggproto` method `self` will be provided if it
+is part of the `draw_panel` signature.
+
+## Deprecated Stuff
+
+### `setup_data` vs `reparametrise`
+
+It seems like both those functions can be used for the same purpose.  For
+example, in `GeomRect`, `setup_data` is explicitly used to convert width to
+`xmax/xmin`.
+
+Actually, looks like `reparameterise` doesn't exist anymore?
+
+draw_legend / draw_key
+
+## Grid Stuff
+
+You cannot use `gList` in the key/legend.  However, `grobTree` works.
+

@@ -14,17 +14,20 @@
 ##
 ## Go to <https://www.r-project.org/Licenses/GPL-2> for a copy of the license.
 
-#' Assorted GGPlot Extensions.
-#'
-#' @docType package
-#' @importFrom utils globalVariables
-#' @import ggplot2
-#' @import vetr
-#' @name ggbg
+## A Simple Geom That does Nothing
+##
+## For testing purposes, this allows us to pass in whacky aesthetics without
+## geom processing freaking out about it (and therefore letting other code run
+## and fail / handle the whacky inputs)
 
-NULL
-
-# For `vetr`
-
-globalVariables(".")
-
+geom_null <- function(mapping=NULL, data=NULL, position=NULL, stat="identity") {
+  layer(
+    mapping=mapping, data=data, position=position, geom=GeomNull,
+    stat="identity"
+  )
+}
+GeomNull <- ggproto("GeomNull", Geom,
+  draw_panel = function(data, panel_params, coord) {
+    zeroGrob()
+  }
+)

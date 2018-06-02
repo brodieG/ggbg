@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="Brodie Gaslam" />
+
+
+<title>Writing Ggplot2 Extensions</title>
+
+
+
+
+
+
+<style type="text/css">
+body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.5;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+
+padding: 4px;
+width: 100%;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 1em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+h3.subtitle {
+margin-top: -23px;
+}
+pre, code {
+background-color: #EEE;
+color: #333;
+white-space: pre-wrap; 
+
+}
+code {font-size: 85%;}
+pre {
+border: 2px solid #EEE;
+overflow: auto;
+
+margin: 5px 0px;
+padding: 5px 10px;
+}
+pre:not([class]) {
+color: #353;
+
+}
+div.sourceCode pre, div.sourceCode code {
+background-color: #FAFAFA;
+}
+div.sourceCode pre{
+
+}
+div.sourceCode + pre,
+div.sourceCode + div.diffobj_container {
+margin-top: -5px;
+}
+div.diffobj_container pre{
+line-height: 1.3;
+}
+
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+}
+p > code, li > code, h1 > code, h2 > code, h3 > code,
+h4 > code, h5 > code, h6 > code {
+padding: 2px 0px;
+line-height: 1;
+font-weight: bold;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+padding-bottom: 3px;
+font-size: 35px;
+line-height: 40px;
+border-bottom: 1px solid #999;
+}
+h2 {
+border-bottom: 1px solid #999;
+padding-top: 5px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+padding-top: 5px;
+font-size: 120%;
+}
+h4 {
+
+color: #777;
+font-size: 105%;
+}
+h4.author {display: none;}
+h4.date {margin-top: -20px;}
+h5, h6 {
+
+font-size: 105%;
+}
+a {
+color: #2255dd;
+font-weight: bold;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #555; } 
+code > span.fl { color: #555; } 
+code > span.ch { color: #555; } 
+code > span.st { color: #40a070; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Writing Ggplot2 Extensions</h1>
+<h4 class="author"><em>Brodie Gaslam</em></h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#ggplot-basics---an-extension-developer-perspective">Ggplot Basics - an Extension Developer Perspective</a><ul>
+<li><a href="#its-the-printing-stupid">It’s The Printing, Stupid</a></li>
+</ul></li>
+<li><a href="#understanding-the-data-object">Understanding the <code>data</code> Object</a></li>
+<li><a href="#position-adjustments">Position Adjustments</a></li>
+<li><a href="#alternate-docs">Alternate Docs</a><ul>
+<li><a href="#on-gg_proto">On <code>gg_proto</code></a></li>
+<li><a href="#ggplot-basics">Ggplot Basics</a></li>
+<li><a href="#mapping">Mapping</a></li>
+<li><a href="#rendering">Rendering</a></li>
+<li><a href="#geom-basics">Geom Basics</a></li>
+<li><a href="#the-geom-object">The <code>Geom*</code> Object</a></li>
+</ul></li>
+<li><a href="#extending-ggplot-2-vignette">Extending Ggplot 2 vignette</a><ul>
+<li><a href="#what-ggplot2-does">What <code>ggplot2</code> Does</a></li>
+<li><a href="#creating-geoms">Creating Geoms</a></li>
+</ul></li>
+<li><a href="#deprecated-stuff">Deprecated Stuff</a><ul>
+<li><a href="#setup_data-vs-reparametrise"><code>setup_data</code> vs <code>reparametrise</code></a></li>
+</ul></li>
+<li><a href="#grid-stuff">Grid Stuff</a></li>
+</ul>
+</div>
+
+<p><b>This document is under development</b>.</p>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>I wrote this document while figuring out how to write my own custom geoms for <code>ggplot</code>. The existing documentation available through <code>?Geom</code> and <code>browseVignettes('ggplot2')</code> was a great starting point for me, but I found myself wanting more context and details than it provides.</p>
+<p>This is unofficial documentation based on my interpretation of the sources as of ~4/18/2018. It may become out-of-date as <code>ggplot2</code> evolves.</p>
+<p>This document assumes the reader is familiar with how to use <code>ggplot2</code> for plotting purposes.</p>
+</div>
+<div id="ggplot-basics---an-extension-developer-perspective" class="section level2">
+<h2>Ggplot Basics - an Extension Developer Perspective</h2>
+<div id="its-the-printing-stupid" class="section level3">
+<h3>It’s The Printing, Stupid</h3>
+<p>In order to create and display a <code>ggplot</code> plot we go through two major steps:</p>
+<ul>
+<li>Specification (<code>ggplot() + ...</code>): user specifies what the plot should look like with <code>geom_*</code>, <code>stat_*</code>, <code>scale_*</code>, etc..</li>
+<li>Generation and rendering, typically triggered by printing a <code>ggplot</code> object.</li>
+</ul>
+<p>As a <code>ggplot</code> user you are mostly concerned with the specification of the plot. As a <code>ggplot</code> extension developer, you are also concerned with the plot generation step. This is were <code>ggplot</code> does most of the work. You can look at <code>ggplot2:::print.ggplot</code> to see the major steps involved, which can be summarized as:</p>
+<ol style="list-style-type: decimal">
+<li>Build (<code>ggplot_build</code>): analyzes and transforms data into a format suited for translation into graphical objects:
+<ol style="list-style-type: decimal">
+<li>Assigns facet panels.</li>
+<li>Computes aesthetic values from data and <code>aes(...)</code> specifications.</li>
+<li>Assigns groups.</li>
+<li>Rescales data if non linear scales are specified.</li>
+<li>Computes and maps statistics.</li>
+<li>Transforms special aesthetics (e.g. <code>width</code> to <code>xmin</code>-<code>xmax</code>) (Layer<span class="math inline">\(compute_geom_1 -&gt; Geom\)</span>setup_data, check_required_aesthetic)</li>
+<li>Adjusts positions (e.g. dodging/stacking with <code>$compute_positions</code>). (Layer<span class="math inline">\(compute_positions -&gt; Position\)</span>setup_params/setup_data/compute_layer)</li>
+<li>Recompute scales.</li>
+<li>Adds default aesthetics as needed.</li>
+</ol></li>
+<li>Graphical Object Construction (<code>ggplot_gtable</code>):
+<ol style="list-style-type: decimal">
+<li>Applies coordinate transformations (if necessary)</li>
+<li>Translate the data into shapes, colors, positions, etc.</li>
+</ol></li>
+<li>Rendering (<code>grid.draw</code>): display the resulting plot in a viewport.</li>
+</ol>
+<p>Need to discuss what is implemented via the <code>ggproto</code> objects.</p>
+<p>Each of the sub-steps in the build step is applied to every layer before moving to the next step with the <code>by_layer</code> function. Additionally, each proto driven calculation follows this hierarchy:</p>
+<p><code>(draw|compute)_layer</code> <code>(draw|compute)_panel</code> <code>(draw|compute)_group</code></p>
+<p>The <code>*_layer</code> functions typically split the data by panel and forward each chunk to the corresponding <code>*_panel</code> function. The base <code>ggproto</code> <code>*_panel</code> methods will split the data by group and forward it to the corresponding <code>*_group</code> function. This allows you to override either the <code>*_panel</code> or the <code>*_group</code> function depending on what you are trying to do.</p>
+</div>
+</div>
+<div id="understanding-the-data-object" class="section level2">
+<h2>Understanding the <code>data</code> Object</h2>
+<ul>
+<li>Internal aesthetics</li>
+<li>Special variables (<code>group</code>, <code>panel</code>)
+<ul>
+<li><code>group</code> are “integer” values from 1 to n where n is the number of groups, or -1 if there aren’t any groups.</li>
+</ul></li>
+<li>Computed variables (<code>..level..</code>)</li>
+</ul>
+</div>
+<div id="position-adjustments" class="section level2">
+<h2>Position Adjustments</h2>
+<p>Step 1.7 is carried out by modifying the coordinates in the data objects. Both <code>position_dodge</code> and <code>position_stack</code> group data by <code>xmin</code> coordinate value (either user provided, or derived from <code>x</code> and <code>width</code> or some such), and then resolve any <code>xmin</code> overlaps by allocating the available width for each distinct <code>group</code> (or should it be element?) within.</p>
+</div>
+<div id="alternate-docs" class="section level2">
+<h2>Alternate Docs</h2>
+<div id="on-gg_proto" class="section level3">
+<h3>On <code>gg_proto</code></h3>
+<p>Things to know:</p>
+<ul>
+<li>Objects that contain member functions and data</li>
+<li>The members can be accessed like list objects <code>object$member</code></li>
+<li>When member functions are invoked they are always automatically provided with a <code>self</code> object if <code>self</code> is part of the signature (you can probably still access <code>self</code> even if it isn’t in the sig, need to test).</li>
+</ul>
+</div>
+<div id="ggplot-basics" class="section level3">
+<h3>Ggplot Basics</h3>
+</div>
+<div id="mapping" class="section level3">
+<h3>Mapping</h3>
+</div>
+<div id="rendering" class="section level3">
+<h3>Rendering</h3>
+<p>Extending <code>ggplot</code> requires influencing how steps 1. and 2. are carried out. This is done by creating layer functions (e.g. <code>geom_*</code> or <code>stat_*</code>) functions that return layers containing custom <code>Geom*</code> or <code>Stat*</code> objects.</p>
+<pre><code> ## For reference, `sys.calls()` from a debugged `setup_data`:
+ $ : language function (x, ...)  UseMethod(&quot;print&quot;)(x)
+ $ : language print.ggplot(x)
+ $ : language ggplot_build(x)
+ $ : language by_layer(function(l, d) l$compute_geom_1(d))
+ $ : language f(l = layers[[i]], d = data[[i]])
+ $ : language l$compute_geom_1(d)
+ $ : language f(..., self = self)
+ $ : language self$geom$setup_data(data, c(self$geom_params, self$aes_params))
+ $ : language f(...)</code></pre>
+</div>
+<div id="geom-basics" class="section level3">
+<h3>Geom Basics</h3>
+<p>To implement a geom you need:</p>
+<ul>
+<li>A <code>geom_*</code> standard function</li>
+<li>A <code>Geom*</code> object, possibly re-used from an existing geom</li>
+</ul>
+</div>
+<div id="the-geom-object" class="section level3">
+<h3>The <code>Geom*</code> Object</h3>
+<p><code>Geom*</code> objects such as <code>GeomPoint</code> or <code>GeomRect</code> are responsible for translating your data into graphical objects. In <code>ggplot</code> these graphical objects are called “grobs”, short for Grid Graphical Objects, because they are encoded in a format defined by the <code>grid</code> R package. In order to create your own geoms you will need to learn how to use <code>grid</code>, or alternatively to re-use existing <code>Geom*</code> objects to generate grobs suited for your purposes. For example in this package we re-use <code>GeomRect</code> for <code>GeomWaterfall</code>.</p>
+<p><code>Geom*</code> objects are implemented using <code>ggproto</code>, a <code>ggplot2</code> specific Object Oriented framework. <code>ggproto</code> is derived from the <code>proto</code> R OOP package.</p>
+</div>
+</div>
+<div id="extending-ggplot-2-vignette" class="section level2">
+<h2>Extending Ggplot 2 vignette</h2>
+<div id="what-ggplot2-does" class="section level3">
+<h3>What <code>ggplot2</code> Does</h3>
+</div>
+<div id="creating-geoms" class="section level3">
+<h3>Creating Geoms</h3>
+<p>The <code>setup_data</code> and <code>draw_panel</code> functions we referenced above are part of the <code>Geom*</code> <code>ggproto</code> objects.</p>
+<p><code>setup_data</code> is used to convert parameters / aesthetics that are not in a format amenable to plotting, to one that is. One prime example is converting <code>width</code> and <code>height</code> to <code>xmin/xmax</code> and <code>ymin/ymax</code> values.</p>
+<p>In “Creating a new Geom”, <code>draw_panel</code> is described as having 3 parameters, instead of the 4 + (in particular starting with <code>self</code>) in other docs and in the source. Additionally, the <code>panel_scales</code> param appears to actually be <code>panel_params</code>, at least in the sample fun we used (but <code>?Geom</code> also references <code>panel_scales</code>).</p>
+<p>For <code>draw_panel</code> sigs, we have</p>
+<ul>
+<li><code>GeomPoint</code>: <code>function(data, panel_params, coord, na.rm = FALSE)</code></li>
+<li><code>GeomRect</code>: <code>function(self, data, panel_params, coord)</code></li>
+<li><code>Geom</code>: <code>function(self, data, panel_params, coord, ...)</code></li>
+</ul>
+<p>From what I can infer from docs and source your function must accept at least three arguments. <code>draw_layer</code> from <code>Geom</code> will call <code>draw_panel</code> with three unnamed parameters that in theory should match up to <code>data</code>, <code>panel_params</code>, <code>coord</code>.</p>
+<ul>
+<li><code>data</code>: A data.frame with all the aesthetic values as specified via <code>aes</code>. The column names corresponding to the aesthetic names, not the original data frame column names. Additionally contains <code>PANEL</code>, <code>group</code> (set to -1 if there are no groups), and any default aesthetics specified in <code>Geom*$default_aes</code>.</li>
+<li><code>panel_params</code>: named list, the intersection of parameters provided to the <code>geom_*</code> function with the formals of the <code>draw_panel</code> method, although you can customize <code>Geom</code> objects to return a specific eligible parameter list.</li>
+<li><code>coord</code>: coord transformation functions?</li>
+</ul>
+<p>Additionally, named parameters that are the intersection of the parameters provided to the <code>geom_*</code> function by the user and the parameters of <code>draw_panel</code> are supplied.</p>
+<p>Finally, since <code>draw_panel</code> is a <code>ggproto</code> method <code>self</code> will be provided if it is part of the <code>draw_panel</code> signature.</p>
+</div>
+</div>
+<div id="deprecated-stuff" class="section level2">
+<h2>Deprecated Stuff</h2>
+<div id="setup_data-vs-reparametrise" class="section level3">
+<h3><code>setup_data</code> vs <code>reparametrise</code></h3>
+<p>It seems like both those functions can be used for the same purpose. For example, in <code>GeomRect</code>, <code>setup_data</code> is explicitly used to convert width to <code>xmax/xmin</code>.</p>
+<p>Actually, looks like <code>reparameterise</code> doesn’t exist anymore?</p>
+<p>draw_legend / draw_key</p>
+</div>
+</div>
+<div id="grid-stuff" class="section level2">
+<h2>Grid Stuff</h2>
+<p>You cannot use <code>gList</code> in the key/legend. However, <code>grobTree</code> works.</p>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
