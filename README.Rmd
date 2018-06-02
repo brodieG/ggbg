@@ -1,6 +1,6 @@
 ---
 title: "ggbg - GGPlot Extensions"
-output: html_document
+output: md_document
 ---
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
