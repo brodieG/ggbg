@@ -21,39 +21,189 @@ library(ggbg)
 
 ## Introduction
 
-I wrote this document while figuring out how to write my own custom geoms for
-`ggplot`.  The existing documentation available through `?Geom` and
-`browseVignettes('ggplot2')` was a great starting point for me, but I still
-had to dive pretty deep into the `ggplot2` sources before I felt I had all the
-information I needed to write extension.
+When I set off to write my own `ggplot2` extensions I started by reading the
+available documentation in `browseVignettes('ggplot2')` and `?Geom`.  That got
+me started, but pretty quickly I found I needed more detail than was available
+in those documents.  In particular I felt I did not have enough context about
+the points at which `ggplot2` extensions hook in and how they interact with
+different parts of `ggplot2`.
 
-This is unofficial documentation based on my interpretation of the sources as of
-~4/18/2018.  It may become out-of-date as `ggplot2` evolves.
+This document collects the subset of what I learned that might be useful to
+developers that want to extend `ggplot2`.  This is unofficial documentation
+based on the development version of `ggplot2` 2.3 circa 5/2018.
 
 This document assumes the reader has some basic familiarity with:
 
-* how to use `ggplot2` for plotting purposes.
-* `ggproto`, the object system used by `ggplot2` (see `?ggplot2::ggproto`, and
-  `browseVignettes('proto')` as `ggproto` is derived from `proto`).
-* `grid`
+* How to use `ggplot2` for plotting purposes.
+* `ggproto`, the object system used by `ggplot2` (see `?ggplot2::ggproto`).
+* `grid`, the graphical engine behind `ggplot2`.
+* The [Extending Ggplot vignette][1].
+
+## It's The Printing, Stupid
+
+Four major steps are required to produce `ggplot`:
+
+1. Specify (`ggplot() + ...`): user specifies what the plot
+   should look like with `geom_*`, `stat_*`, `scale_*`, etc..
+2. Build (`ggplot_build`): manipulate the data as directed by the user plot
+   specification (e.g. apply stats, position adjustments, etc).
+3. Create Grobs (`ggplot_gtable`): translate the data into `grid` graphical
+   objects (grobs).
+4. Render (`grid.draw`): display the graphical objects on a graphics device.
+
+Step 1 is done directly by the user and will be familiar to all `ggplot2` users.
+Steps 2-4 are triggered by the printing of a `ggplot2` object, as shown by this
+simplified version of `print.ggplot`:
+
+```{r eval=FALSE}
+print.ggplot <- function (x, ...) {
+  data <- ggplot_build(x)
+  gtable <- ggplot_gtable(data)
+  grid.draw(gtable)
+}
+```
+
+Almost all the work `ggplot2` does is in these last three steps.  In order to
+successfully extend `ggplot2` it helps to understand what happens in them,
+particularly the `ggplot_build` and `ggplot_gtable` steps.  This documents
+focuses mostly on the `ggplot_build` step.
+
+## Extension Mechanism
+
+`ggplot2` is extended by defining `ggproto` objects that inherit from the
+existing `Geom`, `Stat`, `Position`, `Scale`, and/or `Facet` `ggproto` objects.
+
+For example, if we want to define a new `Geom` "x", we create a `GeomX`
+`ggproto` object that extends `Geom`, and we provide a layer function `geom_x`
+that associates it with a `Layer` `ggproto` object.  Layer functions also
+associate `Stat` and `Position` `ggproto` objects to the `Layer` object, along
+with the aesthetic mapping and other parameters.
+
+Layer functions typically end with a call to `ggplot2::layer`, which associates
+the `ggproto` objects and data to the `Layer` object.  Here is a simplified
+version of `geom_point` as an example:
+
+```{r eval=FALSE}
+geom_point <- function(
+  mapping = NULL, data = NULL, stat = "identity", position = "identity"
+)
+  layer(
+    data = data, mapping = mapping, stat = stat, geom = GeomPoint,
+    position = position,
+  )
+```
+
+Two non-obvious things `ggplot2::layer` does are: expand shortcut names for
+`ggproto` objects into the corresponding `ggproto` object, and allocate
+its other parameters to the different components.  In
+`geom_point(position='jitter', size=2)`, `layer` translates the `'jitter'`
+string into a `PositionJitter` `ggproto` object, and assigns the `size`
+parameter to the aesthetic parameter list.  Implicitly due to the default value
+for `stat` parameter it also translates the string `'identity'` into the
+`StatIdentity` `ggproto` object.
+
+`ggproto` objects contain logic (i.e. functions, a.k.a. methods) in addition to
+data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
+generate the plots.  In this way the layer extension mechanism allows us to
+modify the plot generation mechanism.
 
 
-## Ggplot Basics - an Extension Developer Perspective
+## Data and Processing Patterns
 
-### It's The Printing, Stupid
+The structure of `ggplot2` plots consists of:
 
-In order to create and display a `ggplot` plot we go through two major steps:
+* a plot
+* that contains layers as specified by `geom_*` / `stat_*`
+* that contain panels as specified by `facet_*`
+* that contain groups as specified by the `group` aesthetic, or
+  implicitly by the interaction of all the discrete aesthetics in the plot
 
-* Specification (`ggplot() + ...`): user specifies what the plot
-  should look like with `geom_*`, `stat_*`, `scale_*`, etc..
-* Generation and rendering, typically triggered by printing a `ggplot`
-  object.
+Each layer has data associated to it.  It can be either layer specific data, or
+data inherited from the plot itself (i.e. the data from `ggplot(data, ...)`).
+The data is then divided across the panels and then across the groups by
+adding the `PANEL` and `group` variables to the data.
 
-As a `ggplot` user you are mostly concerned with the specification of the plot.
-As a `ggplot` extension developer, you are also concerned with the plot
-generation step.  This is were `ggplot` does most of the work.  You can look at
-`ggplot2:::print.ggplot` to see the major steps involved, which can be
-summarized as:
+Since data is not guaranteed to be associated with each layer until after the
+`ggplot_build` process begins most of the `ggproto` objects have methods that
+are called after the data are collected.  The two most common methods are:
+
+* `setup_params()`
+* `setup_data()`
+
+These allow the `ggproto` objects to adjust parameters and data once the data
+for each layer is collected.  This is useful for computing default values for
+parameters that depend on the data, or to derive new aesthetics from existing
+ones such as `xmin`/`xmax` values from `x` and `width` values.
+
+Other methods present in most `Geom`, `Stat`, and `Position` that we are
+interested in include:
+
+* `compute_[layer|panel|group]()`
+* `draw_[layer|panel|group]()`
+
+Typically a `ggproto` object will have one set or the other.  For example `Geom`
+objects have `draw_*` methods, whereas `Stat` objects have `compute_*` methods.
+The method structure mirrors the data structure.  The `*_layer` methods are
+called on the layer data, and they will typically call the `*_panel` methods
+with the corresponding subset of the data, which then call the `*_group` methods
+with the corresponding sub-subset of data.
+
+The recommend approach to creating custom stats and geoms involves overriding
+the `[compute|draw]_[panel|group]` methods for the `Geom*` and `Stat*` `ggproto`
+objects..
+
+## ggplot_build
+
+`ggplot_build` starts with the input data and the plot specification.  It then
+maps the data to aesthetics.  For example, it will map one of the data variables
+or an expression of the data variables into an "x" coordinate.  It will then
+apply transformations to the data/aesthetics based on the plot specification.
+For the most part the `ggplot_build` process consists of many steps that each
+take the data as an input along with various parameters, and output a modified
+version of the data.  Modifications including adding/modifying
+variables/aesthetics, or potentially completely recomputing the data.
+
+
+sequentially applies the modifies the user data based on the plot
+specification.  In it the user data passes through a series of functions that
+sequentially modify it, by adding columns, recomputing values, etc.  Here we
+provide an outline of all the key steps in the order in which they happen, and
+with attribution to the `ggproto` object that is doing the work.  This is
+intended to act as a reference so you can click through each step so you can see
+what the inputs and outputs to each function are expected to be.
+
+### Data Set-up
+
+* Generate data for each layer, filling in with the plot data if necessary
+* `Facet$setup_params()`: modifies facet parameters accounting for
+  data (e.g. deriving default values for unspecified facet parameters).
+  **Typically unused**.
+* `Facet$setup_data()`:
+
+  typically unused, allows modification of data.
+* `Coord$setup_params()`
+* `Coord$setup_data()`
+* `Facet$compute_layout()`
+* `Coord$setup_layout()`
+* For each layer:
+   * `Facet$map_data()` assigns data rows to facet panels.
+
+### ggplot_gtable
+
+
+
+
+the user
+can call to provide the `GeomX` object in the plot specification step.  Then
+`ggplot_build` (step 2) and `ggplot_gtable` will use the methods in the provided
+`ggproto` object to manipulate the data and produce grobs.
+
+
+
+
+## Hooks
+
+
 
 1. Build (`ggplot_build`): analyzes and transforms data into a format suited for
    translation into graphical objects:
@@ -231,3 +381,4 @@ draw_legend / draw_key
 
 You cannot use `gList` in the key/legend.  However, `grobTree` works.
 
+[1]: https://cran.r-project.org/package=ggplot2/vignettes/extending-ggplot2.html
