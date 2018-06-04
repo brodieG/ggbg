@@ -188,25 +188,45 @@ process.
     * For each facet: rescale position data (e.g. x, xmin, xmax, xintercept, y,
       ymin, ymax, yintercept)???? Doesn't seem to actually happen here.
 
+Illustrate with:
+```{r, eval=FALSE}
+dat <- data.frame(
+  location=(1:4)^2,
+  value=(5:8)^2,
+  grp=c('A', 'B', 'B', 'C'),
+  panel=c('P1', 'P1', 'P2', 'P2')
+)
+library(ggplot2)
+p <- ggplot(dat, aes(x=location, y=value, fill=grp)) +
+  stat_bin2d() +
+  geom_point(position="jitter", shape=21) +
+  facet_wrap(~panel, scales="free_x") +
+  scale_x_sqrt() +
+  scale_y_sqrt()
+```
 
+### Layer$layer_data
 
-It then
-maps the data to aesthetics.  For example, it will map one of the data variables
-or an expression of the data variables into an "x" coordinate.  It will then
-apply transformations to the data/aesthetics based on the plot specification.
-For the most part the `ggplot_build` process consists of many steps that each
-take the data as an input along with various parameters, and output a modified
-version of the data.  Modifications including adding/modifying
-variables/aesthetics, or potentially completely recomputing the data.
+For each layer, this process assigns the data to be used, which is either the
+data specified in the `geom_*`/`stat_*` call if any, or if not the data
+specified in the `ggplot()` call.  Because neither layer in the plot had data 
 
+Input:
+```
+  location value grp panel
+1        1    25   A    P1
+2        4    36   B    P1
+3        9    49   B    P2
+```
+Output:
+```
+  location value grp panel
+1        1    25   A    P1
+2        4    36   B    P1
+3        9    49   B    P2
 
-sequentially applies the modifies the user data based on the plot
-specification.  In it the user data passes through a series of functions that
-sequentially modify it, by adding columns, recomputing values, etc.  Here we
-provide an outline of all the key steps in the order in which they happen, and
-with attribution to the `ggproto` object that is doing the work.  This is
-intended to act as a reference so you can click through each step so you can see
-what the inputs and outputs to each function are expected to be.
+```
+
 
 ### Data Set-up
 
