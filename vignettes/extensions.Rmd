@@ -107,7 +107,6 @@ data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
 generate the plots.  In this way the layer extension mechanism allows us to
 modify the plot generation mechanism.
 
-
 ## Data and Processing Patterns
 
 The structure of `ggplot2` plots consists of:
@@ -154,7 +153,44 @@ objects..
 
 ## ggplot_build
 
+### Outline
+
 `ggplot_build` starts with the input data and the plot specification.  It then
+proceeds through several steps that sequentially transform the data by adding
+and/or recomputing variables, or in the case of statistics recomputing the
+entire data.  In addition to transforming the data, the build process also
+updates and computes meta data for scales, facets, etc.
+
+Each of the steps is carried out by methods contained in the `Stat`,
+`Geom`, `Position`, `Scale`, `Layer`, and other `ggproto` objects collected in
+the plot specification step.  What follows is a listing of most of the method
+calls in the build process.  This is intended as a reference so that you can
+quickly identify where each `ggproto` object/method  is used in the build
+process.
+
+* For each layer:
+    * `Layer$layer_data`: assign data to layer
+* `Facet$setup_params`:
+* `Facet$setup_data`:
+* `Coord$setup_data`:
+* `Facet$compute_layout`: assign `PANEL`, row, col, and x/y (position) scale ids
+  to each facet (there are different scales when scales are "free").
+* `Coord$setup_layout`:
+* `Facet$map_data`: add the `PANEL` variable that maps data rows to facets.
+* For each layer:
+    * `Layer$compute_aesthetics`: evaluate the non-`stat` expressions in `aes()`
+      and if necessary infer the `group` variable from categorical aesthetics.
+* For each layer:
+    * `Scale$transform_df`: apply scale transformations to aesthetics (e.g. log
+      tranformation).
+* `Layout$train_position`: initialize scales
+* For each layer:
+    * For each facet: rescale position data (e.g. x, xmin, xmax, xintercept, y,
+      ymin, ymax, yintercept)???? Doesn't seem to actually happen here.
+
+
+
+It then
 maps the data to aesthetics.  For example, it will map one of the data variables
 or an expression of the data variables into an "x" coordinate.  It will then
 apply transformations to the data/aesthetics based on the plot specification.
