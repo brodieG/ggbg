@@ -107,6 +107,22 @@ data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
 generate the plots.  In this way the layer extension mechanism allows us to
 modify the plot generation mechanism.
 
+**One major difference between `ggproto` methods and standard R functions**
+is that the `ggproto` object is automatically passed to the method as the `self`
+argument if the method defines it in its formals, as `method1` does and
+`method2` does not:
+
+```{r eval=TRUE}
+Example <- ggproto(
+  "Example", NULL,
+  method1=function(self, x) cat(sprintf("%s %s\n", x, self$secret)),
+  method2=function(x) cat(sprintf("%s %s\n", x, self$secret)),
+  secret="secret"
+)
+Example$method1("big")
+Example$method2("big")
+```
+
 ## Data and Processing Patterns
 
 The structure of `ggplot2` plots consists of:
@@ -170,37 +186,42 @@ process.
 
 * For each layer:
     * `Layer$layer_data`: assign data to layer
-* `Facet$setup_params`:
-* `Facet$setup_data`:
-* `Coord$setup_data`:
-* `Facet$compute_layout`: assign `PANEL`, row, col, and x/y (position) scale ids
-  to each facet (there are different scales when scales are "free").
-* `Coord$setup_layout`:
-* `Facet$map_data`: add the `PANEL` variable that maps data rows to facets.
+* As part of `Layout$setup`:
+    * `Facet$setup_params`:
+    * `Facet$setup_data`:
+    * `Coord$setup_data`:
+    * `Facet$compute_layout`: assign `PANEL`, row, col, and x/y (position) scale
+      ids to each facet (there are different scales when scales are "free").
+    * `Coord$setup_layout`:
+    * `Facet$map_data`: add the `PANEL` variable that maps data rows to facets.
 * For each layer:
-    * `Layer$compute_aesthetics`: evaluate the non-`stat` expressions in `aes()`
-      and if necessary infer the `group` variable from categorical aesthetics.
+    * `Layer$compute_aesthetics`: compute aesthetics, add `group` variable.
 * For each layer:
-    * `Scale$transform_df`: apply scale transformations to aesthetics (e.g. log
-      tranformation).
-* `Layout$train_position`: initialize scales
-* For each layer:
-    * For each facet: rescale position data (e.g. x, xmin, xmax, xintercept, y,
-      ymin, ymax, yintercept)???? Doesn't seem to actually happen here.
+    * `Scale$transform_df`: apply scale transformations to aesthetics.
+* `Layout$train_position`: initialize scales.
+* `Layout$map_position`: For each layer, map position (x/y) scales.
+* For each layer (`Layer$compute_statistic`):
+    * `Stat$setup_params`: adjust stat parameters with updated version of data
+    * `Stat$setup_data`: adjust data with update version of data and params
+    * For each panel:
+       * `Stat$compute_panel`: recompute data by applying statistic
+       * or, For each group:
+         * `Stat$compute_group`: recompute data by applying statistic
+
 
 Illustrate with:
 ```{r, eval=FALSE}
 dat <- data.frame(
-  location=(1:4)^2,
-  value=(5:8)^2,
+  loc=(1:4)^2,
+  val=(5:8)^2,
   grp=c('A', 'B', 'B', 'C'),
-  panel=c('P1', 'P1', 'P2', 'P2')
+  pnl=c('P1', 'P1', 'P2', 'P2')
 )
 library(ggplot2)
-p <- ggplot(dat, aes(x=location, y=value, fill=grp)) +
+p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
   stat_bin2d() +
   geom_point(position="jitter", shape=21) +
-  facet_wrap(~panel, scales="free_x") +
+  facet_wrap(~pnl, scales="free_x") +
   scale_x_sqrt() +
   scale_y_sqrt()
 ```
@@ -209,23 +230,120 @@ p <- ggplot(dat, aes(x=location, y=value, fill=grp)) +
 
 For each layer, this process assigns the data to be used, which is either the
 data specified in the `geom_*`/`stat_*` call if any, or if not the data
-specified in the `ggplot()` call.  Because neither layer in the plot had data 
+specified in the `ggplot()` call.  Because neither layer in the plot had data
+they both acquire the plot data.
 
-Input:
-```
-  location value grp panel
-1        1    25   A    P1
-2        4    36   B    P1
-3        9    49   B    P2
-```
-Output:
-```
-  location value grp panel
-1        1    25   A    P1
-2        4    36   B    P1
-3        9    49   B    P2
+### Facet$map_data
 
+Add the `PANEL` variable to the data.  Here we show the effect it has on the
+data of the first layer:
+
+```{r, echo=FALSE}
+input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor")), .Names = c("loc", "val", "grp",
+"pnl"), row.names = c(NA, -4L), class = "data.frame")
+output <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
+    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
+"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
+diffobj::diffPrint(input, output)
 ```
+
+### Layer$compute_aesthetic
+
+For each layer,  evaluates all the non-computed `aes(...)` expressions and
+replace the data variables with the resulting aesthetics.  Computed aesthetics
+(i.e. those containing calls to `stat`) are calculated later  **WHEN?**.  This
+step also infers the `group` aesthetic from the interaction of categorical
+variables specified in `aes(...)`.
+
+Here we show the effect on one of the layer's data:
+
+```{r, echo=FALSE}
+input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
+    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
+"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
+output <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), row.names = c(NA, -4L), class = "data.frame")
+diffobj::diffPrint(input, output)
+```
+
+The variable have changed to be the aesthetics, and we gain the `group`
+variable.
+
+### Scale$transform_df
+
+This is applies scale transformations to each layer.  In our example, we use
+`scale_*_sqrt`.  Here is the effect on the data for one of the layers:
+
+```{r, echo=FALSE}
+input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), row.names = c(NA, -4L), class = "data.frame")
+output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), class = "data.frame", row.names = c(NA, -4L))
+diffobj::diffPrint(input, output)
+```
+
+The transformation is applied to all the aesthetics that are associated with the
+scale.  For example, continuous `x` scales will transform the `x` aesthetic, but
+also `xmin`, `xmax`, `xend`, `xintercept`, and several others.
+
+### Layout$map_position
+
+For each layer, map data with position (x/y) scales.  This in theory would
+rescale the position aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.), but
+because "the coordinate system takes care of it" the only thing this does is
+handle NAs and convert integer aesthetics to numeric.
+
+### Stat$setup_params
+
+#### Description
+
+Provides an opportunity to check that parameters for a stat are correct, and to
+update them as necessary, for example to provide defaults that need to be
+computed from the data.
+
+#### Signature
+
+`Stat$setup_params([self], data, params)`
+
+#### Parameters
+
+* `self`: optional parameter, can be omitted from signature, but if present it
+  is typically though not necessarily first.  It is the `ggproto` method that
+  the object belongs to, which allows the method to access other components from
+  that object.
+* `data`: the layer data with computed and scale-transformed aesthetics, and
+  with "mapped" position aesthetics.
+* `params`: a list of the parameters provided to the layer instantiation
+  function that match the parameters of the
+  `Stat$compute_panel` method, and if that method has a `...` parameter, then
+  also the parameters of the `Stat$compute_group` method.
+
+### Stat$setup_data
+
+
+### Stat$compute_panel
+
+
+### Stat$compute_group
+
 
 
 ### Data Set-up
@@ -323,6 +441,9 @@ Things to know:
 * When member functions are invoked they are always automatically provided with
   a `self` object if `self` is part of the signature (you can probably still
   access `self` even if it isn't in the sig, need to test).
+* You cannot debug `ggproto` methods directly because they are wrapped on the
+  fly by `$.ggproto`.  To debug, first extract the method, then `debug` it, then
+  `debug` `f` inside of it...
 
 ### Ggplot Basics
 
@@ -438,3 +559,69 @@ draw_legend / draw_key
 You cannot use `gList` in the key/legend.  However, `grobTree` works.
 
 [1]: https://cran.r-project.org/package=ggplot2/vignettes/extending-ggplot2.html
+
+## Glossary
+
+<dl>
+  <dt><a name='grid'>Ggproto</dt>
+  <dd>
+  Object oriented framework used by `ggplot2`.  See `?ggplot2::ggproto` for
+  details.
+  </dd>
+  <dt><a name='grid'>Grid</dt>
+  <dd>
+  Low level graphics package that comes packaged by default with R.  It is used
+  by `ggplot` to draw the plots.  There are several useful vignettes you can
+  find with `browseVignettes('grid')`.
+  </dd>
+  <dt><a name='grid-graphical-object'>Grid Graphical Objects</dt>
+  <dd>
+  A.k.a. grobs, R objects that contain description of graphical elements that
+  can be used by the `grid` package to draw them on a graphical device.
+  </dd>
+  <dt><a name='layer-ggproto'></a>Layer</dt>
+  <dd>
+  `ggproto` object responsible for computing and rendering plot layers.  It
+  contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along with
+  other data and the methods that carry out the computation and translation of
+  layer data into [grobs](#grid-graphical-objects).
+  </dd>
+  <dt><a name='geom-ggproto'></a>Geom</dt>
+  <dd>
+  `ggproto` object responsible for translating the plot data into
+  [grobs](#grid-grahpical-object).  You can extend `Geom` objects by overriding
+  the [`Geom$setup_data`](#geom-setup-data),
+  [`Geom$setup_param`](#geom-setup-param),
+  [`Geom$draw_panel`](#geom-draw-panel),
+  and/or [`Geom$draw_group`](#geom-draw-group) methods.
+  </dd>
+  <dt><a name='geom-ggproto'></a>Stat</dt>
+  <dd>
+  `ggproto` object responsible for recomputing the plot data with a
+  statistic, e.g. by binning it and computing new `y` values as with `StatBin`.
+  You can extend `Stat` objects by overriding
+  the [`Stat$setup_data`](#stat-setup-data),
+  [`Stat$setup_param`](#stat-setup-param),
+  [`Stat$compute_panel`](#stat-compute-panel),
+  and/or [`Stat$compute_group`](#stat-compute-group) methods.
+
+  </dd>
+
+  <dt>
+    <a name='layer-instantiation-function'></a>Layer Instantiation Function
+  </dt>
+  <dd>
+  Functions that create `Layer` `ggproto` objects like `geom_point` or
+  `stat_bin`.  These functions will allocate their parameters to the various
+  subcomponents of the `Layer` `ggproto` object such as the `Stat`, `Geom`, or
+  `ggproto` objects
+
+  Similar to a [Predicate Function](#predicate-function), may return either TRUE
+  or a vector of only TRUE values on success, and something else on failure.
+  `all.equal(x, y)` is a common example.  Check Functions should be used within
+  `isTRUE(all(check_fun(...)))` to establish success or failure, unless they are
+  used within `stopifnot` or `vetr` where such a check is implicit.
+  </dd>
+
+* Layer Instantiation Function:
+
