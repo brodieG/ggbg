@@ -21,25 +21,38 @@ library(ggbg)
 
 ## Introduction
 
-When I set off to write my own `ggplot2` extensions I started by reading the
-available documentation in `browseVignettes('ggplot2')` and `?Geom`.  That got
-me started, but pretty quickly I found I needed more detail than was available
-in those documents.  In particular I felt I did not have enough context about
-the points at which `ggplot2` extensions hook in and how they interact with
-different parts of `ggplot2`.
+This document is an unofficial reference for developers looking to extend
+`ggplot2`.  It is a supplement to existing documentation that provides more
+detail about how the extension mechanism interacts with other parts of the
+`ggplot2` plot building process.  It is based on examination of the sources of
+`ggplot2` circa 5/2018 (version 2.3 pre-release).
 
-This document collects the subset of what I learned that might be useful to
-developers that want to extend `ggplot2`.  This is unofficial documentation
-based on the development version of `ggplot2` 2.3 circa 5/2018.
+We assume the reader is familiar with using `ggplot2` for generating plots, and
+that the reader has previously reviewed:
 
-This document assumes the reader has some basic familiarity with:
+* `?ggproto` for an introduction to the `ggplot2` object oriented programming
+  system.
+* `?ggplot2::ggplot2-ggproto` for the major `ggproto` objects used by `ggplot2`.
+* `vignette(package='ggplot2', 'extending-ggplot2')` for the official
+  documentation on extending `ggplot2`.
 
-* How to use `ggplot2` for plotting purposes.
-* `ggproto`, the object system used by `ggplot2` (see `?ggplot2::ggproto`).
-* `grid`, the graphical engine behind `ggplot2`.
-* The [Extending Ggplot vignette][1].
+There are four major sections to this document:
 
-## It's The Printing, Stupid
+1. Overview: A high level look at the process of converting data and user
+   `ggplot2` plot specifications into a plot.
+2. Process Outline: The listing of all the key function calls used by `ggplot2`
+   to generate the plot.  This gives you a sense for where your extension fits
+   in relation to the rest of the process.  Most steps in the outline are
+   hyperlinked to the "Process Detail" section.
+3. Process Detail: More detail on the important steps in the plot generation
+   process, including descriptions of inputs, outputs, and other relevant
+   information for anyone looking to modify those steps.
+4. Definitions: Definitions of key terms.  These are hyperlinked throughout the
+   document.
+
+## Overview
+
+### It's The Printing, Stupid
 
 Four major steps are required to produce `ggplot`:
 
@@ -68,11 +81,11 @@ successfully extend `ggplot2` it helps to understand what happens in them,
 particularly the `ggplot_build` and `ggplot_gtable` steps.  This documents
 focuses mostly on the `ggplot_build` step.
 
-## Extension Mechanism
+### Extension Mechanism
 
 `ggplot2` is extended by defining [`ggproto` objects](#ggproto) that inherit
 from the existing [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom),
-[`Position`](#ggproto-geom), `Scale`, and/or `Facet` `ggproto` objects.
+[`Position`](#ggproto-geom), `Scale`, `Coord` and/or `Facet` `ggproto` objects.
 `ggproto` objects contain both data and functions (a.k.a. methods), so this
 allows users to override `ggplot2` default behavior by providing new [`ggproto`
 methods](#ggproto-method).
@@ -81,33 +94,18 @@ For example, if we want to define a new `Geom` "x", we create a `GeomX`
 `ggproto` object that extends `Geom`, and we provide a [layer
 function](#layer-function) that associates it and other `ggproto` objects and parameters with a [`Layer` `ggproto` object](#ggproto-layer).
 
-Here is a simplified version of the layer function `geom_point`:
+**DON'T LOVE TRANSITION FROM geom_x TO geom_point HERE**
 
-```{r eval=FALSE}
-geom_point <- function(
-  mapping = NULL, data = NULL, stat = "identity", position = "identity"
-)
-  layer(
-    data = data, mapping = mapping, stat = stat, geom = GeomPoint,
-    position = position,
-  )
-```
 
-The layer  function calls `ggplot2::layer`. This does two non-obvious things:
-expand shortcut names for `ggproto` objects into the corresponding `ggproto`
-object, and allocate its other parameters to the different components.  In
-`geom_point(position='jitter', size=2)`, `layer` translates the `'jitter'`
-string into a `PositionJitter` `ggproto` object, and assigns the `size`
-parameter to the aesthetic parameter list.  Implicitly due to the default value
-for `stat` parameter it also translates the string `'identity'` into the
-`StatIdentity` `ggproto` object.
+Once the layer function is done with the associations it returns the `Layer`
+`ggproto` object.
 
 `ggproto` objects contain logic (i.e. functions, a.k.a. methods) in addition to
 data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
 generate the plots.  In this way the layer extension mechanism allows us to
 modify the plot generation mechanism.
 
-## Data and Processing Patterns
+### Data and Processing Patterns
 
 The structure of `ggplot2` plots consists of:
 
@@ -121,7 +119,6 @@ Each layer has data associated to it.  It can be either layer specific data, or
 data inherited from the plot itself (i.e. the data from `ggplot(data, ...)`).
 The data is then divided across the panels and then across the groups by
 adding the `PANEL` and `group` variables to the data.
-
 
 Other methods present in most `Geom`, `Stat`, and `Position` that we are
 interested in include:
@@ -138,28 +135,11 @@ with the corresponding sub-subset of data.
 
 The recommend approach to creating custom stats and geoms involves overriding
 the `[compute|draw]_[panel|group]` methods for the `Geom*` and `Stat*` `ggproto`
-objects..
+objects.
 
-Illustrate with:
-```{r, eval=FALSE}
-dat <- data.frame(
-  loc=(1:4)^2,
-  val=(5:8)^2,
-  grp=c('A', 'B', 'B', 'C'),
-  pnl=c('P1', 'P1', 'P2', 'P2')
-)
-library(ggplot2)
-p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
-  stat_bin2d() +
-  geom_point(position="jitter", shape=21) +
-  facet_wrap(~pnl, scales="free_x") +
-  scale_x_sqrt() +
-  scale_y_sqrt()
-```
+## Method Outline
 
-## ggplot_build
-
-### Outline
+### ggplot_build
 
 `ggplot_build` starts with the input data and the plot specification.  It then
 proceeds through several steps that sequentially transform the data by adding
@@ -183,20 +163,54 @@ acts as an index to more comprehensive documentation for the key methods.
       objects.
     * [`Coord$setup_data`](#setup_params-setup_data): unused by common `Coord`
       objects.
-    * [`Facet$compute_layout`](#facet-compute_layout): facet meta data.
+    * [`Facet$compute_layout`](#facet-compute_layout): generate facet meta data.
     * `Coord$setup_layout`:
-    * `Facet$map_data`: add the `PANEL` variable that maps data rows to facets.
-* `Layer$compute_aesthetics`: compute aesthetics, add `group` variable.
-* `Scale$transform_df`: apply scale transformations to aesthetics.
+    * [`Facet$map_data`](#facet-map-data): add the `PANEL` variable that maps
+      data rows to facets.
+* [`Layer$compute_aesthetics`](#layer-compute-aesthetics): compute aesthetics,
+  add `group` variable.
+* [`Scale$transform_df`](#scale-transform-df): apply scale transformations to
+  aesthetics.
 * `Layout$train_position`: initialize scales.
-* `Layout$map_position`: For each layer, map position (x/y) scales.
+* [`Layout$map_position`](#layout-map-position): For each layer, map position
+  (x/y) scales.
 * `Layer$compute_statistic`: recompute data with statistics.
     * [`Stat$setup_params`](#setup_params-setup_data): adjust params.
-    * [`Stat$setup_data`](#setup_params-setup_data): adjust data
-    * `Stat$compute_panel`: apply statistic to each panel
-        * `Stat$compute_group`: apply statisitc to each group
+    * [`Stat$setup_data`](#setup_params-setup_data): adjust data.
+    * [`Stat$compute_layer`](#stat-compute): apply statistic to each layer.
+    * [`Stat$compute_panel`](#stat-compute): apply statistic to each panel.
+    * [`Stat$compute_group`](#stat-compute): apply statistic to each group.
+
+### ggplot_gtable
 
 
+
+
+## Method Details
+
+### Example Plot
+
+We illustrate inputs and outputs to some of the methods documented in this
+section with the following plot:
+
+```{r, eval=FALSE}
+dat <- data.frame(
+  loc=(1:4)^2,
+  val=(5:8)^2,
+  grp=c('A', 'B', 'B', 'C'),
+  pnl=c('P1', 'P1', 'P2', 'P2')
+)
+library(ggplot2)
+p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
+  stat_bin2d() +
+  geom_point(position="jitter", shape=21) +
+  facet_wrap(~pnl, scales="free_x") +
+  scale_x_sqrt() +
+  scale_y_sqrt()
+```
+
+It involves a standard layer, a statistic layer, it has facets, and it scales
+the [postion aesthetics](#position-aesthetic).
 
 ### Layer$layer_data
 
@@ -206,6 +220,8 @@ specified in the `ggplot()` call.  Because neither layer in the plot had data
 they both acquire the plot data.
 
 ### Object$setup_params And Object$setup_data {setup_param-setup_data}
+
+#### Description
 
 `ggplot2` has a complex specification system.  In most cases, the user
 input specification is relatively simple, but `ggplot2` then needs to set or
@@ -224,14 +240,35 @@ The `setup_data` methods provide an opportunity to update the data, also after
 the data has been assigned to layers, and after the parameters have been updated
 with the `setup_params` methods. An example is how some `Geoms` will add `xmin`
 and `xmax` aesthetics computed from existing `x` and `width` aesthetics with the
-`setup_data` method..
+`setup_data` method.
+
+#### Signature
+
+`$setup_params([self], data, params)`
+`$setup_data([self], data, params)`
+
+The `self` parameter, if present, can appear anywhere in the signature.  The
+other two parameters must be in the relative order shown above.
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `ggproto` object the
+  method belongs to.
+* `data`: the layer data.  Depending on which `ggproto` object the `setup_*`
+  method belongs to it may have undergone scale transformation and/or mapping.
+  See the [method outline](#method-outline) to get an idea of the state of the
+  data by the time it gets to the `setup_*` method in question.
+* `params`: a list of the parameters provided to the [layer
+  function](#layer-function) that match the parameters of the
+  `$[compute|draw]_panel` of `self`, and if that method has a `...` parameter,
+  then also the parameters of the `$[compute|draw]_group` method.
 
 ### Facet$compute_layout
 
 Assigns a panel, row, column, and position scale ids to each facet.  It is
 possible to have multiple position scales in a plot when the scales are "free".
 
-This is what this data looks like for our example:
+This is what this data looks like for our [example plot](#example-plot):
 
 ```
   PANEL ROW COL pnl SCALE_X SCALE_Y
@@ -321,40 +358,34 @@ rescale the position aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.), but
 because "the coordinate system takes care of it" the only thing this does is
 handle NAs and convert integer aesthetics to numeric.
 
-### Stat$setup_params
+### Stat$compute_layer/panel/group {#stat-compute}
 
 #### Description
 
-A [`ggproto` method](#ggproto-method) that provides an opportunity to check that
-parameters for a stat are correct, and to update them as necessary, for example
-to provide defaults that need to be computed from the data.  It is run for each
-layer in a plot.
+These methods are responsible for applying a statistic to the layer data and
+returning the result as the new layer data.  Typically you would modify one of
+the group, panel, or layer methods, starting with the group method if possible,
+and working up the chain depending on how much control you require over the
+whole process.  The default layer and panel method respectively run the panel
+and group methods over each panel and group.  The further up the chain you
+override these methods, the more work you will need to do.
 
 #### Signature
 
-`Stat$setup_params([self], data, params)`
-
-The `self` parameter, if present, can appear anywhere in the signature.  The
-other two parameters must be in the relative order shown above.
+`$compute_layer([self], data, params, layout)`
+`$compute_panel([self], data, scales, ...)`
+`$compute_group([self], data, scales)`
 
 #### Parameters
 
-* `self`: optional parameter, if present will point to the [`Stat`
-  object](#stat-ggproto) the [`ggproto` method](#ggproto-method) belongs to.
-* `data`: the layer data with computed and scale-transformed aesthetics, and
-  with "mapped" [position aesthetics](#position-aesthetic).
-* `params`: a list of the parameters provided to the layer instantiation
-  function that match the parameters of the
-  `Stat$compute_panel` method, and if that method has a `...` parameter, then
-  also the parameters of the `Stat$compute_group` method.
+* `self`: optional parameter, if present will point to the `Stat` `ggproto`
+  object the method belongs to.
+* `data`: the layer data for `$compute_layer`, a subset of the layer data
+  corresponding to a panel for `$compute_panel`, or a subset of the panel data
+  corresponding to a group for `$compute_group`.
+* `params`: the parameter list.
+* `scales`: 
 
-### Stat$setup_data
-
-
-### Stat$compute_panel
-
-
-### Stat$compute_group
 
 ### Geom$draw_panel
 
@@ -666,10 +697,38 @@ You cannot use `gList` in the key/legend.  However, `grobTree` works.
 </dd>
 <dt><a name='layer-function'></a>Layer Function</dt>
 <dd>
-  Functions that create [`Layer` `ggproto`](#ggprot0-layer)) objects like
-  `geom_point` or `stat_bin`.  These functions will allocate their parameters to
+  Functions that create [`Layer` `ggproto`](#ggproto-layer)) objects like
+  `geom_point` or `stat_bin`.  For example, in (a simplified version
+  of) `geom_point`:  
+
+  ```{r eval=FALSE}
+  geom_point <- function(
+    mapping = NULL, data = NULL, stat = "identity", position = "identity"
+  )
+    layer(
+      data = data, mapping = mapping, stat = stat, geom = GeomPoint,
+      position = position,
+    )
+  ```
+
+  The layer function calls `ggplot2::layer`. This function expands shortcut names
+  for `ggproto` objects into the corresponding `ggproto` objects.  In
+  `geom_point(position='jitter', size=2)` it translates the `'jitter'` string into
+  a `PositionJitter` `ggproto` object, and implicitly due to the default value for
+  `stat` parameter it also translates the string `'identity'` into the
+  `StatIdentity` `ggproto` object.
+
+
+
+  These functions will allocate their parameters to
   the various subcomponents of the [`Layer` `ggproto`](#ggproto-layer)) object
   such as the [`Stat`](#ggproto-stat), [`Geom`](#ggproto-geom), or `ggproto`
   objects, and return the [`Layer` object](#ggprot-layer).
+
+
+  Other parameters to the [layer function](#layer-function) are matched to its
+  subcomponents.  In this example, the `size` parameter is associated with the
+  `Geom` subcomponent.
+
 </dd>
 </dl>
