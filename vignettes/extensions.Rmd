@@ -280,6 +280,9 @@ Our data has two facets (panels) arranged across two columns and in one row.
 There is one `y` scale, and two `x` scales because with set "free_x" in the
 facet specification for the plot.
 
+This data then becomes the `layout` member of the [`Layout`
+`ggproto`](#ggproto-layout) object.
+
 ### Facet$map_data
 
 Add the `PANEL` variable to the data.  Here we show the effect it has on the
@@ -383,8 +386,18 @@ override these methods, the more work you will need to do.
 * `data`: the layer data for `$compute_layer`, a subset of the layer data
   corresponding to a panel for `$compute_panel`, or a subset of the panel data
   corresponding to a group for `$compute_group`.
-* `params`: the parameter list.
-* `scales`: 
+* `params`: the parameter list as matched to the `$compute_panel/group` methods
+  by the layer function.
+* `layout`: the [`Layout` `ggproto`](#ggproto-layout) object for the plot.
+* `scales`: the [`Scales` `ggproto`](#ggproto-scales) object for the plot.
+
+#### Value
+
+Here is what the data looks like before and after it is computed on by these
+methods for our [example plot](#example-plot):
+
+```
+```
 
 
 ### Geom$draw_panel
@@ -622,6 +635,11 @@ You cannot use `gList` in the key/legend.  However, `grobTree` works.
   contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along with
   other data and the methods that carry out the computation and translation of
   layer data into [grobs](#grid-graphical-objects).
+</dd>
+<dt><a name='ggproto-layout'></a>Ggproto Layout</dt>
+<dd>
+  Contains all the metadata required to lay out the plot across the panels.
+  **stub**
 </dd>
 <dt><a name='ggproto-method'></a>Ggproto Method</dt>
 <dd>
