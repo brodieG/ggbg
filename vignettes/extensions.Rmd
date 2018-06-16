@@ -23,7 +23,7 @@ library(ggbg)
 ## Introduction
 
 This document is an unofficial reference for developers looking to extend
-`ggplot2`.  It is a supplement to existing documentation that provides more
+`ggplot2`.  It supplements to existing documentation by providing more
 detail about how the extension mechanism interacts with other parts of the
 `ggplot2` plot building process.  It is based on examination of the sources of
 `ggplot2` circa 5/2018 (version 2.3 pre-release).
@@ -59,10 +59,10 @@ Four major steps are required to produce `ggplot`:
 
 1. Specify (`ggplot() + ...`): user specifies what the plot
    should look like with `geom_*`, `stat_*`, `scale_*`, etc..
-2. Build (`ggplot_build`): manipulate the data as directed by the user plot
-   specification (e.g. apply stats, position adjustments, etc).
-3. Create Grobs (`ggplot_gtable`): translate the data into `grid` graphical
-   objects (grobs).
+2. Build (`ggplot_build`): `ggplot2` manipulates the data as directed by the
+   user plot specification (e.g. apply stats, position adjustments, etc).
+3. Create Grobs (`ggplot_gtable`): `ggplot2` translates the data into `grid`
+   graphical objects (grobs).
 4. Render (`grid.draw`): display the graphical objects on a graphics device.
 
 Step 1 is done directly by the user and will be familiar to all `ggplot2` users.
