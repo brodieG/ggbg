@@ -13,6 +13,7 @@ vignette: >
 ---
 
 ```{r global_options, echo=FALSE}
+options(digits=2)
 knitr::opts_chunk$set(error=TRUE, comment=NA)
 library(ggbg)
 ```
@@ -172,14 +173,16 @@ acts as an index to more comprehensive documentation for the key methods.
 * [`Scale$transform_df`](#scale-transform-df): apply scale transformations to
   aesthetics.
 * `Layout$train_position`: initialize scales.
-* [`Layout$map_position`](#layout-map-position): For each layer, map position
-  (x/y) scales.
+* [`Layout$map_position`](#layout-map-position): map position (x/y) scales.
 * `Layer$compute_statistic`: recompute data with statistics.
-    * [`Stat$setup_params`](#setup_params-setup_data): adjust params.
+    * [`Stat$setup_params`](#setup_params-setup_data): adjust parameters.
     * [`Stat$setup_data`](#setup_params-setup_data): adjust data.
     * [`Stat$compute_layer`](#stat-compute): apply statistic to each layer.
     * [`Stat$compute_panel`](#stat-compute): apply statistic to each panel.
     * [`Stat$compute_group`](#stat-compute): apply statistic to each group.
+* `Layer$map_statistic`: re-computes and rescales aesthetics using the data
+  produced by [`Stat$compute_layer`](#stat-compute) with the [layer
+  function](#layer-function) aesthetic specification.
 
 ### ggplot_gtable
 
@@ -210,7 +213,7 @@ p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
 ```
 
 It involves a standard layer, a statistic layer, it has facets, and it scales
-the [postion aesthetics](#position-aesthetic).
+the [position aesthetics](#position-aesthetic).
 
 ### Layer$layer_data
 
@@ -337,17 +340,17 @@ This is applies scale transformations to each layer.  In our example, we use
 `scale_*_sqrt`.  Here is the effect on the data for one of the layers:
 
 ```{r, echo=FALSE}
-input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
+trans.input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
 2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
 "group"), row.names = c(NA, -4L), class = "data.frame")
-output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
+trans.output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
 2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
 "group"), class = "data.frame", row.names = c(NA, -4L))
-diffobj::diffPrint(input, output)
+diffobj::diffPrint(trans.input, trans.output)
 ```
 
 The transformation is applied to all the aesthetics that are associated with the
@@ -367,11 +370,17 @@ handle NAs and convert integer aesthetics to numeric.
 
 These methods are responsible for applying a statistic to the layer data and
 returning the result as the new layer data.  Typically you would modify one of
-the group, panel, or layer methods, starting with the group method if possible,
-and working up the chain depending on how much control you require over the
-whole process.  The default layer and panel method respectively run the panel
-and group methods over each panel and group.  The further up the chain you
-override these methods, the more work you will need to do.
+the layer, panel, or group methods, listed here in order of increasing
+specificity.  If possible, you should modify the most specific method (e.g. the
+group method) as that requires the least work.  If you need more control over
+the process you can override on of the more general methods.  If you do this,
+for example by overriding the panel method, you will be responsible for
+splitting the data into groups, processing the groups, and re-assembling the
+data.
+
+The default layer and panel method respectively run the panel and group methods
+over each panel and group.  This is why you can just override the more specific
+methods.
 
 #### Signature
 
@@ -393,14 +402,79 @@ override these methods, the more work you will need to do.
 
 #### Value
 
-Here is what the data looks like before and after it is computed on by these
-methods for our [example plot](#example-plot):
+Statistics can completely change the data.  Here is what the input to
+`Stat$compute_layer` looks like in [example plot](#example-plot):
 
+```{r echo=FALSE}
+trans.output
 ```
+
+And if you have not modified the layer method, then the input into
+`Stat$compute_panel` will look like (for the first panel):
+
+```{r echo=FALSE}
+structure(list(x = c(1, 2), y = c(5, 6), fill = structure(1:2, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = 1:2), .Names = c("x", "y", "fill", "PANEL", "group"), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
 ```
 
+And if you have not modified the panel method, the input into `Stat$group_panel`
+will look like (for the first group of the first panel):
 
-### Geom$draw_panel
+```{r echo=FALSE}
+structure(list(x = 1, y = 5, fill = structure(1L, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(1L, .Label = c("1", "2"), class = "factor"), group = 1L), .Names = c("x", "y", "fill", "PANEL", "group"), vars = "PANEL", row.names = 1L, class = "data.frame")
+```
+
+In the [example plot](#example-plot) `StatBin2d` overrides the `$compute_group`
+method.  The result for the first group of the first panel is then:
+
+```{r}
+structure(list(xbin = 1L, ybin = 1L, value = 1, x = 1.01666666666667, width = 0.0333333400000002, y = 5.05, height = 0.10000002, count = 1, density = 1), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density"), row.names = 1L, class = "data.frame")
+```
+
+If you only override the `$compute_group` method, `$compute_panel` will add back
+any variables that are lost by `$compute_group`, although it does so by
+recycling the first values of those variables.  In this case `$compute_panel`
+adds back the `fill`, `PANEL`, and `group` variables that were dropped by
+`$compute_group`.
+
+The final output after `$compute_panel` and `$compute_layer` stitch back the
+groups and panels together:
+
+```{r echo=FALSE}
+stat.output <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", 
+"C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L)), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame")
+```
+
+In this case the number of rows in input and output happens to be the same
+because each of our groups only has one row in it, but that is not a
+requirement.
+
+### Layer$map_statistic
+
+#### Dev Notes
+
+NOTE: there seems to be some confusion between 'map' and 'transform'.  For
+example, in `layout$map_position`, mapping seems to mean translate into the
+coordinate system things will be plotted against (e.g. for positions, a square
+with sides 0->1).  'transform' on the other hand seems to mean to apply a scale
+transformation (e.g. sqrt).
+
+On the other hand, here it seems that 'map' means: re-'map_aesthetic', and
+transform scales.
+
+#### Description
+
+Since [`Stat$compute_layer`](#stat-compute) creates new data, we need to
+re-apply some of the early computations and transformations on the aesthetics.
+`$map_statistic` effectively applies the following to our stat-recomputed data:
+
+* [`Layer$compute_aesthetic`](#layer-compute-aesthetic) (kind of).
+* [`Scales$transform_df`](#scales-transform-df).
+
+`$map_statistic` does not actually call `$compute_aesthetic`, but it does most
+of what `$compute_aesthetic` does.  There are differences, for example
+this computed aesthetics are evaluated.
+
+##
 
 For `draw_panel` sigs, we have
 
@@ -601,12 +675,25 @@ You cannot use `gList` in the key/legend.  However, `grobTree` works.
   eventually mapped to their actual display values.
 <dd>
 </dd>
+<dt><a name='computed-aesthetic'></a>Aesthetic, Computed</dt>
+<dd>
+  Aesthetic variables that are generated by [`Stat`](#ggproto-stat).  These can
+  be referenced in the aesthetic specification by using the `stat` function
+  (e.g.  `aes(y=stat(count))`).  The `count` variable does not exist in the
+  input data, but it does exist in the data produced by the
+  [`Stat`](#ggproto-stat).  
+
+  What computed variables are available will depend on the statistic.  Sometimes
+  this is documented in the [layer functions](#layer-function) that use those
+  `Stat` objects (e.g. `?stat_bin`), but not always.  If the variables are not
+  documented, you can look at the most specific
+  [`Stat$compute_*`](#stat-compute) that the [`Stat`](#ggproto-stat) defines.
+</dd>
 <dt><a name='position-aesthetic'></a>Aesthetic, Position</dt>
 <dd>
   [Aesthetic](#aesthetic) variables that correspond to position values.  `x` and
   `y` are the most common ones, but there are many others such as `xmin`, `xmax`,
   `xend`.
-
 </dd>
 <dt><a name='ggproto'></a>Ggproto</dt>
 <dd>
