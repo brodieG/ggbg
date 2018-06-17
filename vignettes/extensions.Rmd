@@ -13,12 +13,12 @@ vignette: >
 ---
 
 ```{r global_options, echo=FALSE}
-options(digits=2)
+options(digits=2, diffobj.pager="off", diffobj.format="html")
 knitr::opts_chunk$set(error=TRUE, comment=NA)
 library(ggbg)
 ```
 
-<b>This document is under development</b>.
+*DRAFT*
 
 ## Introduction
 
@@ -54,7 +54,7 @@ There are four major sections to this document:
 
 ## Overview
 
-### It's The Printing, Stupid
+### It's All in the Printing
 
 Four major steps are required to produce `ggplot`:
 
@@ -97,7 +97,6 @@ For example, if we want to define a new `Geom` "x", we create a `GeomX`
 function](#layer-function) that associates it and other `ggproto` objects and parameters with a [`Layer` `ggproto` object](#ggproto-layer).
 
 **DON'T LOVE TRANSITION FROM geom_x TO geom_point HERE**
-
 
 Once the layer function is done with the associations it returns the `Layer`
 `ggproto` object.
@@ -180,7 +179,8 @@ likely to modify them.
   aesthetics.
 * `Layout$train_position`: initialize and [train](#train-scale) position
   scales.
-* [`Layout$map_position`](#layout-map-position): map position (x/y) scales.
+* [`Layout$map_position`](#layout-map_position): [map](#map-scale) [position
+  scales](#position-scale).
 * `Layer$compute_statistic`: recompute data with statistics.
     * [`Stat$setup_params`](#setup_params-setup_data): adjust parameters.
     * [`Stat$setup_data`](#setup_params-setup_data): adjust data.
@@ -191,9 +191,9 @@ likely to modify them.
   produced by [`Stat$compute_layer`](#stat-compute).
 * `scales_add_missing`: adds default scales for the layer for the `x` and `y`
   aesthetics if they are part of the layer specification and are missing.
-* `Layer$compute_geom_1`: prepare `Geom`.
+* `Layer$compute_geom_1`: prepare `Geom` data for each layer.
     * [`Geom$setup_data`](#setup_params-setup_data): adjust data.
-    * `check_required_aesthetics`
+    * `check_required_aesthetics`.
 * `Layer$compute_position`: apply position adjustments.
     * [`Position$setup_params`](#setup_params-setup_data): adjust parameters.
     * [`Position$setup_data`](#setup_params-setup_data): adjust data.
@@ -201,18 +201,30 @@ likely to modify them.
       layer.
     * [`Position$compute_panel`](#position-compute_panel): adjust positions for
       panel.
-* `Layout$reset_scales`: remove any previous [scale
-  training](#ggproto-scale-train).
-* `Layout$train_position`: [re-train](#ggproto-scale-train) the [position
+* `Layout$reset_scales`: remove any previous [scale training](#scale-train).
+* `Layout$train_position`: [re-train](#scale-train) the [position
   scales](#ggproto-position-scale).
 * [`Layout$setup_panel_params`](#layout-setup_panel_params): compute meta-data
   for panels.
-
+* [`Layout$map_position`](#layout-map_position): re-map [position
+  scales](#ggproto-position-scale).
+* [`scales_train_df`](#train-map-scale): [train](#train-scale)
+  non-[position scales](#position-scales).
+* [`scales_map_df`](#train-map-scale): [map](#map-scale)
+  non-[position scales](#position-scales).
+* `Layer$compute_geom_2`: add defaults and aesthetic parameters.
+    * [`Geom$use_defaults`](#geom-use_defaults).
+* `Layer$finish_statistics`:
+    * `Stat$finish_layer`: typically unused, gives stat one more chance to
+      modify data after it is [mapped](#map-scale).
+* `Layout$finish_data`:
+    * `Facet$finish_data`: typically unused, gives `Facet` one last chance to
+      modify data with access to the [layout](#layout-layout) meta data and the
+      position scales.
 
 ### ggplot_gtable
 
-
-
+TBD.
 
 ## Method Details
 
@@ -309,7 +321,9 @@ parameter.
 Assigns a panel, row, column, and position scale ids to each facet.  It is
 possible to have multiple position scales in a plot when the scales are "free".
 
-This is what this data looks like for our [example plot](#example-plot):
+This data is stored in the `$layout` {#layout-layout} member of the [`Layout`
+`ggproto`](#ggproto-layout) object.  This is what it looks like for our [example
+plot](#example-plot):
 
 ```
   PANEL ROW COL pnl SCALE_X SCALE_Y
@@ -320,9 +334,6 @@ This is what this data looks like for our [example plot](#example-plot):
 Our data has two facets (panels) arranged across two columns and in one row.
 There is one `y` scale, and two `x` scales because with set "free_x" in the
 facet specification for the plot.
-
-This data then becomes the `layout` member of the [`Layout`
-`ggproto`](#ggproto-layout) object.
 
 ### Facet$map_data
 
@@ -397,10 +408,18 @@ also `xmin`, `xmax`, `xend`, `xintercept`, and several others.
 
 ### Layout$map_position
 
-For each layer, map data with position (x/y) scales.  This in theory would
-rescale the position aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.), but
-because "the coordinate system takes care of it" the only thing this does is
-handle NAs and convert integer aesthetics to numeric.
+For each layer, [map](#ggproto-scale-map) data with [position
+scales](#position-scale).
+
+For continuous variables this in theory would rescale the continuous position
+aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.) into the display range (e.g.
+0-1), but because "the coordinate system takes care of it" the only thing this
+does is handle NAs and convert integer aesthetics to numeric.
+
+Discrete variables are mapped onto integers for each value.  This only happens
+once even though the build process calls `Layout$map_position` twice.  The
+second time it will only be applied to aesthetics that have not already been
+converted (e.g those added by a `stat`).
 
 ### Stat$compute_layer/panel/group {#stat-compute}
 
@@ -626,6 +645,64 @@ List of 2
   ..$ y.arrange     : chr [1:2] "primary" "secondary"
 ```
 
+### Train/Map Scales {#train-map-scale}
+
+#### Description
+
+`scales_train_df` runs the [scale training](#train-scale) on every aesthetic
+corresponding to the provided scales (non-position scales in `ggplot_build`)
+across every layer.
+
+`scales_map_df` [maps](#map-scale)every aesthetic corresponding to the
+provided scales (non-position scales in `ggplot_build`) across every layer.
+
+#### Value
+
+`scales_train_df` only update the scale meta data.  `scales_map_df` will modify
+the data, as in our [example plot](#example-plot):
+
+```{r, echo=FALSE}
+map.scale.input <- list(structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("xbin", "ybin", "value", "x", "y", "count", "density", "fill", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), row.names = c(NA, -4L), class = "data.frame"), structure(list(x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame"))
+map.scale.output <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), class = "data.frame", row.names = c(NA, -4L)), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("fill", "x", "y", "PANEL", "group"), class = "data.frame", row.names = c(NA, -4L)))
+diffStr(map.scale.input, map.scale.output)
+```
+
+### Geom$use_defaults
+
+#### Description
+
+For each layer, add the geom default aesthetics and aesthetics specified as
+non-mapping parameters to the [layer function](#layer-function) to the data.  It
+is worth noting that any aesthetics added by this mechanism are not [mapped by
+the scales](#map-scale).
+
+#### Signature
+
+`$use_defaults([self], data, params)`
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `Geom` `ggproto`
+  object this method belongs to.
+* `data`: the layer data for.
+* `params`: the parameter list as matched to the aesthetics supported by the
+  `Geom` (i.e. `Geom$aesthetics()`).
+
+#### Value
+
+Again, with our [example plot](#example-plot), we get:
+
+```{r, echo=FALSE}
+defaults.input <- map.scale.output
+defaults.ouput <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001), colour = c(NA, NA, NA, NA), size = c(0.1, 0.1, 0.1, 0.1), linetype = c(1, 1, 1, 1), alpha = c(NA, NA, NA, NA), width = c(NA, NA, NA, NA), height = c(NA, NA, NA, NA)), row.names = c(NA, -4L), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax", "colour", "size", "linetype", "alpha", "width", "height"), class = "data.frame"), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black", "black", "black", "black"), size = c(1.5, 1.5, 1.5, 1.5), alpha = c(NA, NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA, -4L), .Names = c("fill", "x", "y", "PANEL", "group", "shape", "colour", "size", "alpha", "stroke"), class = "data.frame"))
+diffStr(defaults.input, defaults.output)
+```
+
+The second layer is the geom layer, and you can see how it gains defaults (e.g
+`colour`, `alpha`, `stroke`) as well as the `shape` aesthetic that was specified
+in the `geom_point` call of the [example plot](#example-plot).
+
+
 ### Geom$draw_panel
 
 For `draw_panel` sigs, we have
@@ -809,6 +886,9 @@ Contains all the metadata required to lay out the plot across the panels.
 
 One particular useful method is `Layout$get_scales`, which when given a panel id
 will return a list with the position scales associated with that panel.
+
+The [`Layout$layout` member](#layout-layout) is a table mapping panels to
+scales and positions in the overall plot.
 </dd>
 <dt><a name='ggproto-method'></a>Ggproto Method</dt>
 <dd>
@@ -965,7 +1045,16 @@ typically handled by `Coord$transform` **This needs to be confirmed**.
 aesthetics](#position-aesthetic).
 </dd>
 </dl>
-<dt><a name='ggproto-scale-position'></a>Scale, Train</dt>
+<dt><a name='scale-map'></a>Scale, Map</dt>
+<dd>
+Use scales to convert aesthetic values into the space they will be plotted in.
+For example, values on a color/fill scale are converted to the colors they will
+be displayed as.  Mapping for [position scales](#ggproto-scale-position) would
+in theory convert values into the 0-1 range, but that is actually handled by the
+coordinate transformation instead.
+</dd>
+</dl>
+<dt><a name='scale-train'></a>Scale, Train</dt>
 <dd>
 Process that computes the range of values covered by a scale.  For continuous
 scales this is typically just the min and max values, whereas for discrete
