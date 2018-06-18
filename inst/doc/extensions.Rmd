@@ -13,42 +13,762 @@ vignette: >
 ---
 
 ```{r global_options, echo=FALSE}
-knitr::opts_chunk$set(error=TRUE, comment=NA)
+options(digits=2, diffobj.pager="off", crayon.enabled=TRUE)
+sgr_wrap <- function(x, options){
+  browser()
+  paste0(
+    "hellohello<br />
+    <pre class=\"r-output\"><code>",
+    fansi::sgr_to_html(x = htmltools::htmlEscape(x)),
+    "</code></pre>"
+  )
+}
+knitr::opts_chunk$set(error=TRUE, comment=NA, output=sgr_wrap)
 library(ggbg)
 ```
 
-<b>This document is under development</b>.
+*DRAFT*
 
 ## Introduction
 
-I wrote this document while figuring out how to write my own custom geoms for
-`ggplot`.  The existing documentation available through `?Geom` and
-`browseVignettes('ggplot2')` was a great starting point for me, but I found
-myself wanting more context and details than it provides.
+This document is an unofficial reference for developers looking to extend
+`ggplot2`.  It supplements to existing documentation by providing more
+detail about how the extension mechanism interacts with other parts of the
+`ggplot2` plot building process.  It is based on examination of the sources of
+`ggplot2` circa 5/2018 (version 2.3 pre-release), and may become out of date as
+`ggplot2` evolves.
 
-This is unofficial documentation based on my interpretation of the sources as of
-~4/18/2018.  It may become out-of-date as `ggplot2` evolves.
+We assume the reader is familiar with using `ggplot2` for generating plots, and
+that the reader has previously reviewed:
 
-This document assumes the reader is familiar with how to use `ggplot2` for
-plotting purposes.
+* `?ggproto` for an introduction to the `ggplot2` object oriented programming
+  system.
+* `?ggplot2::ggplot2-ggproto` for the major `ggproto` objects used by `ggplot2`.
+* `vignette(package='ggplot2', 'extending-ggplot2')` for the official
+  documentation on extending `ggplot2`.
 
+There are four major sections to this document:
 
-## Ggplot Basics - an Extension Developer Perspective
+1. Overview: A high level look at the process of converting data and user
+   `ggplot2` plot specifications into a plot.
+2. Process Outline: The listing of all the key function calls used by `ggplot2`
+   to generate the plot.  This gives you a sense for where your extension fits
+   in relation to the rest of the process.  Most steps in the outline are
+   hyperlinked to the "Process Detail" section.
+3. Process Detail: More detail on the important steps in the plot generation
+   process, including descriptions of inputs, outputs, and other relevant
+   information for anyone looking to modify those steps.
+4. Definitions: Definitions of key terms.  These are hyperlinked throughout the
+   document.
 
-### It's The Printing, Stupid
+## Overview
 
-In order to create and display a `ggplot` plot we go through two major steps:
+### It's All in the Printing
 
-* Specification (`ggplot() + ...`): user specifies what the plot
+Four major steps are required to produce `ggplot`:
+
+1. Specify (`ggplot() + ...`): user specifies what the plot
    should look like with `geom_*`, `stat_*`, `scale_*`, etc..
-* Generation and rendering, typically triggered by printing a `ggplot`
-   object.
+2. Build (`ggplot_build`): `ggplot2` manipulates the data as directed by the
+   user plot specification (e.g. apply stats, position adjustments, etc).
+3. Create Grobs (`ggplot_gtable`): `ggplot2` translates the data into `grid`
+   graphical objects (grobs).
+4. Render (`grid.draw`): display the graphical objects on a graphics device.
 
-As a `ggplot` user you are mostly concerned with the specification of the plot.
-As a `ggplot` extension developer, you are also concerned with the plot
-generation step.  This is were `ggplot` does most of the work.  You can look at
-`ggplot2:::print.ggplot` to see the major steps involved, which can be
-summarized as:
+Step 1 is done directly by the user and will be familiar to all `ggplot2` users.
+Steps 2-4 are triggered by the printing of a `ggplot2` object, as shown by this
+simplified version of `print.ggplot`:
+
+```{r eval=FALSE}
+print.ggplot <- function (x, ...) {
+  data <- ggplot_build(x)
+  gtable <- ggplot_gtable(data)
+  grid.draw(gtable)
+}
+```
+
+Almost all the work `ggplot2` does is in these last three steps.  In order to
+successfully extend `ggplot2` it helps to understand what happens in them,
+particularly the `ggplot_build` and `ggplot_gtable` steps.  This documents
+focuses mostly on the `ggplot_build` step.
+
+### Extension Mechanism
+
+`ggplot2` is extended by defining [`ggproto` objects](#ggproto) that inherit
+from the existing [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom),
+[`Position`](#ggproto-geom), `Scale`, `Coord` and/or `Facet` `ggproto` objects.
+`ggproto` objects contain both data and functions (a.k.a. methods), so this
+allows users to override `ggplot2` default behavior by providing new [`ggproto`
+methods](#ggproto-method).
+
+For example, if we want to define a new `Geom` "x", we create a `GeomX`
+`ggproto` object that extends `Geom`, and we provide a [layer
+function](#layer-function) that associates it and other `ggproto` objects and parameters with a [`Layer` `ggproto` object](#ggproto-layer).
+
+**DON'T LOVE TRANSITION FROM geom_x TO geom_point HERE**
+
+Once the layer function is done with the associations it returns the `Layer`
+`ggproto` object.
+
+`ggproto` objects contain logic (i.e. functions, a.k.a. methods) in addition to
+data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
+generate the plots.  In this way the layer extension mechanism allows us to
+modify the plot generation mechanism.
+
+### Data and Processing Patterns
+
+The structure of `ggplot2` plots consists of:
+
+* a plot
+* that contains layers as specified by `geom_*` / `stat_*`
+* that contain panels as specified by `facet_*`
+* that contain groups as specified by the `group` aesthetic, or
+  implicitly by the interaction of all the discrete aesthetics in the plot
+
+Each layer has data associated to it.  It can be either layer specific data, or
+data inherited from the plot itself (i.e. the data from `ggplot(data, ...)`).
+The data is then divided across the panels and then across the groups by
+adding the `PANEL` and `group` variables to the data.
+
+Other methods present in most `Geom`, `Stat`, and `Position` that we are
+interested in include:
+
+* `compute_[layer|panel|group]()`
+* `draw_[layer|panel|group]()`
+
+Typically a `ggproto` object will have one set or the other.  For example `Geom`
+objects have `draw_*` methods, whereas `Stat` objects have `compute_*` methods.
+The method structure mirrors the data structure.  The `*_layer` methods are
+called on the layer data, and they will typically call the `*_panel` methods
+with the corresponding subset of the data, which then call the `*_group` methods
+with the corresponding sub-subset of data.
+
+The recommend approach to creating custom stats and geoms involves overriding
+the `[compute|draw]_[panel|group]` methods for the `Geom*` and `Stat*` `ggproto`
+objects.
+
+## Method Outline
+
+### ggplot_build
+
+`ggplot_build` starts with the input data and the plot specification.  It then
+proceeds through several steps that sequentially transform the data by adding
+and/or recomputing variables, or in the case of statistics recomputing the
+entire data.  In addition to transforming the data, the build process also
+updates and computes meta data for scales, facets, etc.  The work is carried out
+by the methods of `ggproto` objects provided implicitly via the plot
+specification.
+
+A simplified outline of the methods called by `ggplot_build` follows.  This is
+not comprehensive and hides some of the logic.  For example, some methods are
+called for every layer, or every panel, and that is not shown here.  This
+outline is intended to give a rough idea of what happens in what order.  It also
+acts as an index to more comprehensive documentation for the key methods.
+Almost all methods you would override when extending `ggplot2` should be listed
+here so you can search for them.  For example, if you are creating a new `Geom`,
+search for "Geom" in the index below.  For context, we include calls to methods
+for the `Layer`, `Layout`, `Facet`, and `Coord` objects even though you are less
+likely to modify them.
+
+* [`Layer$layer_data`](#layer-layer_data): assign data to layer
+* `Layout$setup`:
+    * [`Facet$setup_params`](#setup_params-setup_data): unused by common `Facet`
+      objects.
+    * [`Facet$setup_data`](#setup_params-setup_data): unused by common `Facet`
+      objects.
+    * [`Coord$setup_data`](#setup_params-setup_data): unused by common `Coord`
+      objects.
+    * [`Facet$compute_layout`](#facet-compute_layout): generate facet meta data.
+    * `Coord$setup_layout`:
+    * [`Facet$map_data`](#facet-map-data): add the `PANEL` variable that maps
+      data rows to facets.
+* [`Layer$compute_aesthetics`](#layer-compute-aesthetics): compute aesthetics,
+  add `group` variable.
+* [`Scale$transform_df`](#scale-transform-df): apply scale transformations to
+  aesthetics.
+* `Layout$train_position`: initialize and [train](#train-scale) position
+  scales.
+* [`Layout$map_position`](#layout-map_position): [map](#map-scale) [position
+  scales](#position-scale).
+* `Layer$compute_statistic`: recompute data with statistics.
+    * [`Stat$setup_params`](#setup_params-setup_data): adjust parameters.
+    * [`Stat$setup_data`](#setup_params-setup_data): adjust data.
+    * [`Stat$compute_layer`](#stat-compute): apply statistic to each layer.
+    * [`Stat$compute_panel`](#stat-compute): apply statistic to each panel.
+    * [`Stat$compute_group`](#stat-compute): apply statistic to each group.
+* `Layer$map_statistic`: re-computes and rescales aesthetics using the data
+  produced by [`Stat$compute_layer`](#stat-compute).
+* `scales_add_missing`: adds default scales for the layer for the `x` and `y`
+  aesthetics if they are part of the layer specification and are missing.
+* `Layer$compute_geom_1`: prepare `Geom` data for each layer.
+    * [`Geom$setup_data`](#setup_params-setup_data): adjust data.
+    * `check_required_aesthetics`.
+* `Layer$compute_position`: apply position adjustments.
+    * [`Position$setup_params`](#setup_params-setup_data): adjust parameters.
+    * [`Position$setup_data`](#setup_params-setup_data): adjust data.
+    * [`Position$compute_layer`](#position-compute_layer): adjust positions for
+      layer.
+    * [`Position$compute_panel`](#position-compute_panel): adjust positions for
+      panel.
+* `Layout$reset_scales`: remove any previous [scale training](#scale-train).
+* `Layout$train_position`: [re-train](#scale-train) the [position
+  scales](#ggproto-position-scale).
+* [`Layout$setup_panel_params`](#layout-setup_panel_params): compute meta-data
+  for panels.
+* [`Layout$map_position`](#layout-map_position): re-map [position
+  scales](#ggproto-position-scale).
+* [`scales_train_df`](#train-map-scale): [train](#train-scale)
+  non-[position scales](#position-scales).
+* [`scales_map_df`](#train-map-scale): [map](#map-scale)
+  non-[position scales](#position-scales).
+* `Layer$compute_geom_2`: add defaults and aesthetic parameters.
+    * [`Geom$use_defaults`](#geom-use_defaults).
+* `Layer$finish_statistics`:
+    * `Stat$finish_layer`: typically unused, gives stat one more chance to
+      modify data after it is [mapped](#map-scale).
+* `Layout$finish_data`:
+    * `Facet$finish_data`: typically unused, gives `Facet` one last chance to
+      modify data with access to the [layout](#layout-layout) meta data and the
+      position scales.
+
+### ggplot_gtable
+
+TBD.
+
+## Method Details
+
+### Example Plot
+
+We illustrate inputs and outputs to some of the methods documented in this
+section with the following plot:
+
+```{r, eval=FALSE}
+dat <- data.frame(
+  loc=(1:4)^2,
+  val=(5:8)^2,
+  grp=c('A', 'B', 'B', 'C'),
+  pnl=c('P1', 'P1', 'P2', 'P2')
+)
+library(ggplot2)
+p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
+  stat_bin2d() +
+  geom_point(position="jitter", shape=21) +
+  facet_wrap(~pnl, scales="free_x") +
+  scale_x_sqrt() +
+  scale_y_sqrt()
+```
+
+It involves a standard layer, a statistic layer, it has facets, and it scales
+the [position aesthetics](#position-aesthetic).
+
+### Layer$layer_data
+
+For each layer, this process assigns the data to be used, which is either the
+data specified in the `geom_*` / `stat_*` call if any, or if not the data
+specified in the `ggplot()` call.  Because neither layer in the plot had data
+they both acquire the plot data.
+
+### Object$setup_params And Object$setup_data {setup_param-setup_data}
+
+#### Description
+
+`ggplot2` has a complex specification system.  In most cases, the user
+input specification is relatively simple, but `ggplot2` then needs to set or
+compute default values for derived variables and parameters.  To assist with
+this most of the [`ggproto` objects](#ggproto) have `setup_params` and
+`setup_data` methods.  These are often called after some of the initial setup
+has been done (e.g. assigning layer data) so that they can use this information
+to update the data or parameters.
+
+For example, `Facet$setup_params` is called with a list containing the plot data
+and every layer data after the data is associated to each layer.  This gives the
+method the opportunity to update the parameters in the context of the entirety
+of the data.
+
+The `setup_data` methods provide an opportunity to update the data, also after
+the data has been assigned to layers, and after the parameters have been updated
+with the `setup_params` methods. An example is how some `Geoms` will add `xmin`
+and `xmax` aesthetics computed from existing `x` and `width` aesthetics with the
+`setup_data` method.
+
+#### Signature
+
+`$setup_params([self], data, params)`
+`$setup_data([self], data, params)`
+
+The `self` parameter, if present, can appear anywhere in the signature.  The
+other two parameters must be in the relative order shown above.
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `ggproto` object the
+  method belongs to.
+* `data`: the layer data.  Depending on which `ggproto` object the `setup_*`
+  method belongs to it may have undergone scale transformation and/or mapping.
+  See the [method outline](#method-outline) to get an idea of the state of the
+  data by the time it gets to the `setup_*` method in question.
+* `params`: a list of the parameters provided to the [layer
+  function](#layer-function) that match the parameters of the
+  `$[compute|draw]_panel` of `self`, and if that method has a `...` parameter,
+  then also the parameters of the `$[compute|draw]_group` method.
+
+#### Value
+
+For `$setup_params`, a list of the parameters associated with the corresponding
+[`ggproto`](#ggproto) object.
+
+For `$setup_data`, the updated data.
+
+#### See Also
+
+Some of the default methods are documented in `?'ggplot2-ggproto'`.  The
+definition of [ggproto methods](#ggproto-method) for details about the `self`
+parameter.
+
+### Facet$compute_layout
+
+Assigns a panel, row, column, and position scale ids to each facet.  It is
+possible to have multiple position scales in a plot when the scales are "free".
+
+This data is stored in the `$layout` {#layout-layout} member of the [`Layout`
+`ggproto`](#ggproto-layout) object.  This is what it looks like for our [example
+plot](#example-plot):
+
+```
+  PANEL ROW COL pnl SCALE_X SCALE_Y
+1     1   1   1  P1       1       1
+2     2   1   2  P2       2       1
+```
+
+Our data has two facets (panels) arranged across two columns and in one row.
+There is one `y` scale, and two `x` scales because with set "free_x" in the
+facet specification for the plot.
+
+### Facet$map_data
+
+Add the `PANEL` variable to the data.  Here we show the effect it has on the
+data of the first layer:
+
+```{r, echo=FALSE}
+input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor")), .Names = c("loc", "val", "grp",
+"pnl"), row.names = c(NA, -4L), class = "data.frame")
+output <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
+    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
+"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
+diffobj::diffPrint(input, output)
+```
+
+### Layer$compute_aesthetic
+
+For each layer,  evaluates all the non-computed `aes(...)` expressions and
+replace the data variables with the resulting aesthetics.  Computed aesthetics
+(i.e. those containing calls to `stat`) are calculated later  **WHEN?**.  This
+step also infers the `group` aesthetic from the interaction of categorical
+variables specified in `aes(...)`.
+
+Here we show the effect on one of the layer's data:
+
+```{r, echo=FALSE}
+input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
+    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
+    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
+    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
+    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
+"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
+output <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), row.names = c(NA, -4L), class = "data.frame")
+diffobj::diffPrint(input, output)
+```
+
+The variable have changed to be the aesthetics, and we gain the `group`
+variable.
+
+### Scale$transform_df
+
+This is applies scale transformations to each layer.  In our example, we use
+`scale_*_sqrt`.  Here is the effect on the data for one of the layers:
+
+```{r, echo=FALSE, results="asis"}
+trans.input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), row.names = c(NA, -4L), class = "data.frame")
+trans.output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
+"group"), class = "data.frame", row.names = c(NA, -4L))
+diffobj::diffPrint(trans.input, trans.output)
+```
+
+The transformation is applied to all the aesthetics that are associated with the
+scale.  For example, continuous `x` scales will transform the `x` aesthetic, but
+also `xmin`, `xmax`, `xend`, `xintercept`, and several others.
+
+### Layout$map_position
+
+For each layer, [map](#ggproto-scale-map) data with [position
+scales](#position-scale).
+
+For continuous variables this in theory would rescale the continuous position
+aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.) into the display range (e.g.
+0-1), but because "the coordinate system takes care of it" the only thing this
+does is handle NAs and convert integer aesthetics to numeric.
+
+Discrete variables are mapped onto integers for each value.  This only happens
+once even though the build process calls `Layout$map_position` twice.  The
+second time it will only be applied to aesthetics that have not already been
+converted (e.g those added by a `stat`).
+
+### Stat$compute_layer/panel/group {#stat-compute}
+
+#### Description
+
+These methods are responsible for applying a statistic to the layer data and
+returning the result as the new layer data.  Typically you would modify one of
+the layer, panel, or group methods, listed here in order of increasing
+specificity.  If possible, you should modify the most specific method (e.g. the
+group method) as that requires the least work.  If you need more control over
+the process you can override on of the more general methods.  If you do this,
+for example by overriding the panel method, you will be responsible for
+splitting the data into groups, processing the groups, and re-assembling the
+data.
+
+`$compute_layer` is called on each layer of the plot.  The default layer and
+panel method respectively run the panel and group methods over each panel and
+group.  This is why you can just override the more specific methods.
+
+#### Signature
+
+`$compute_layer([self], data, params, layout)`
+`$compute_panel([self], data, scales, ...)`
+`$compute_group([self], data, scales)`
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `Stat` `ggproto`
+  object the method belongs to.
+* `data`: the layer data for `$compute_layer`, a subset of the layer data
+  corresponding to a panel for `$compute_panel`, or a subset of the panel data
+  corresponding to a group for `$compute_group`.
+* `params`: the parameter list as matched to the `$compute_panel/group` methods
+  by the [layer function](#layer-function).
+* `layout`: the [`Layout` `ggproto`](#ggproto-layout) object for the plot,
+  provided mostly so that `$compute_layer` can extract the position scales to
+  pass on to `$compute_panel` and `$compute_group`.
+* `scales`: a list with the position scales for the panel.  This can be useful
+  if values in `params` need to be transformed by the scales (e.g. breaks that
+  correspond to `x` values).  `scales[['x']]` contains the `x` scale, and
+  `scales[['y']]` contains the `y` scale.
+
+#### Value
+
+Statistics can completely change the data.  Here is what the input to
+`Stat$compute_layer` looks like in [example plot](#example-plot):
+
+```{r echo=FALSE, results="asis"}
+trans.output
+```
+
+And if you have not modified the layer method, then the input into
+`Stat$compute_panel` will look like (for the first panel):
+
+```{r echo=FALSE}
+structure(list(x = c(1, 2), y = c(5, 6), fill = structure(1:2, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = 1:2), .Names = c("x", "y", "fill", "PANEL", "group"), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+```
+
+And if you have not modified the panel method, the input into `Stat$group_panel`
+will look like (for the first group of the first panel):
+
+```{r echo=FALSE}
+structure(list(x = 1, y = 5, fill = structure(1L, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(1L, .Label = c("1", "2"), class = "factor"), group = 1L), .Names = c("x", "y", "fill", "PANEL", "group"), vars = "PANEL", row.names = 1L, class = "data.frame")
+```
+
+In the [example plot](#example-plot) `StatBin2d` overrides the `$compute_group`
+method.  The result for the first group of the first panel is then:
+
+```{r}
+structure(list(xbin = 1L, ybin = 1L, value = 1, x = 1.01666666666667, width = 0.0333333400000002, y = 5.05, height = 0.10000002, count = 1, density = 1), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density"), row.names = 1L, class = "data.frame")
+```
+
+If you only override the `$compute_group` method, `$compute_panel` will add back
+any variables that are lost by `$compute_group`, although it does so by
+recycling the first values of those variables.  In this case `$compute_panel`
+adds back the `fill`, `PANEL`, and `group` variables that were dropped by
+`$compute_group`.
+
+The final output after `$compute_panel` and `$compute_layer` stitch back the
+groups and panels together:
+
+```{r echo=FALSE, results="asis"}
+stat.output <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B",
+"C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L)), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame")
+```
+
+In this case the number of rows in input and output happens to be the same
+because each of our groups only has one row in it, but that is not a
+requirement.
+
+Ultimately, this step should produce data that once processed by
+[`Layer$map_statistic`](#layer-map_statistic) has all the required aesthetics
+required by the [`Geom`](ggproto-geom) associated with the layer.
+
+### Layer$map_statistic
+
+#### Description
+
+Since [`Stat$compute_layer`](#stat-compute) creates new data, we need to
+re-apply some of the early computations and transformations on the aesthetics.
+`$map_statistic` effectively applies the following to our stat-recomputed data:
+
+* [`Layer$compute_aesthetic`](#layer-compute-aesthetic) (kind of).
+* [`Scales$transform_df`](#scales-transform-df).
+
+`$map_statistic` does not actually call `$compute_aesthetic`, but it does most
+of what `$compute_aesthetic` does.  There are differences, for example
+this [computed aesthetics](#comupted-aesthetic) are evaluated, whereas they are
+not by `$compute_aesthetic`.
+
+#### Signature
+
+`$map_statistic([self], data, plot)`
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `Stat` `ggproto`
+  object the method belongs to.
+* `data`: the data for a layer after the statistic has been applied.
+* `plot`: the `Plot` `ggproto` object.
+
+#### Value
+
+The data, with [computed](#computed-aesthetic) and other aesthetics specified by
+the stat [layer function](#layer-function) that were dropped by the statistic
+added back.
+
+### Position$compute_layer/panel {#position-compute}
+
+#### Description
+
+These methods adjust [position aesthetics](#position-aesthetic) in the data for
+groups of elements that are considered to overlap.  For example,
+both `position_dodge` and `position_stack` group data by `xmin` aesthetic value
+(either user provided, or derived from `x` and `width` or some such), and then
+resolve any `xmin` overlaps by allocating the available width for each distinct
+`group` within, or modifying `ymin` / `ymax` values so elements will stack.
+
+`$compute_layer` is called on each layer of the plot, and the default method
+then calls `$compute_panel` on each panel in the layer.  Unlike with the [stat
+computation](#stat-compute) methods there is not a default `$compute_group`
+method since typically the position adjustment must be made accounting for all
+the groups positions simultaneously.
+
+#### Signature
+
+`$compute_layer([self], data, params, layout)`
+`$compute_panel([self], data, params, scale)`
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `Stat` `ggproto`
+  object the method belongs to.
+* `data`: the layer data for `$compute_layer`, a subset of the layer data
+  corresponding to a panel for `$compute_panel`.
+* `params`: the parameter list as matched to the `$compute_panel/group` methods
+  by the [layer function](#layer-function).
+* `layout`: the [`Layout` `ggproto`](#ggproto-layout) object for the plot,
+  provided mostly so that `$compute_layer` can extract the position scales to
+  pass on to `$compute_panel` and `$compute_group`.
+* `scales`: a list with the position scales for the panel.  This can be useful
+  if values in `params` need to be transformed by the scales (e.g. breaks that
+  correspond to `x` values).  `scales[['x']]` contains the `x` scale, and
+  `scales[['y']]` contains the `y` scale.
+
+#### Value
+
+The data with positions adjusted.  Here is how `$compute_layer` changes the
+input data in our [example plot](#example-plot) that uses `position_jitter`:
+
+```{r, echo=FALSE, results="asis"}
+pos.input <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+pos.output <- structure(list(x = c(0.909038454852998, 2.01686128247529, 3.11151186432689, 3.61253762301058), y = c(5.05882231164724, 6.13020793590695, 7.29328686017543, 8.22853694036603), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+diffPrint(pos.input, pos.output)
+```
+
+This adjust the `x` and `y` aesthetics, though it would also adjust any other
+[position aesthetics](#position-aesthetic) if they existed in the data.
+
+If you overrode the `$compute_panel` method instead of `$compute_layer` as
+`position_jitter` does, each input and output should be the same, except subset
+by the `PANEL` variable.
+
+### Layout$setup_panel_params
+
+Generates a list that, for each panel, contains a list of the key meta data for
+the [position scales](#position-scale), including the range, labels, location of
+major and minor breaks, and axis order, amongst others.  The list is then stored
+in `Layout$panel_params`, by reference.  Here is what this list looks like in
+our [example plot](#example-plot):
+
+```
+List of 2
+ $ :List of 14
+  ..$ x.range       : num [1:2] 0.576 2.438
+  ..$ x.labels      : chr [1:5] "1" "2" "3" "4" ...
+  ..$ x.major       : num [1:5] 0.228 0.45 0.621 0.765 0.892
+  ..$ x.minor       : num [1:11] 0.0055 0.1167 0.2279 0.3391 0.4503 ...
+  ..$ x.major_source: num [1:5] 1 1.41 1.73 2 2.24
+  ..$ x.minor_source: num [1:11] 0.586 0.793 1 1.207 1.414 ...
+  ..$ x.arrange     : chr [1:2] "secondary" "primary"
+  ..$ y.range       : num [1:2] 4.81 8.41
+  ..$ y.labels      : chr [1:5] "30" "40" "50" "60" ...
+  ..$ y.major       : num [1:5] 0.185 0.42 0.627 0.815 0.987
+  ..$ y.minor       : num [1:10] 0.0675 0.185 0.3026 0.4202 0.5238 ...
+  ..$ y.major_source: num [1:5] 5.48 6.32 7.07 7.75 8.37
+  ..$ y.minor_source: num [1:10] 5.05 5.48 5.9 6.32 6.7 ...
+  ..$ y.arrange     : chr [1:2] "primary" "secondary"
+ $ :List of 14
+  ..$ x.range       : num [1:2] 2.95 4.05
+  ..$ x.labels      : chr [1:4] "10" "12" "14" "16"
+  ..$ x.major       : num [1:4] 0.193 0.467 0.72 0.955
+  ..$ x.minor       : num [1:8] 0.0558 0.193 0.3302 0.4674 0.5935 ...
+  ..$ x.major_source: num [1:4] 3.16 3.46 3.74 4
+  ..$ x.minor_source: num [1:8] 3.01 3.16 3.31 3.46 3.6 ...
+  ..$ x.arrange     : chr [1:2] "secondary" "primary"
+  ..$ y.range       : num [1:2] 4.81 8.41
+  ..$ y.labels      : chr [1:5] "30" "40" "50" "60" ...
+  ..$ y.major       : num [1:5] 0.185 0.42 0.627 0.815 0.987
+  ..$ y.minor       : num [1:10] 0.0675 0.185 0.3026 0.4202 0.5238 ...
+  ..$ y.major_source: num [1:5] 5.48 6.32 7.07 7.75 8.37
+  ..$ y.minor_source: num [1:10] 5.05 5.48 5.9 6.32 6.7 ...
+  ..$ y.arrange     : chr [1:2] "primary" "secondary"
+```
+
+### Train/Map Scales {#train-map-scale}
+
+#### Description
+
+`scales_train_df` runs the [scale training](#train-scale) on every aesthetic
+corresponding to the provided scales (non-position scales in `ggplot_build`)
+across every layer.
+
+`scales_map_df` [maps](#map-scale)every aesthetic corresponding to the
+provided scales (non-position scales in `ggplot_build`) across every layer.
+
+#### Value
+
+`scales_train_df` only update the scale meta data.  `scales_map_df` will modify
+the data, as in our [example plot](#example-plot):
+
+```{r, echo=FALSE, results="asis"}
+map.scale.input <- list(structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("xbin", "ybin", "value", "x", "y", "count", "density", "fill", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), row.names = c(NA, -4L), class = "data.frame"), structure(list(x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame"))
+map.scale.output <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), class = "data.frame", row.names = c(NA, -4L)), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("fill", "x", "y", "PANEL", "group"), class = "data.frame", row.names = c(NA, -4L)))
+diffStr(map.scale.input, map.scale.output)
+```
+
+### Geom$use_defaults
+
+#### Description
+
+For each layer, add the geom default aesthetics and aesthetics specified as
+non-mapping parameters to the [layer function](#layer-function) to the data.  It
+is worth noting that any aesthetics added by this mechanism are not [mapped by
+the scales](#map-scale).
+
+#### Signature
+
+`$use_defaults([self], data, params)`
+
+#### Parameters
+
+* `self`: optional parameter, if present will point to the `Geom` `ggproto`
+  object this method belongs to.
+* `data`: the layer data for.
+* `params`: the parameter list as matched to the aesthetics supported by the
+  `Geom` (i.e. `Geom$aesthetics()`).
+
+#### Value
+
+Again, with our [example plot](#example-plot), we get:
+
+```{r, echo=FALSE, results="asis"}
+defaults.input <- map.scale.output
+defaults.ouput <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001), colour = c(NA, NA, NA, NA), size = c(0.1, 0.1, 0.1, 0.1), linetype = c(1, 1, 1, 1), alpha = c(NA, NA, NA, NA), width = c(NA, NA, NA, NA), height = c(NA, NA, NA, NA)), row.names = c(NA, -4L), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax", "colour", "size", "linetype", "alpha", "width", "height"), class = "data.frame"), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black", "black", "black", "black"), size = c(1.5, 1.5, 1.5, 1.5), alpha = c(NA, NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA, -4L), .Names = c("fill", "x", "y", "PANEL", "group", "shape", "colour", "size", "alpha", "stroke"), class = "data.frame"))
+diffStr(defaults.input, defaults.output)
+```
+
+The second layer is the geom layer, and you can see how it gains defaults (e.g
+`colour`, `alpha`, `stroke`) as well as the `shape` aesthetic that was specified
+in the `geom_point` call of the [example plot](#example-plot).
+
+
+### Geom$draw_panel
+
+For `draw_panel` sigs, we have
+
+* `GeomPoint`: `function(data, panel_params, coord, na.rm = FALSE)`
+* `GeomRect`: `function(self, data, panel_params, coord)`
+* `Geom`: `function(self, data, panel_params, coord, ...)`
+
+From what I can infer from docs and source your function must accept at least
+three arguments.  `draw_layer` from `Geom` will call `draw_panel` with three
+unnamed parameters that in theory should match up to `data`, `panel_params`,
+`coord`.
+
+* `data`: A data.frame with all the aesthetic values as specified via `aes`.
+  The column names corresponding to the aesthetic names, not the original data
+  frame column names.  Additionally contains `PANEL`, `group` (set to -1 if
+  there are no groups), and any default aesthetics specified in
+  `Geom*$default_aes`.
+* `panel_params`: named list, the intersection of parameters provided to the
+  `geom_*` function with the formals of the `draw_panel` method, although you
+  can customize `Geom` objects to return a specific eligible parameter list.
+* `coord`: coord transformation functions?
+
+Additionally, named parameters that are the intersection of the parameters
+provided to the `geom_*` function by the user and the parameters of `draw_panel`
+are supplied.
+
+Finally, since `draw_panel` is a `ggproto` method `self` will be provided if it
+is part of the `draw_panel` signature.
+
+`setup_data` is used to convert parameters / aesthetics that are not in a format
+amenable to plotting, to one that is.  One prime example is converting `width`
+and `height` to `xmin/xmax` and `ymin/ymax` values.
+
+In "Creating a new Geom", `draw_panel` is described as having 3 parameters,
+instead of the 4 + (in particular starting with `self`) in other docs and in the
+source.  Additionally, the `panel_scales` param appears to actually be
+`panel_params`, at least in the sample fun we used (but `?Geom` also references
+`panel_scales`).
+
+
+### ggplot_gtable
+
+
+
+
+the user
+can call to provide the `GeomX` object in the plot specification step.  Then
+`ggplot_build` (step 2) and `ggplot_gtable` will use the methods in the provided
+`ggproto` object to manipulate the data and produce grobs.
+
+
+
+
+## Hooks
+
+
 
 1. Build (`ggplot_build`): analyzes and transforms data into a format suited for
    translation into graphical objects:
@@ -93,136 +813,264 @@ methods will split the data by group and forward it to the corresponding
     -1 if there aren't any groups.
 * Computed variables (`..level..`)
 
-## Position Adjustments
+## Grid Stuff
 
-Step 1.7 is carried out by modifying the coordinates in the data objects.
-Both `position_dodge` and `position_stack` group data by `xmin` coordinate value
-(either user provided, or derived from `x` and `width` or some such), and then
-resolve any `xmin` overlaps by allocating the available width for each distinct
-`group` (or should it be element?) within.
+You cannot use `gList` in the key/legend.  However, `grobTree` works.
 
-## Alternate Docs
+[1]: https://cran.r-project.org/package=ggplot2/vignettes/extending-ggplot2.html
 
-### On `gg_proto`
+## Glossary
 
-Things to know:
+<dl>
+<dt><a name='aesthetic'></a>Aesthetic</dt>
+A variable that maps to a plot property, such as `x` position, or
+`size`, or `color`.  `ggplot2` allows users to specify the mapping with the
+`mapping` argument to either the `ggplot` function or the [layer
+functions](#layer-function).
+
+After the initial specification by the user, aesthetic values are scaled, and
+eventually mapped to their actual display values.
+<dd>
+</dd>
+<dt><a name='computed-aesthetic'></a>Aesthetic, Computed</dt>
+<dd>
+Aesthetic variables that are generated by [`Stat`](#ggproto-stat).  These can
+be referenced in the aesthetic specification by using the `stat` function
+(e.g.  `aes(y=stat(count))`).  The `count` variable does not exist in the
+input data, but it does exist in the data produced by the
+[`Stat`](#ggproto-stat).
+
+What computed variables are available will depend on the statistic.  Sometimes
+this is documented in the [layer functions](#layer-function) that use those
+`Stat` objects (e.g. `?stat_bin`), but not always.  If the variables are not
+documented, you can look at the most specific
+[`Stat$compute_*`](#stat-compute) that the [`Stat`](#ggproto-stat) defines.
+</dd>
+<dt><a name='position-aesthetic'></a>Aesthetic, Position</dt>
+<dd>
+[Aesthetic](#aesthetic) variables that correspond to position values.  `x` and
+`y` are the most common ones, but there are many others such as `xmin`, `xmax`,
+`xend`.
+</dd>
+<dt><a name='ggproto'></a>Ggproto</dt>
+<dd>
+Object oriented framework used by `ggplot2`.  See `?ggplot2::ggproto` for
+details.  A few highlights:
 
 * Objects that contain member functions and data
 * The members can be accessed like list objects `object$member`
 * When member functions are invoked they are always automatically provided with
   a `self` object if `self` is part of the signature (you can probably still
   access `self` even if it isn't in the sig, need to test).
+* You cannot debug `ggproto` methods directly because they are wrapped on the
+  fly by `$.ggproto`.  To debug, first extract the method, then `debug` it, then
+  `debug` `f` inside of it...
+</dd>
+<dt><a name='ggproto-geom'></a>Ggproto Geom</dt>
+<dd>
+`Geom*` [`ggproto`](#ggproto) objects such as `GeomPoint` or `GeomRect` are
+responsible for translating your data into graphical objects.  In `ggplot`
+these graphical objects are called [grobs](#grid-graphical-object).  In order
+to create your own geoms you will need to learn how to use `grid`, or
+alternatively to re-use existing `Geom*` objects to generate grobs suited for
+your purposes.
 
-### Ggplot Basics
+You can extend `Geom` objects by overriding the
+[`Geom$setup_data`](#geom-setup-data),
+[`Geom$setup_param`](#geom-setup-param),
+[`Geom$draw_panel`](#geom-draw-panel), and/or
+[`Geom$draw_group`](#geom-draw-group) methods.  See
+`vignette(package='ggplot2', 'extending-ggplot2')` for examples.
+</dd>
+<dt><a name='ggproto-layer'></a>Ggproto Layer</dt>
+<dd>
+`ggproto` object responsible for computing and rendering plot layers.  It
+contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along with
+other data and the methods that carry out the computation and translation of
+layer data into [grobs](#grid-graphical-objects).
+</dd>
+<dt><a name='ggproto-layout'></a>Ggproto Layout</dt>
+<dd>
+Contains all the metadata required to lay out the plot across the panels.
 
-### Mapping
+One particular useful method is `Layout$get_scales`, which when given a panel id
+will return a list with the position scales associated with that panel.
 
+The [`Layout$layout` member](#layout-layout) is a table mapping panels to
+scales and positions in the overall plot.
+</dd>
+<dt><a name='ggproto-method'></a>Ggproto Method</dt>
+<dd>
+A function that is part of a [`ggproto`](#ggproto) object.  It differs from
+standard R functions because of the optional `self` parameter.  A `ggroto`
+method that has the `self` parameter will be passed the [`ggproto`](#ggproto)
+object the method belongs to as the value of that parameter when the it is
+called.  This gives the method access to the object data and other methods.
 
-### Rendering
+We illustrate the use of `self` with a simple example.  Neither method call
+provides the `self` parameter:
 
-
-
-Extending `ggplot` requires influencing how steps 1. and 2. are carried out.
-This is done by creating layer functions (e.g. `geom_*` or `stat_*`) functions that return layers containing custom `Geom*` or `Stat*` objects.
-
-
-
+```{r eval=TRUE}
+Example <- ggproto(
+  "Example", NULL,
+  method1=function(self, x) cat(sprintf("%s %s\n", x, self$secret)),
+  method2=function(x) cat(sprintf("%s %s\n", x, self$secret)),
+  secret="secret"
+)
+Example$method1("big")
+Example$method2("big")
 ```
- ## For reference, `sys.calls()` from a debugged `setup_data`:
- $ : language function (x, ...)  UseMethod("print")(x)
- $ : language print.ggplot(x)
- $ : language ggplot_build(x)
- $ : language by_layer(function(l, d) l$compute_geom_1(d))
- $ : language f(l = layers[[i]], d = data[[i]])
- $ : language l$compute_geom_1(d)
- $ : language f(..., self = self)
- $ : language self$geom$setup_data(data, c(self$geom_params, self$aes_params))
- $ : language f(...)
+
+`ggproto` methods are generated at call time by the `$` method for `ggproto`
+objects.  There are several implications to this.  One is that in order to see
+the method body you need to resort to some contortions.  Here we do it for
+`GeomPoint$setup_data`:
+
+```{r}
+GeomPoint$setup_data
+environment(GeomPoint$setup_data)$f
 ```
 
-### Geom Basics
+Additionally `debug(Object$method)` will not work because next
+time you call `Object$method` a new copy of the function is created.  To
+`debug` `ggproto` methods you need to follow these steps:
 
-To implement a geom you need:
+```{r}
+fun <- Object$method
+debug(environment(fun)$f)
+fun()
+```
 
-* A `geom_*` standard function
-* A `Geom*` object, possibly re-used from an existing geom
+Depending on circumstances it may be easier to add a `browser` call to the
+sources.
+</dd>
+<dt><a name='ggproto-position'></a>Ggproto Position</dt>
+<dd>
+`Position*` [`ggproto`](#ggproto) objects such as `PositionDodge` are
+responsible for adjusting the position aesthetics in the layer data.
+For example, `PositionDodge` shifts `x` [position
+aesthetics](#position-aesthetic) bins the data and computes `y` values a
+well as other [computed aesthetics](#computed-aesthetics) stats such as
+`count` and `ncount`.
 
-### The `Geom*` Object
+You can extend `Position` objects by overriding
+the [`Position$setup_data`](#position-setup-data),
+[`Position$setup_param`](#position-setup-param),
+[`Position$compute_panel`](#position-compute-panel),
+and/or [`Position$compute_group`](#position-compute-group) methods.  See
+the sources for `Position` objects for examples.
+</dd>
+<dt><a name='ggproto-stat'></a>Ggproto Stat</dt>
+<dd>
+`Stat*` [`ggproto`](#ggproto) objects such as `StatBin` are responsible for
+recomputing the plot data with a statistic and potentially adding new
+variables.  For example, `StatBin` bins the data and computes `y` values as
+well as other stats such as `count` and `ncount`.
 
-`Geom*` objects such as `GeomPoint` or `GeomRect` are responsible for
-translating your data into graphical objects.  In `ggplot` these graphical
-objects are called "grobs", short for Grid Graphical Objects, because they are
-encoded in a format defined by the `grid` R package.  In order to create your
-own geoms you will need to learn how to use `grid`, or alternatively to re-use
-existing `Geom*` objects to generate grobs suited for your purposes.  For
-example in this package we re-use `GeomRect` for `GeomWaterfall`.
+You can extend `Stat` objects by overriding
+the [`Stat$setup_data`](#stat-setup-data),
+[`Stat$setup_param`](#stat-setup-param),
+[`Stat$compute_panel`](#stat-compute-panel),
+and/or [`Stat$compute_group`](#stat-compute-group) methods.  See
+`vignette(package='ggplot2', 'extending-ggplot2')` for examples.
+</dd>
+<dt><a name='grid'>Grid</dt>
+<dd>
+Low level graphics package that comes packaged by default with R.  It is used
+by `ggplot` to draw the plots.  There are several useful vignettes you can
+find with `browseVignettes('grid')`.
+</dd>
+<dt><a name='grid-graphical-object'>Grid Graphical Objects</dt>
+<dd>
+A.k.a. grobs, R objects that contain description of graphical elements that
+can be used by the `grid` package to draw them on a graphical device.
+</dd>
+<dt><a name='layer-function'></a>Layer Function</dt>
+<dd>
+Functions that create [`Layer` `ggproto`](#ggproto-layer)) objects like
+`geom_point` or `stat_bin`.  For example, in (a simplified version
+of) `geom_point`:
 
-`Geom*` objects are implemented using `ggproto`, a `ggplot2` specific Object
-Oriented framework.  `ggproto` is derived from the `proto` R OOP package.
+```{r eval=FALSE}
+geom_point <- function(
+  mapping = NULL, data = NULL, stat = "identity", position = "identity"
+)
+  layer(
+    data = data, mapping = mapping, stat = stat, geom = GeomPoint,
+    position = position,
+  )
+```
 
+The layer function calls `ggplot2::layer`. This function expands shortcut names
+for [`ggproto` objects](#ggproto) into the corresponding `ggproto` objects.  In
+`geom_point(position='jitter', size=2)` it translates the `'jitter'` string into
+a `PositionJitter` `ggproto` object, and implicitly due to the default value for
+`stat` parameter it also translates the string `'identity'` into the
+`StatIdentity` `ggproto` object.
 
+These functions will allocate their parameters to
+the various subcomponents of the [`Layer` `ggproto`](#ggproto-layer)) object
+such as the [`Stat`](#ggproto-stat), [`Geom`](#ggproto-geom), or alternatively
+to the aesthetic mapping specification.
 
-## Extending Ggplot 2 vignette
+Parameter matching is typically done by looking at the parameters for the
+corresponding `ggproto` `$compute/draw_panel` methods, and if that method
+contains `...` in the signature, also by looking at the parameters of the
+`ggproto` `$compute/draw_group` methods.  For example, for `StatBin` we have:
 
-### What `ggplot2` Does
+```{r}
+args(environment(StatBin$compute_panel)$f)
+args(environment(StatBin$compute_group)$f)
+```
 
-### Creating Geoms
+Note: the `args(environment(...)$f)` business is required because [`ggproto`
+methods](ggproto-methods) are not directly accessible.
 
-The `setup_data` and `draw_panel` functions we referenced above are part of the
-`Geom*` `ggproto` objects.
+Since `StatBin$compute_panel` has a `...` parameter, layer functions with
+`StatBin` as the stat will match their parameters against the union of the
+parameter list for `$compute_panel` and `$compute_group`.  So in the call
+`stat_bin(bins=10)` the layer function `stat_bin` will match the parameter `bin`
+to the `$compute_group` parameters, and as a result store that parameter in the
+`StatBin$parameters` list.  This parameter list can then be used by other
+`StatBin` methods such as [`StatBin$compute_group`](#stat-compute).
+</dd>
+<dt><a name='ggproto-scale'></a>Scale, Ggproto</dt>
+<dd>
+Contains meta data about the scales (e.g. the range) and methods to transform
+the data.
 
-`setup_data` is used to convert parameters / aesthetics that are not in a format
-amenable to plotting, to one that is.  One prime example is converting `width`
-and `height` to `xmin/xmax` and `ymin/ymax` values.
+For example, `scale_x_sqrt` produces a `ScaleContinuous` `ggproto`
+object with a `$trans` method that will covert any `x` related aesthetics to
+their square roots.
 
+There are is also typically the `$map` to map the aesthetics into the display
+space (e.g. categories into colors), although for [position
+aesthetics](#position-aesthetic) that is
+typically handled by `Coord$transform` **This needs to be confirmed**.
+</dd>
+<dt><a name='ggproto-scale-position'></a>Scale, Position, Ggproto</dt>
+<dd>
+[Scales](#ggproto-scale) that correspond to the [position
+aesthetics](#position-aesthetic).
+</dd>
+</dl>
+<dt><a name='scale-map'></a>Scale, Map</dt>
+<dd>
+Use scales to convert aesthetic values into the space they will be plotted in.
+For example, values on a color/fill scale are converted to the colors they will
+be displayed as.  Mapping for [position scales](#ggproto-scale-position) would
+in theory convert values into the 0-1 range, but that is actually handled by the
+coordinate transformation instead.
+</dd>
+</dl>
+<dt><a name='scale-train'></a>Scale, Train</dt>
+<dd>
+Process that computes the range of values covered by a scale.  For continuous
+scales this is typically just the min and max values, whereas for discrete
+scales it is the sorted unique listing of all the different values.
 
-In "Creating a new Geom", `draw_panel` is described as having 3 parameters,
-instead of the 4 + (in particular starting with `self`) in other docs and in the
-source.  Additionally, the `panel_scales` param appears to actually be
-`panel_params`, at least in the sample fun we used (but `?Geom` also references
-`panel_scales`).
-
-For `draw_panel` sigs, we have
-
-* `GeomPoint`: `function(data, panel_params, coord, na.rm = FALSE)`
-* `GeomRect`: `function(self, data, panel_params, coord)`
-* `Geom`: `function(self, data, panel_params, coord, ...)`
-
-From what I can infer from docs and source your function must accept at least
-three arguments.  `draw_layer` from `Geom` will call `draw_panel` with three
-unnamed parameters that in theory should match up to `data`, `panel_params`,
-`coord`.
-
-* `data`: A data.frame with all the aesthetic values as specified via `aes`.
-  The column names corresponding to the aesthetic names, not the original data
-  frame column names.  Additionally contains `PANEL`, `group` (set to -1 if
-  there are no groups), and any default aesthetics specified in
-  `Geom*$default_aes`.
-* `panel_params`: named list, the intersection of parameters provided to the
-  `geom_*` function with the formals of the `draw_panel` method, although you
-  can customize `Geom` objects to return a specific eligible parameter list.
-* `coord`: coord transformation functions?
-
-Additionally, named parameters that are the intersection of the parameters
-provided to the `geom_*` function by the user and the parameters of `draw_panel`
-are supplied.
-
-Finally, since `draw_panel` is a `ggproto` method `self` will be provided if it
-is part of the `draw_panel` signature.
-
-## Deprecated Stuff
-
-### `setup_data` vs `reparametrise`
-
-It seems like both those functions can be used for the same purpose.  For
-example, in `GeomRect`, `setup_data` is explicitly used to convert width to
-`xmax/xmin`.
-
-Actually, looks like `reparameterise` doesn't exist anymore?
-
-draw_legend / draw_key
-
-## Grid Stuff
-
-You cannot use `gList` in the key/legend.  However, `grobTree` works.
-
+Typically [position scales](#ggproto-scale-position) are trained several times
+in the plot build process as they are used therein and the data is changed, e.g.
+via statistics or position adjustments.
+</dd>
+</dl>
