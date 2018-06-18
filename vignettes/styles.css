@@ -119,7 +119,7 @@ h3.subtitle {
 }
 pre, code {
   background-color: #EEE;
-  color: #333;
+  /*color: #333;*/
   white-space: pre-wrap;    /* Wrap long lines */
   /*border-radius: 3px;*/
 }

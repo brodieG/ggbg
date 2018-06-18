@@ -17,7 +17,8 @@ vignette: >
 options(
   digits=2, diffobj.pager="off", crayon.enabled=TRUE,
   # diffobj.format="ansi256", diffobj.brightness="light",
-  diffobj.format="html",diffobj.disp.width=120
+  diffobj.format="html", diffobj.disp.width=120,
+  diffobj.ignore.white.space=TRUE
 )
 sgr_wrap <- function(x, options){
   paste0(
@@ -174,7 +175,7 @@ search for "Geom" in the index below.  For context, we include calls to methods
 for the `Layer`, `Layout`, `Facet`, and `Coord` objects even though you are less
 likely to modify them.
 
-* [`Layer$layer_data`](#layer-layer_data): assign data to layer
+* [`Layer$layer_data`](#layer-layer_data): assign data to each layer.
 * `Layout$setup`:
     * [`Facet$setup_params`](#setup_params-setup_data): unused by common `Facet`
       objects.
@@ -272,7 +273,7 @@ data specified in the `geom_*` / `stat_*` call if any, or if not the data
 specified in the `ggplot()` call.  Because neither layer in the plot had data
 they both acquire the plot data.
 
-### Object$setup_params And Object$setup_data {setup_param-setup_data}
+### Object\$setup_params And Object\$setup_data {#setup_param-setup_data}
 
 #### Description
 
@@ -297,7 +298,7 @@ and `xmax` aesthetics computed from existing `x` and `width` aesthetics with the
 
 #### Signature
 
-`$setup_params([self], data, params)`
+`$setup_params([self], data, params)`<br />
 `$setup_data([self], data, params)`
 
 The `self` parameter, if present, can appear anywhere in the signature.  The
@@ -334,9 +335,9 @@ parameter.
 Assigns a panel, row, column, and position scale ids to each facet.  It is
 possible to have multiple position scales in a plot when the scales are "free".
 
-This data is stored in the `$layout` {#layout-layout} member of the [`Layout`
-`ggproto`](#ggproto-layout) object.  This is what it looks like for our [example
-plot](#example-plot):
+This data is stored in the `$layout` <a name='layout-layout'></a> member of the
+[`Layout` `ggproto`](#ggproto-layout) object.  This is what it looks like for
+our [example plot](#example-plot):
 
 ```
   PANEL ROW COL pnl SCALE_X SCALE_Y
@@ -350,8 +351,8 @@ facet specification for the plot.
 
 ### Facet$map_data
 
-Add the `PANEL` variable to the data.  Here we show the effect it has on the
-data of the first layer:
+For each layer, add the `PANEL` variable to the data.  Here we show the effect
+it has on the data of the first layer of our [example plot](#example-plot):
 
 ```{r, echo=FALSE, results="asis"}
 input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
@@ -481,7 +482,8 @@ Statistics can completely change the data.  Here is what the input to
 `Stat$compute_layer` looks like in [example plot](#example-plot):
 
 ```{r echo=FALSE}
-trans.output
+stat.input <- trans.output
+stat.input
 ```
 
 And if you have not modified the layer method, then the input into
@@ -501,7 +503,7 @@ structure(list(x = 1, y = 5, fill = structure(1L, .Label = c("A", "B", "C"), cla
 In the [example plot](#example-plot) `StatBin2d` overrides the `$compute_group`
 method.  The result for the first group of the first panel is then:
 
-```{r}
+```{r echo=FALSE}
 structure(list(xbin = 1L, ybin = 1L, value = 1, x = 1.01666666666667, width = 0.0333333400000002, y = 5.05, height = 0.10000002, count = 1, density = 1), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density"), row.names = 1L, class = "data.frame")
 ```
 
@@ -515,8 +517,16 @@ The final output after `$compute_panel` and `$compute_layer` stitch back the
 groups and panels together:
 
 ```{r echo=FALSE}
-stat.output <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B",
+stat.ouptput <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B",
 "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L)), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame")
+stat.output
+```
+
+If we compare to the input to `$compute_layer` we can see that several variables
+(the [stat aesthetics](#stat-aesthetic)) were added to the data:
+
+```{r echo=FALSE, results="asis"}
+diffobj::diffStr(stat.input, stat.output)
 ```
 
 In this case the number of rows in input and output happens to be the same
@@ -831,8 +841,33 @@ You cannot use `gList` in the key/legend.  However, `grobTree` works.
 
 <dl>
 <dt><a name='aesthetic'></a>Aesthetic</dt>
-A variable that maps to a plot property, such as `x` position, or
-`size`, or `color`.  `ggplot2` allows users to specify the mapping with the
+A variable that relates to a plot property, such as `x` position, or
+`size`, or `color`.
+
+Aesthetics come about in three ways in `ggplot2`:
+
+* <a name='mapped-aesthetic'></a>Mapped aesthetics are specified via the
+  `mapping` parameter to [layer functions](#layer-function) with a call to `aes`
+  (e.g. `geom_point(mapping=aes(x=x, ...))`.
+* <a name='stat-aesthetic'></a>Stat aesthetics are generated by some of the
+  [`Stat`](#ggproto-stat) objects in the process of transforming the layer data
+  by applying the `Stat` computations.  They end up as [additional columns]() in the
+  computed layer data, and can be referenced with the `stat` call in the mapping
+  specification (e.g. `stat_bin(aes(y=stat(ncount)))`).
+
+  resulting new layer data will have
+  new varia
+
+  , typically by applying statistics to the layer
+  data.  These aesthetics are added to the result of 
+
+  layers and can be used in a plot by including
+  a call to `stat` in the mapping call (e.g. `geom_bar(stat=bin,
+  mapping=aes(y=stat(density)))`)
+* <a name='param-aesthetic'></a>
+
+
+`ggplot2` allows users to specify the mapping with the
 `mapping` argument to either the `ggplot` function or the [layer
 functions](#layer-function).
 
