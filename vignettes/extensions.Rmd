@@ -175,7 +175,7 @@ search for "Geom" in the index below.  For context, we include calls to methods
 for the `Layer`, `Layout`, `Facet`, and `Coord` objects even though you are less
 likely to modify them.
 
-* [`Layer$layer_data`](#layer-layer_data): assign data to each layer.
+* [`Layer$layer_data`](#layerlayer_data): assign data to each layer.
 * `Layout$setup`:
     * [`Facet$setup_params`](#setup_params-setup_data): unused by common `Facet`
       objects.
@@ -183,17 +183,17 @@ likely to modify them.
       objects.
     * [`Coord$setup_data`](#setup_params-setup_data): unused by common `Coord`
       objects.
-    * [`Facet$compute_layout`](#facet-compute_layout): generate facet meta data.
+    * [`Facet$compute_layout`](#facetcompute_layout): generate facet meta data.
     * `Coord$setup_layout`:
-    * [`Facet$map_data`](#facet-map-data): add the `PANEL` variable that maps
+    * [`Facet$map_data`](#facetmap-data): add the `PANEL` variable that maps
       data rows to facets.
-* [`Layer$compute_aesthetics`](#layer-compute-aesthetics): compute aesthetics,
+* [`Layer$compute_aesthetics`](#layercompute-aesthetics): compute aesthetics,
   add `group` variable.
-* [`Scale$transform_df`](#scale-transform-df): apply scale transformations to
+* [`Scale$transform_df`](#scaletransform-df): apply scale transformations to
   aesthetics.
 * `Layout$train_position`: initialize and [train](#train-scale) position
   scales.
-* [`Layout$map_position`](#layout-map_position): [map](#map-scale) [position
+* [`Layout$map_position`](#layoutmap_position): [map](#map-scale) [position
   scales](#position-scale).
 * `Layer$compute_statistic`: recompute data with statistics.
     * [`Stat$setup_params`](#setup_params-setup_data): adjust parameters.
@@ -211,16 +211,16 @@ likely to modify them.
 * `Layer$compute_position`: apply position adjustments.
     * [`Position$setup_params`](#setup_params-setup_data): adjust parameters.
     * [`Position$setup_data`](#setup_params-setup_data): adjust data.
-    * [`Position$compute_layer`](#position-compute_layer): adjust positions for
+    * [`Position$compute_layer`](#positioncompute_layer): adjust positions for
       layer.
-    * [`Position$compute_panel`](#position-compute_panel): adjust positions for
+    * [`Position$compute_panel`](#positioncompute_panel): adjust positions for
       panel.
 * `Layout$reset_scales`: remove any previous [scale training](#scale-train).
 * `Layout$train_position`: [re-train](#scale-train) the [position
   scales](#ggproto-position-scale).
-* [`Layout$setup_panel_params`](#layout-setup_panel_params): compute meta-data
+* [`Layout$setup_panel_params`](#layoutsetup_panel_params): compute meta-data
   for panels.
-* [`Layout$map_position`](#layout-map_position): re-map [position
+* [`Layout$map_position`](#layoutmap_position): re-map [position
   scales](#ggproto-position-scale).
 * [`scales_train_df`](#train-map-scale): [train](#train-scale)
   non-[position scales](#position-scales).
@@ -233,7 +233,7 @@ likely to modify them.
       modify data after it is [mapped](#map-scale).
 * `Layout$finish_data`:
     * `Facet$finish_data`: typically unused, gives `Facet` one last chance to
-      modify data with access to the [layout](#layout-layout) meta data and the
+      modify data with access to the [layout](#layoutlayout) meta data and the
       position scales.
 
 ### ggplot_gtable
@@ -277,8 +277,8 @@ they both acquire the plot data.
 
 #### Description
 
-`ggplot2` has a complex specification system.  In most cases, the user
-input specification is relatively simple, but `ggplot2` then needs to set or
+`ggplot2` has a complex plot specification system.  In most cases, the users
+typed commands are relatively simple, but `ggplot2` then needs to set or
 compute default values for derived variables and parameters.  To assist with
 this most of the [`ggproto` objects](#ggproto) have `setup_params` and
 `setup_data` methods.  These are often called after some of the initial setup
@@ -308,10 +308,10 @@ other two parameters must be in the relative order shown above.
 
 * `self`: optional parameter, if present will point to the `ggproto` object the
   method belongs to.
-* `data`: the layer data.  Depending on which `ggproto` object the `setup_*`
+* `data`: the layer data.  Depending on which `ggproto` object the `$setup_*`
   method belongs to it may have undergone scale transformation and/or mapping.
   See the [method outline](#method-outline) to get an idea of the state of the
-  data by the time it gets to the `setup_*` method in question.
+  data by the time it gets to the `$setup_*` method in question.
 * `params`: a list of the parameters provided to the [layer
   function](#layer-function) that match the parameters of the
   `$[compute|draw]_panel` of `self`, and if that method has a `...` parameter,
@@ -328,7 +328,8 @@ For `$setup_data`, the updated data.
 
 Some of the default methods are documented in `?'ggplot2-ggproto'`.  The
 definition of [ggproto methods](#ggproto-method) for details about the `self`
-parameter.
+parameter, [layer functions](#layer-function) for details about how the `params`
+list is generated.
 
 ### Facet$compute_layout
 
@@ -369,9 +370,9 @@ output <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
 diffobj::diffPrint(input, output)
 ```
 
-### Layer$compute_aesthetic
+### Layer$compute_aesthetics
 
-For each layer,  evaluates all the non-computed `aes(...)` expressions and
+For each layer, evaluates all the non-computed `aes(...)` expressions and
 replace the data variables with the resulting aesthetics.  Computed aesthetics
 (i.e. those containing calls to `stat`) are calculated later  **WHEN?**.  This
 step also infers the `group` aesthetic from the interaction of categorical
