@@ -268,33 +268,34 @@ the [position aesthetics](#position-aesthetic).
 
 ### Layer$layer_data
 
-For each layer, this process assigns the data to be used, which is either the
-data specified in the `geom_*` / `stat_*` call if any, or if not the data
-specified in the `ggplot()` call.  Because neither layer in the plot had data
-they both acquire the plot data.
+For each layer, this method assigns the data to be used, which is either the
+data specified in the `geom_*` / `stat_*` [layer function](#layer-function) call
+if any, or if not the data specified in the `ggplot()` call.  Because neither
+layer in the [example plot](#example-plot) had data they both acquire the plot
+data.
 
-### Object\$setup_params And Object\$setup_data {#setup_param-setup_data}
+### Object\$setup_params And Object\$setup_data {#setup_params-setup_data}
 
 #### Description
 
 `ggplot2` has a complex plot specification system.  In most cases, the users
 typed commands are relatively simple, but `ggplot2` then needs to set or
 compute default values for derived variables and parameters.  To assist with
-this most of the [`ggproto` objects](#ggproto) have `setup_params` and
-`setup_data` methods.  These are often called after some of the initial setup
-has been done (e.g. assigning layer data) so that they can use this information
-to update the data or parameters.
+this most of the [`ggproto` objects](#ggproto) have `$setup_params` and
+`$setup_data` methods.  These are often called after some of the initial setup
+has been done (e.g. [assigning layer data](#layerlayer_data)) so that they can
+use this information to update the data or parameters.
 
 For example, `Facet$setup_params` is called with a list containing the plot data
-and every layer data after the data is associated to each layer.  This gives the
-method the opportunity to update the parameters in the context of the entirety
-of the data.
+and the data for every layer after the data is associated to each layer.  This
+gives the method the opportunity to update the parameters in the context of the
+entirety of the data.
 
-The `setup_data` methods provide an opportunity to update the data, also after
+The `$setup_data` methods provide an opportunity to update the data, also after
 the data has been assigned to layers, and after the parameters have been updated
-with the `setup_params` methods. An example is how some `Geoms` will add `xmin`
+with the `$setup_params` methods. An example is how some `Geoms` will add `xmin`
 and `xmax` aesthetics computed from existing `x` and `width` aesthetics with the
-`setup_data` method.
+`$setup_data` method.
 
 #### Signature
 
@@ -419,9 +420,9 @@ trans.output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = stru
 diffobj::diffPrint(trans.input, trans.output)
 ```
 
-The transformation is applied to all the aesthetics that are associated with the
-scale.  You can check which aesthetics are associated with a stat with the
-`$aesthetics` member of the stat:
+The transformation is applied by calling `Scale$transform` on all the aesthetics
+that are associated with the scale.  You can check which aesthetics are
+associated with a stat with the `$aesthetics` member of the stat:
 
 ```{r}
 scale <- scale_x_continous()
@@ -946,14 +947,14 @@ example, `PositionDodge` shifts and adjusts`x` [position aesthetics](#position-a
 See [`Position$compute_*`](#position-compute) for details and `?Position`.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='grid'>Grid</dt>
+<dt><a name='grid'></a>Grid</dt>
 <dd>
 Low level graphics package that comes packaged by default with R.  It is used
 by `ggplot` to draw the plots.  There are several useful vignettes you can
 find with `browseVignettes('grid')`.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='grid-graphical-object'>Grid Graphical Objects</dt>
+<dt><a name='grid-graphical-object'></a>Grid Graphical Objects</dt>
 <dd>
 A.k.a. grobs, R objects that contain a description of graphical elements that
 can be used by the `grid` package to draw them on a graphical device.
@@ -976,32 +977,32 @@ geom_point <- function(
 ```
 The layer function calls `ggplot2::layer`. This function expands shortcut names
 for [`ggproto` objects](#ggproto) into the corresponding `ggproto` objects.  In
-`geom_point(position='jitter', size=2)` it translates the `'jitter'` string into
-a `PositionJitter` `ggproto` object, and implicitly due to the default value for
-`stat` parameter it also translates the string `'identity'` into the
-`StatIdentity` `ggproto` object.
+`geom_point(position='jitter', size=2)` it translates the `'jitter'`
+shortcut name into a `PositionJitter` `ggproto` object, and implicitly due to
+the default value for `stat` parameter it also translates the string
+`'identity'` into the `StatIdentity` `ggproto` object.
 
 These functions will allocate their parameters to
 the various subcomponents of the [`Layer` `ggproto`](#ggproto-layer)) object
 such as the [`Stat`](#ggproto-stat), [`Geom`](#ggproto-geom), or alternatively
 to the aesthetic mapping specification.
 
-Parameter matching is typically done by looking at the parameters for the
-corresponding `ggproto` `$compute/draw_panel` methods, and if that method
-contains `...` in the signature, also by looking at the parameters of the
-`ggproto` `$compute/draw_group` methods.  For example, for `StatBin` we have:
+Parameter matching is done by looking at the parameters for the corresponding
+`ggproto` `$compute/draw_panel` methods, and if that method contains `...` in
+the signature, also by looking at the parameters of the `ggproto`
+`$compute/draw_group` methods.  For example, for `StatBin` we have:
 
 ```{r}
-args(environment(StatBin$compute_panel)$f)
-args(environment(StatBin$compute_group)$f)
+args(environment(ggplot2::StatBin$compute_panel)$f)
+args(environment(ggplot2::StatBin$compute_group)$f)
 ```
 
 Note: the `args(environment(...)$f)` business is required because [`ggproto`
 methods](ggproto-methods) are not directly accessible.
 
 Since `StatBin$compute_panel` has a `...` parameter, layer functions with
-`StatBin` as the stat will match their parameters against the union of the
-parameter list for `$compute_panel` and `$compute_group`.  So in the call
+`StatBin` will match their parameters against the union of the
+parameters for `$compute_panel` and `$compute_group`.  In the call
 `stat_bin(bins=10)` the layer function `stat_bin` will match the parameter `bin`
 to the `$compute_group` parameters, and as a result store that parameter in the
 `StatBin$parameters` list.  This parameter list can then be used by other
@@ -1010,12 +1011,13 @@ to the `$compute_group` parameters, and as a result store that parameter in the
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-scale'></a>Scale</dt>
 <dd>
-[`ggproto` object] that Contains meta data about the scales (e.g. the range) and
-methods to transform the data.
+[`ggproto` object](#ggproto) that Contains meta data about the scales (e.g. the
+range of values plotted under the scale) and [methods](#ggproto-method) to
+transform the data.
 
 For example, `scale_x_sqrt` produces a `ScaleContinuous` [`ggproto`](#ggproto)
-object with a `$trans` method that will covert any `x` related aesthetics to
-their square roots.
+object with a [`$transform` method](#scaletransform_df) that will covert any `x`
+related aesthetics to their square roots.
 
 There are is also typically a `$map` method to map the aesthetics into the
 display space (e.g. categories into colors), although for [position
@@ -1052,7 +1054,7 @@ via statistics or position adjustments.
 <dt><a name='ggproto-stat'></a>Stat</dt>
 <dd>
 `Stat*` [`ggproto`](#ggproto) objects such as `StatBin` are responsible for
-recomputing the plot data with a statistic and potentially adding new
+recomputing the layer data with a statistic and potentially adding new
 variables.  For example, `StatBin` bins the data and computes `y` values as
 well as other stats such as `count` and `ncount`.
 
