@@ -1,5 +1,5 @@
 ---
-title: "Writing Ggplot2 Extensions"
+title: "Gggplot2 Internals - An Unofficial Reference"
 author: "Brodie Gaslam"
 output:
     rmarkdown::html_vignette:
@@ -70,15 +70,16 @@ There are four major sections to this document:
 
 ### It's All in the Printing
 
-Four major steps are required to produce `ggplot`:
+Four major steps are required to produce a `ggplot`:
 
-1. Specify (`ggplot() + ...`): user specifies what the plot
-   should look like with `geom_*`, `stat_*`, `scale_*`, etc..
-2. Build (`ggplot_build`): `ggplot2` manipulates the data as directed by the
-   user plot specification (e.g. apply stats, position adjustments, etc).
-3. Create Grobs (`ggplot_gtable`): `ggplot2` translates the data into `grid`
-   graphical objects (grobs).
-4. Render (`grid.draw`): display the graphical objects on a graphics device.
+1. Specification: user specifies what the plot should look like with
+   `ggplot(...) + geom_*(...)`, etc..
+2. Build: `ggplot2` manipulates the data as directed by the user plot
+   specification (e.g. applies stats, position adjustments, scale
+   transformation, mapping to [aesthetics](#aesthetic) etc).
+3. Graphical Object Creation: `ggplot2` translates the data into [`grid`](#grid)
+   [graphical objects (grobs)](#grob).
+4. Render: display the graphical objects on a graphics device.
 
 Step 1 is done directly by the user and will be familiar to all `ggplot2` users.
 Steps 2-4 are triggered by the printing of a `ggplot2` object, as shown by this
@@ -86,71 +87,65 @@ simplified version of `print.ggplot`:
 
 ```{r eval=FALSE}
 print.ggplot <- function (x, ...) {
-  data <- ggplot_build(x)
-  gtable <- ggplot_gtable(data)
-  grid.draw(gtable)
+  data <- ggplot_build(x)        # step 2: build
+  gtable <- ggplot_gtable(data)  # step 3: create grobs
+  grid.draw(gtable)              # step 4: render
 }
 ```
-
 Almost all the work `ggplot2` does is in these last three steps.  In order to
 successfully extend `ggplot2` it helps to understand what happens in them,
 particularly the `ggplot_build` and `ggplot_gtable` steps.  This documents
-focuses mostly on the `ggplot_build` step.
+breaks down what happens in those two steps.
 
 ### Extension Mechanism
 
+Before we get into the nitty-gritty of `ggplot_build` and `ggplot_gtable`, we
+need to review the `ggplot2` extension mechanism.  This extension mechanism
+allows us to add new `geom_*`, `stat_*`, or even almost any `ggplot2`
+functionality.
+
 `ggplot2` is extended by defining [`ggproto` objects](#ggproto) that inherit
 from the existing [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom),
-[`Position`](#ggproto-geom), `Scale`, `Coord` and/or `Facet` `ggproto` objects.
-`ggproto` objects contain both data and functions (a.k.a. methods), so this
-allows users to override `ggplot2` default behavior by providing new [`ggproto`
-methods](#ggproto-method).
+[`Position`](#ggproto-geom), [`Scale`](#ggproto-scale), `Coord`, `Facet`, and
+other `ggproto` objects.  `ggproto` objects contain both data and functions
+(a.k.a.  [methods](#ggproto-method)).  This allows us to override existing
+functionality by providing `ggproto` objects with custom
+[methods](#ggproto-method).
 
-For example, if we want to define a new `Geom` "x", we create a `GeomX`
-`ggproto` object that extends `Geom`, and we provide a [layer
-function](#layer-function) that associates it and other `ggproto` objects and parameters with a [`Layer` `ggproto` object](#ggproto-layer).
+If we want to define a new `Geom` "x", we create a `GeomX` `ggproto` object that
+extends `Geom` and modifies the relevant methods.  We then provide a
+corresponding [layer function](#layer-function) that associates it with a
+[`Layer` `ggproto` object](#ggproto-layer) that can be added to the `ggplot`.
 
-**DON'T LOVE TRANSITION FROM geom_x TO geom_point HERE**
+For examples on how to do this see `vignette(package='ggplot2',
+'extending-ggplot2')`.
 
-Once the layer function is done with the associations it returns the `Layer`
-`ggproto` object.
+### Plot Structure
 
-`ggproto` objects contain logic (i.e. functions, a.k.a. methods) in addition to
-data.  `ggplot_build` and `ggplot_gtable` will use these `ggproto` methods to
-generate the plots.  In this way the layer extension mechanism allows us to
-modify the plot generation mechanism.
+A `ggplot` is a nested structure of [`ggproto`](#ggproto) and other objects.
+This is a simplified version of the structure:
 
-### Data and Processing Patterns
+```
+plot (list)
++ data (data.frame)
++ Coord (ggproto)
++ Facet (ggproto)
++ Scales (ggproto) can contain multiple Scale objects
+  + Scale (ggproto)
++ layers (list) can contain multiple Layer objects
+  + Layer (ggproto)
+    + data (data.frame)
+    + Geom (ggproto)
+    + Stat (ggproto)
+    + Position (ggproto)
+```
 
-The structure of `ggplot2` plots consists of:
-
-* a plot
-* that contains layers as specified by `geom_*` / `stat_*`
-* that contain panels as specified by `facet_*`
-* that contain groups as specified by the `group` aesthetic, or
-  implicitly by the interaction of all the discrete aesthetics in the plot
-
-Each layer has data associated to it.  It can be either layer specific data, or
-data inherited from the plot itself (i.e. the data from `ggplot(data, ...)`).
-The data is then divided across the panels and then across the groups by
-adding the `PANEL` and `group` variables to the data.
-
-Other methods present in most `Geom`, `Stat`, and `Position` that we are
-interested in include:
-
-* `compute_[layer|panel|group]()`
-* `draw_[layer|panel|group]()`
-
-Typically a `ggproto` object will have one set or the other.  For example `Geom`
-objects have `draw_*` methods, whereas `Stat` objects have `compute_*` methods.
-The method structure mirrors the data structure.  The `*_layer` methods are
-called on the layer data, and they will typically call the `*_panel` methods
-with the corresponding subset of the data, which then call the `*_group` methods
-with the corresponding sub-subset of data.
-
-The recommend approach to creating custom stats and geoms involves overriding
-the `[compute|draw]_[panel|group]` methods for the `Geom*` and `Stat*` `ggproto`
-objects.
+The portion of the structure you are most likely to interact with when extending
+`ggplot2` is the `Layer` object and its sub-objects.  Within that there is an
+additional level of implicit structure. The [`ggplot_build`](#ggplot-build)
+process adds [`PANEL`](#panel) and `group` variables to the `Layer$data`
+`data.frame`.  This creates groups of rows that each correspond to a particular
+[panel](#panel) or group within that [panel](#panel).
 
 ## Method Outline
 
@@ -161,7 +156,7 @@ proceeds through several steps that sequentially transform the data by adding
 and/or recomputing variables, or in the case of statistics recomputing the
 entire data.  In addition to transforming the data, the build process also
 updates and computes meta data for scales, facets, etc.  The work is carried out
-by the methods of `ggproto` objects provided implicitly via the plot
+by the methods of [`ggproto` objects](#ggproto) provided implicitly via the plot
 specification.
 
 A simplified outline of the methods called by `ggplot_build` follows.  This is
@@ -839,7 +834,13 @@ Position and non-position aesthetics are treated slightly differently in the
 [`ggplot_build`](#ggplot_build) process.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='ggproto-geom'></a>Geom</dt>
+<dt><a name='facet'></a>Facet</dt>
+<dd>
+<dt><a name='ggproto-facet'></a>Facet, `ggproto`</dt>
+<dd>
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-geom'></a>Geom, `ggproto`</dt>
 <dd>
 `Geom*` [`ggproto`](#ggproto) objects such as `GeomPoint` or `GeomRect` are
 responsible for translating your data into graphical objects.  In `ggplot`
@@ -919,34 +920,6 @@ Depending on circumstances it may be easier to add a `browser` call to the
 sources.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='ggproto-layer'></a>Layer</dt>
-<dd>
-[`ggproto`](#ggproto) object responsible for computing and rendering plot
-layers.  It contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along
-with other data and the methods that carry out the computation and translation
-of layer data into [grobs](#grid-graphical-objects).
-</dd>
-<!---------------------------------------------------------------------------->
-<dt><a name='ggproto-layout'></a>Layout</dt>
-<dd>
-[`ggproto`](#ggproto) object that contains all the metadata required to lay out
-the plot across the panels.
-
-One particular useful method is `Layout$get_scales`, which when given a panel id
-will return a list with the position scales associated with that panel.
-
-The [`Layout$layout` member](#layout-layout) is a table mapping panels to
-scales and positions in the overall plot.
-</dd>
-<dt><a name='ggproto-position'></a>Ggproto Position</dt>
-<dd>
-`Position*` [`ggproto`](#ggproto) objects such as `PositionDodge` are
-responsible for adjusting the position aesthetics in the layer data.  For
-example, `PositionDodge` shifts and adjusts`x` [position aesthetics](#position-aesthetic) such that objects overlapping on the `xmin` aesthetic are placed side by side.
-
-See [`Position$compute_*`](#position-compute) for details and `?Position`.
-</dd>
-<!---------------------------------------------------------------------------->
 <dt><a name='grid'></a>Grid</dt>
 <dd>
 Low level graphics package that comes packaged by default with R.  It is used
@@ -958,6 +931,45 @@ find with `browseVignettes('grid')`.
 <dd>
 A.k.a. grobs, R objects that contain a description of graphical elements that
 can be used by the `grid` package to draw them on a graphical device.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-layer'></a>Layer</dt>
+<dd>
+[`ggproto`](#ggproto) object responsible for computing and rendering plot
+layers.  It contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along
+with other data and the methods that carry out the computation and translation
+of layer data into [grobs](#grid-graphical-objects).
+
+A `ggplot` may contain multiple layers.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-layer'></a>Layer Data</dt>
+<dd>
+The data associated with a particular `Layer`.  This is a `data.frame`.  Layers
+that do not have a `data.frame` explicitly associated by the [layer
+function](#layer-function) will typically inherit the [plot data](#plot-data).
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-layout'></a>Layout, `ggproto`</dt>
+<dd>
+[`ggproto`](#ggproto) object that contains all the metadata required to lay out
+the plot across the panels.
+
+One particular useful method is `Layout$get_scales`, which when given a panel id
+will return a list with the position scales associated with that panel.
+
+The [`Layout$layout` member](#layout-layout) is a table mapping panels to
+scales and positions in the overall plot.
+</dd>
+<dt><a name='ggproto-position'></a>Position, `ggproto`</dt>
+<dd>
+`Position*` [`ggproto`](#ggproto) objects such as `PositionDodge` are
+responsible for adjusting the position aesthetics in the layer data.  For
+example, `PositionDodge` shifts and adjusts`x` [position
+aesthetics](#position-aesthetic) such that objects overlapping on the `xmin`
+aesthetic are placed side by side.
+
+See [`Position$compute_*`](#position-compute) for details and `?Position`.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='layer-function'></a>Layer Function</dt>
@@ -978,9 +990,9 @@ geom_point <- function(
 The layer function calls `ggplot2::layer`. This function expands shortcut names
 for [`ggproto` objects](#ggproto) into the corresponding `ggproto` objects.  In
 `geom_point(position='jitter', size=2)` it translates the `'jitter'`
-shortcut name into a `PositionJitter` `ggproto` object, and implicitly due to
-the default value for `stat` parameter it also translates the string
-`'identity'` into the `StatIdentity` `ggproto` object.
+shortcut name into a `PositionJitter` [`ggproto` object](#ggproto), and
+implicitly due to the default value for `stat` parameter it also translates the
+string `'identity'` into the `StatIdentity` `ggproto` object.
 
 These functions will allocate their parameters to
 the various subcomponents of the [`Layer` `ggproto`](#ggproto-layer)) object
@@ -1009,6 +1021,22 @@ to the `$compute_group` parameters, and as a result store that parameter in the
 `StatBin` methods such as [`StatBin$compute_group`](#stat-compute).
 </dd>
 <!---------------------------------------------------------------------------->
+<dt><a name='panel'></a>Panel</dt>
+<dd>
+Each plot layer is displayed across the plot [facets](#facet).  The portion of a
+layer that matches up to a facet can be thought of as the panel.  Internally,
+this corresponds to a subset of the rows of the layer data.  The `PANEL`
+variable designates what facet each row in the layer data should be displayed
+in.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='panel'></a>Plot Data</dt>
+<dd>
+The `data.frame` specified in the `ggplot(data=...)` call is the plot data.
+[Layers](#layer) that are not explicitly assigned [layer data](#layer-data)
+inherit this `data.frame` as their data.
+</dd>
+<!---------------------------------------------------------------------------->
 <dt><a name='ggproto-scale'></a>Scale</dt>
 <dd>
 [`ggproto` object](#ggproto) that Contains meta data about the scales (e.g. the
@@ -1033,7 +1061,7 @@ aesthetics](#position-aesthetic).
 <!---------------------------------------------------------------------------->
 <dt><a name='map-scale'></a>Scale, Map</dt>
 <dd>
-Use scales to convert aesthetic values into the space they will be plotted in.
+Use scales to convert aesthetic values into the domain they will be plotted in.
 For example, values on a color/fill scale are converted to the colors they will
 be displayed as.  Mapping for [position scales](#ggproto-scale-position) would
 in theory convert values into the 0-1 range, but that is actually handled by the
@@ -1054,15 +1082,10 @@ via statistics or position adjustments.
 <dt><a name='ggproto-stat'></a>Stat</dt>
 <dd>
 `Stat*` [`ggproto`](#ggproto) objects such as `StatBin` are responsible for
-recomputing the layer data with a statistic and potentially adding new
-variables.  For example, `StatBin` bins the data and computes `y` values as
-well as other stats such as `count` and `ncount`.
+[recomputing](#stat-compute) the layer data with a statistic and potentially
+adding new variables.  For example, `StatBin` bins the data and computes `y`
+values as well as other stats such as `count` and `ncount`.
 
-You can extend `Stat` objects by overriding
-the [`Stat$setup_data`](#stat-setup-data),
-[`Stat$setup_param`](#stat-setup-param),
-[`Stat$compute_panel`](#stat-compute-panel),
-and/or [`Stat$compute_group`](#stat-compute-group) methods.  See
-`vignette(package='ggplot2', 'extending-ggplot2')` for examples.
+See `vignette(package='ggplot2', 'extending-ggplot2')` for examples.
 </dd>
 </dl>
