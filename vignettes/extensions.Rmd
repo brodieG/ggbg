@@ -32,12 +32,10 @@ knitr::opts_chunk$set(error=TRUE, comment=NA)
 library(ggbg)
 ```
 
-*DRAFT*
-
 ## Introduction
 
 This document is an unofficial reference for developers looking to extend
-`ggplot2`.  It supplements to existing documentation by providing more
+`ggplot2`.  It supplements existing documentation by providing more
 detail about how the extension mechanism interacts with other parts of the
 `ggplot2` plot building process.  It is based on examination of the sources of
 `ggplot2` circa 5/2018 (version 2.3 pre-release), and may become out of date as
@@ -54,17 +52,18 @@ that the reader has previously reviewed:
 
 There are four major sections to this document:
 
-1. Overview: A high level look at the process of converting data and user
-   `ggplot2` plot specifications into a plot.
-2. Process Outline: The listing of all the key function calls used by `ggplot2`
-   to generate the plot.  This gives you a sense for where your extension fits
-   in relation to the rest of the process.  Most steps in the outline are
-   hyperlinked to the "Process Detail" section.
-3. Process Detail: More detail on the important steps in the plot generation
-   process, including descriptions of inputs, outputs, and other relevant
-   information for anyone looking to modify those steps.
-4. Definitions: Definitions of key terms.  These are hyperlinked throughout the
-   document.
+1. [Overview](#overview): A high level look at the process of converting data
+   and user `ggplot2` plot specifications into a plot.  This section provides
+   context for the reference sections that follow.
+2. [Method Outline](#method-outline): The listing of all the key function calls
+   used by `ggplot2` to generate the plot.  This gives you a sense for where
+   your extension fits in relation to the rest of the process.  Most steps in
+   the outline are hyperlinked to the "Process Detail" section.
+3. [Method Detail](#method-detail): More detail on the important steps in the
+   plot generation process, including descriptions of inputs, outputs, and other
+   relevant information for anyone looking to modify those steps.
+4. [Definitions](#definitions): Definitions of key terms.  These are hyperlinked
+   throughout the document.
 
 ## Overview
 
@@ -100,16 +99,13 @@ breaks down what happens in those two steps.
 ### Extension Mechanism
 
 Before we get into the nitty-gritty of `ggplot_build` and `ggplot_gtable`, we
-need to review the `ggplot2` extension mechanism.  This extension mechanism
-allows us to add new `geom_*`, `stat_*`, or even almost any `ggplot2`
-functionality.
-
-`ggplot2` is extended by defining [`ggproto` objects](#ggproto) that inherit
-from the existing [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom),
-[`Position`](#ggproto-geom), [`Scale`](#ggproto-scale), `Coord`, `Facet`, and
-other `ggproto` objects.  `ggproto` objects contain both data and functions
-(a.k.a.  [methods](#ggproto-method)).  This allows us to override existing
-functionality by providing `ggproto` objects with custom
+need to review the `ggplot2` extension mechanism.  `ggplot2` is extended by
+defining [`ggproto` objects](#ggproto) that inherit from the existing
+[`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom), [`Position`](#ggproto-geom),
+[`Scale`](#ggproto-scale), `Coord`, `Facet`, and other [`ggproto`
+objects](#ggproto).  [`ggproto` objects](#ggproto) contain both data and
+functions (a.k.a.  [methods](#ggproto-method)).  This allows us to override
+existing functionality by providing `ggproto` objects with custom
 [methods](#ggproto-method).
 
 If we want to define a new `Geom` "x", we create a `GeomX` `ggproto` object that
@@ -127,7 +123,6 @@ This is a simplified version of the structure:
 
 ```
 plot (list)
-+ data (data.frame)
 + Coord (ggproto)
 + Facet (ggproto)
 + Scales (ggproto) can contain multiple Scale objects
@@ -140,12 +135,76 @@ plot (list)
     + Position (ggproto)
 ```
 
+This structure implies several things about a plot:
+
+* Can have multiple [layers](#layer).
+* Can have multiple [scales](#scale), however the set of scales is shared
+  across every [layer](#layer) since layers themselves do not have scales.
+* Has one coordinate system.
+* Has one set of facets.
+
+Implicit in this structure is that every plot [layer](#layer) maps onto the same
+space.
+
 The portion of the structure you are most likely to interact with when extending
-`ggplot2` is the `Layer` object and its sub-objects.  Within that there is an
-additional level of implicit structure. The [`ggplot_build`](#ggplot-build)
-process adds [`PANEL`](#panel) and `group` variables to the `Layer$data`
-`data.frame`.  This creates groups of rows that each correspond to a particular
-[panel](#panel) or group within that [panel](#panel).
+`ggplot2` is the `Layer` object and its sub-objects.  Within each `Layer` object
+there is an additional level of implicit structure. The
+[`ggplot_build`](#ggplot-build) process adds [`PANEL`](#panel) and `group`
+variables to the [`Layer$data`](#layer-data) `data.frame`.  This creates groups
+of rows that each correspond to a particular [panel](#panel) or group within
+that [panel](#panel).  The pseudo structure of a `Layer` is then:
+
+```
+Layer
+  + data
+  + Panel
+    + Group
+  + Geom
+  + Stat
+  + Position
+```
+
+We say "pseudo" structure because there are no actual distinct objects that
+represent panels and groups.  They are implied by the `group` and `PANEL`
+variables of the [layer data](#layer-data).
+
+As a result of this structure a lot of the processing in the `ggplot` build
+process follows this pseudo code pattern:
+
+```
+For Each Layer:
+  For Each Panel:
+    For Each Group:
+      Do Something.
+```
+
+This is reflected in the structure of the layer-related [`ggproto`
+objects](#ggproto), which will often have `$*_layer`, `$*_panel`, and/or
+`$*_group` [methods](#ggproto-method).
+
+### Example Plot
+
+Throughout the rest of this document we will use the following plot for
+illustrative purposes:
+
+```{r, eval=FALSE}
+dat <- data.frame(
+  loc=(1:4)^2,
+  val=(5:8)^2,
+  grp=c('A', 'B', 'B', 'C'),
+  pnl=c('P1', 'P1', 'P2', 'P2')
+)
+library(ggplot2)
+p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
+  stat_bin2d() +
+  geom_point(position="jitter", shape=21) +
+  facet_wrap(~pnl, scales="free_x") +
+  scale_x_sqrt() +
+  scale_y_sqrt()
+```
+
+It involves a standard layer, a statistic layer, it has facets, and it scales
+the [position aesthetics](#position-aesthetic).
 
 ## Method Outline
 
@@ -236,30 +295,6 @@ likely to modify them.
 TBD.
 
 ## Method Details
-
-### Example Plot
-
-We illustrate inputs and outputs to some of the methods documented in this
-section with the following plot:
-
-```{r, eval=FALSE}
-dat <- data.frame(
-  loc=(1:4)^2,
-  val=(5:8)^2,
-  grp=c('A', 'B', 'B', 'C'),
-  pnl=c('P1', 'P1', 'P2', 'P2')
-)
-library(ggplot2)
-p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
-  stat_bin2d() +
-  geom_point(position="jitter", shape=21) +
-  facet_wrap(~pnl, scales="free_x") +
-  scale_x_sqrt() +
-  scale_y_sqrt()
-```
-
-It involves a standard layer, a statistic layer, it has facets, and it scales
-the [position aesthetics](#position-aesthetic).
 
 ### Layer$layer_data
 
@@ -789,7 +824,7 @@ can call to provide the `GeomX` object in the plot specification step.  Then
 
 
 
-## Glossary
+## Definitions
 
 These definitions are unofficial.  Some of them were made up by yours truly to
 make it easier to reference recurrent concepts that lack formal definitions.
@@ -798,10 +833,14 @@ make it easier to reference recurrent concepts that lack formal definitions.
 <!---------------------------------------------------------------------------->
 <dt><a name='aesthetic'></a>Aesthetic</dt>
 <dd>
-A variable that relates to a plot property, such as `x` position, or `size`, or
-`color`.
+Strictly speaking in the context of `ggplot2` an aesthetic is a graphical
+property of a plot, such as position, color, size, and line type.  Most of the
+time when we say "aesthetic" we mean "aesthetic variable".  These are variables
+that contain data that is to be represented as an aesthetic on the plot.  For
+example the `x` aesthetic variable will contain values that ultimately are
+intended to represent a position along the `x` axis in a plot.
 
-Aesthetics come about in three ways in `ggplot2`:
+Aesthetic variables come about in three ways in `ggplot2`:
 
 * <a name='mapped-aesthetic'></a>Mapped aesthetics are specified with
   `aes(...)` via the `mapping` parameter to `ggplot()` or [layer
@@ -831,23 +870,48 @@ Aesthetics come about in three ways in `ggplot2`:
 `xend`, and the corresponding `y` versions of those.
 
 Position and non-position aesthetics are treated slightly differently in the
-[`ggplot_build`](#ggplot_build) process.
+[`ggplot_build`](#ggplot_build) process.  This is primarily because position
+aesthetics are subject to coordinate transformations, whereas non-position
+aesthetics are not.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggprot-coord'></a>Coord, `ggproto`</dt>
+<dd>
+[`ggproto`](#ggproto) object responsible for:
+
+* Coordinate transformations of the [position aesthetics](#position-aesthetic).
+* [Rendering](#render) of the plot/panel [grob](#grob) meta-elements such as
+  gridlines, panel-outline, panel-background, etc.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='facet'></a>Facet</dt>
+Facets are sub-viewports in which a subset of the data is displayed.  Each plot
+has a set of facets, or by default a single facet that corresponds to the main
+viewport.  Each plot [layer](#layer) is displayed across all plot facets,
+although some layers may not have data to show in every facet.
+
+The area of a facet that is wholly bounded by the axes (i.e. excluding axis
+labels, etc.) is the [panel](#panel).
 <dd>
+<!---------------------------------------------------------------------------->
 <dt><a name='ggproto-facet'></a>Facet, `ggproto`</dt>
 <dd>
+[`ggproto`](#ggproto) object that:
+
+* Computes [facet](#facet) layout.
+* Assigns data to [panels](#panel).
+* [Renders](#render) the facets by combining the panels with axes, labels, facet
+  labels, etc., into a [`gtable`](#gtable).
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-geom'></a>Geom, `ggproto`</dt>
 <dd>
 `Geom*` [`ggproto`](#ggproto) objects such as `GeomPoint` or `GeomRect` are
-responsible for translating your data into graphical objects.  In `ggplot`
-these graphical objects are called [grobs](#grid-graphical-object).  In order
-to create your own geoms you will need to learn how to use `grid`, or
-alternatively to re-use existing `Geom*` objects to generate grobs suited for
-your purposes.
+responsible for translating the [layer data](#layer-data) into graphical
+objects.  In `ggplot` these graphical objects are called
+[grobs](#grob).  In order to create your own geoms you will
+need to learn how to use `grid`, or alternatively to re-use existing `Geom*`
+objects to generate grobs suited for your purposes.
 
 See `vignette(package='ggplot2', 'extending-ggplot2')` for examples of how to
 extend `Geom` objects.
@@ -927,20 +991,38 @@ by `ggplot` to draw the plots.  There are several useful vignettes you can
 find with `browseVignettes('grid')`.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='grid-graphical-object'></a>Grid Graphical Objects</dt>
+<dt><a name='grob'></a>Grid Graphical Objects</dt>
 <dd>
 A.k.a. grobs, R objects that contain a description of graphical elements that
 can be used by the `grid` package to draw them on a graphical device.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='ggproto-layer'></a>Layer</dt>
+<dt><a name='gtable'></a>Gtable</dt>
 <dd>
-[`ggproto`](#ggproto) object responsible for computing and rendering plot
-layers.  It contains `Geom`, `Stat`, and `Position` `ggproto` sub-objects, along
-with other data and the methods that carry out the computation and translation
-of layer data into [grobs](#grid-graphical-objects).
+An object containing a collection of [grobs](#grob) intended to
+be displayed in a table-like layout.  `gtable` objects are used by `ggplot2` to
+simplify the manipulation of the layout of plots.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='layer'></a>Layer</dt>
+<dd>
+`ggplot2` plots are rendered in layers, one on top of each other.  This makes it
+possible to have multiple super-imposed graphical representations of data.  For
+example, we can overlay a representation of a model fit on top of a scatter-plot
+of the data the model was trained on.
 
 A `ggplot` may contain multiple layers.
+
+Internally, layers and the logic required to compute and render them are built
+into the [`Layer` `ggproto`](#ggproto-layer) object.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-layer'></a>Layer, `ggproto`</dt>
+<dd>
+[`ggproto`](#ggproto) object responsible for computing and rendering plot
+[layers](#layer).  It contains `Geom`, `Stat`, and `Position` `ggproto`
+sub-objects, along with other data and the methods that carry out the
+computation and translation of layer data into [grobs](#grob).
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-layer'></a>Layer Data</dt>
@@ -953,23 +1035,17 @@ function](#layer-function) will typically inherit the [plot data](#plot-data).
 <dt><a name='ggproto-layout'></a>Layout, `ggproto`</dt>
 <dd>
 [`ggproto`](#ggproto) object that contains all the metadata required to lay out
-the plot across the panels.
+the plot across the [facets](#facet), and the methods to render the facet,
+panel, and layer [grobs](#grob) together into a [gtable](#gtable).
 
-One particular useful method is `Layout$get_scales`, which when given a panel id
-will return a list with the position scales associated with that panel.
+Some useful methods/members:
 
-The [`Layout$layout` member](#layout-layout) is a table mapping panels to
-scales and positions in the overall plot.
-</dd>
-<dt><a name='ggproto-position'></a>Position, `ggproto`</dt>
-<dd>
-`Position*` [`ggproto`](#ggproto) objects such as `PositionDodge` are
-responsible for adjusting the position aesthetics in the layer data.  For
-example, `PositionDodge` shifts and adjusts`x` [position
-aesthetics](#position-aesthetic) such that objects overlapping on the `xmin`
-aesthetic are placed side by side.
-
-See [`Position$compute_*`](#position-compute) for details and `?Position`.
+* `Layout$get_scales`: a method which when given a panel id will return a list
+  with the position scales associated with that panel.
+* [`Layout$layout` member](#layout-layout): a `data.frame` mapping panels to
+  scales and positions in the overall plot.
+* `Layout$render`: creates a [`gtable`](#gtable) by combining the layer, facet,
+  and coordinate [grobs](#grob).
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='layer-function'></a>Layer Function</dt>
@@ -1023,11 +1099,13 @@ to the `$compute_group` parameters, and as a result store that parameter in the
 <!---------------------------------------------------------------------------->
 <dt><a name='panel'></a>Panel</dt>
 <dd>
-Each plot layer is displayed across the plot [facets](#facet).  The portion of a
-layer that matches up to a facet can be thought of as the panel.  Internally,
-this corresponds to a subset of the rows of the layer data.  The `PANEL`
-variable designates what facet each row in the layer data should be displayed
-in.
+Each plot layer is displayed across the plot [facets](#facet).  The part
+of the facet that displays the layer data is the panel.  If a facet is a window,
+then the panel is the glass pane.
+
+Internally, each panel corresponds to a subset of the rows of the layer data.
+The `PANEL` variable in the [layer data](#layer-data) designates what
+panel/[facet](#facet) each row in the layer data should be displayed in.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='panel'></a>Plot Data</dt>
@@ -1035,6 +1113,25 @@ in.
 The `data.frame` specified in the `ggplot(data=...)` call is the plot data.
 [Layers](#layer) that are not explicitly assigned [layer data](#layer-data)
 inherit this `data.frame` as their data.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-position'></a>Position, `ggproto`</dt>
+<dd>
+`Position*` [`ggproto`](#ggproto) objects such as `PositionDodge` are
+responsible for adjusting the position aesthetics in the layer data.  For
+example, `PositionDodge` shifts and adjusts`x` [position
+aesthetics](#position-aesthetic) such that objects overlapping on the `xmin`
+aesthetic are placed side by side.
+
+See [`Position$compute_*`](#position-compute) for details and `?Position`.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-position'></a>Render</dt>
+<dd>
+In `ggplot2`, the terms "draw" and "render" are used to denote the process of
+creating [grobs](#grob) or [`gtable` objects](#gtable). This is different to the
+more traditional definition of converting the graphical object models (e.g. the
+[grobs](#grob)/[gtable](#gtable)) into a 2D image.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-scale'></a>Scale</dt>

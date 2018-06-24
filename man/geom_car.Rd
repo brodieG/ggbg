@@ -44,24 +44,6 @@ display.}
 A geom that displays cars.  This geom was implemented on a lark as an answer
 to a \href{https://stackoverflow.com/questions/22159087/is-it-possible-to-draw-diagrams-in-r/22207979#22207979}{question on SO}.
 }
-\section{Aesthetics}{
-
-\code{geom_car} understands the following aesthetics (required aesthetics are in bold):
-\itemize{
-\item \strong{\code{x}}
-\item \strong{\code{y}}
-\item \strong{\code{length}}
-\item \strong{\code{width}}
-\item \code{alpha}
-\item \code{colour}
-\item \code{fill}
-\item \code{group}
-\item \code{linetype}
-\item \code{size}
-}
-Learn more about setting these aesthetics in \code{vignette("ggplot2-specs")}
-}
-
 \examples{
 library(ggplot2)
 ggplot(

@@ -13,7 +13,7 @@
 <meta name="author" content="Brodie Gaslam" />
 
 
-<title>Writing Ggplot2 Extensions</title>
+<title>Gggplot2 Internals - An Unofficial Reference</title>
 
 
 
@@ -86,6 +86,166 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
+<style type="text/css">
+
+DIV.diffobj_container PRE {
+white-space: pre-wrap;
+margin: 0;
+}
+DIV.diffobj_container DIV.row {
+width: 100%;
+font-family: monospace;
+display: table;
+table-layout: fixed;
+}
+DIV.diffobj_container DIV.line {
+width: auto;
+display: table-cell;
+overflow: hidden;
+}
+DIV.diffobj_container DIV.line>DIV {
+width: 100%;
+display: table;
+table-layout: auto;
+}
+DIV.diffobj_container DIV.line.banner>DIV {
+display: table;
+table-layout: auto; 
+}
+DIV.diffobj_container DIV.text {
+display: table-cell;
+width: 100%;
+}
+DIV.diffobj_container DIV.gutter {
+display: table-cell;
+padding: 0 0.2em;
+}
+DIV.diffobj_container DIV.gutter DIV {
+display: table-cell;
+}
+#diffobj_content_meta DIV.diffobj_container DIV.row {
+width: auto;
+}
+#diffobj_banner_meta DIV.diffobj_container DIV.line.banner>DIV {
+table-layout: auto;
+}
+#diffobj_outer {
+overflow: hidden;
+}
+ DIV.diffobj_container DIV.summary DIV.map {
+word-wrap: break-word;
+padding-left: 1em;
+}
+DIV.diffobj_container DIV.summary DIV.detail {
+padding-left: 1em;
+}
+
+DIV.diffobj_container DIV.line.banner {
+font-size: 1.2em;
+font-weight: bold;
+overflow: hidden;
+}
+
+DIV.diffobj_container DIV.line.banner DIV.text DIV{
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+width: 100%; 
+}
+DIV.diffobj_container DIV.gutter,
+DIV.diffobj_container DIV.guide,
+DIV.diffobj_container DIV.fill,
+DIV.diffobj_container DIV.context_sep,
+DIV.diffobj_container SPAN.trim {
+color: #999;
+}
+DIV.diffobj_container DIV.header {
+font-size: 1.1em;
+}
+DIV.diffobj_container DIV.text>DIV.match,
+DIV.diffobj_container DIV.text>DIV.guide {
+background-color: #ffffff;
+}
+DIV.diffobj_container DIV.text>DIV.fill {
+background-color: transparent;
+}
+DIV.diffobj_container DIV.text>DIV {
+padding-right: 3px;
+}
+DIV.diffobj_container DIV.text>DIV {
+border-left: 1px solid #888888;
+}
+DIV.diffobj_container DIV.line {
+background-color: #eeeeee;
+}
+DIV.diffobj_container DIV.text>DIV,
+DIV.diffobj_container DIV.header {
+padding-left: 0.5em;
+}
+DIV.diffobj_container DIV.line>DIV.match,
+DIV.diffobj_container DIV.line>DIV.fill,
+DIV.diffobj_container DIV.line>DIV.guide {
+border-left: 1px solid #888888;
+}
+
+DIV.diffobj_container.light.rgb SPAN.word.insert,
+DIV.diffobj_container.light.rgb DIV.line>DIV.insert {
+background-color: #a6f3a6;
+}
+DIV.diffobj_container.light.rgb SPAN.word.delete,
+DIV.diffobj_container.light.rgb DIV.line>DIV.delete {
+background-color: #f8c2c2;
+}
+DIV.diffobj_container.light.rgb DIV.text>DIV.insert {
+background-color: #efffef;
+}
+DIV.diffobj_container.light.rgb DIV.text>DIV.insert,
+DIV.diffobj_container.light.rgb DIV.line>DIV.insert {
+border-left: 1px solid #33bb33;
+}
+DIV.diffobj_container.light.rgb DIV.text>DIV.delete {
+background-color: #ffefef;
+}
+DIV.diffobj_container.light.rgb DIV.text>DIV.delete,
+DIV.diffobj_container.light.rgb DIV.line>DIV.delete {
+border-left: 1px solid #cc6666;
+}
+DIV.diffobj_container.light.rgb DIV.header {
+background-color: #e0e6fa;
+border-left: 1px solid #9894b6;
+}
+
+DIV.diffobj_container.light.yb SPAN.word.insert,
+DIV.diffobj_container.light.yb DIV.line>DIV.insert {
+background-color: #c0cfff;
+}
+DIV.diffobj_container.light.yb SPAN.word.delete,
+DIV.diffobj_container.light.yb DIV.line>DIV.delete {
+background-color: #e7e780;
+}
+DIV.diffobj_container.light.yb DIV.text>DIV.insert {
+background-color: #efefff;
+}
+DIV.diffobj_container.light.yb DIV.text>DIV.insert,
+DIV.diffobj_container.light.yb DIV.line>DIV.insert {
+border-left: 1px solid #3333bb;
+}
+DIV.diffobj_container.light.yb DIV.text>DIV.delete {
+background-color: #fefee5;
+}
+DIV.diffobj_container.light.yb DIV.text>DIV.delete,
+DIV.diffobj_container.light.yb DIV.line>DIV.delete {
+border-left: 1px solid #aaaa55;
+}
+DIV.diffobj_container.light.yb DIV.header {
+background-color: #afafaf;
+border-left: 1px solid #e3e3e3;
+color: #e9e9e9;
+}
+DIV.diffobj_container.light.yb DIV.line {
+background-color: #eeeeee;
+}
+</style>
 <style type="text/css">
 body {
 background-color: #fff;
@@ -191,7 +351,7 @@ margin-top: -23px;
 }
 pre, code {
 background-color: #EEE;
-color: #333;
+
 white-space: pre-wrap; 
 
 }
@@ -306,7 +466,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Writing Ggplot2 Extensions</h1>
+<h1 class="title toc-ignore">Gggplot2 Internals - An Unofficial Reference</h1>
 <h4 class="author"><em>Brodie Gaslam</em></h4>
 
 
@@ -316,19 +476,19 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><a href="#overview">Overview</a><ul>
 <li><a href="#its-all-in-the-printing">It’s All in the Printing</a></li>
 <li><a href="#extension-mechanism">Extension Mechanism</a></li>
-<li><a href="#data-and-processing-patterns">Data and Processing Patterns</a></li>
+<li><a href="#plot-structure">Plot Structure</a></li>
+<li><a href="#example-plot">Example Plot</a></li>
 </ul></li>
 <li><a href="#method-outline">Method Outline</a><ul>
 <li><a href="#ggplot_build">ggplot_build</a></li>
 <li><a href="#ggplot_gtable">ggplot_gtable</a></li>
 </ul></li>
 <li><a href="#method-details">Method Details</a><ul>
-<li><a href="#example-plot">Example Plot</a></li>
 <li><a href="#layerlayer_data">Layer$layer_data</a></li>
-<li><a href="#objectsetup_params-and-objectsetup_data-setup_param-setup_data">Object<span class="math inline">\(setup_params And Object\)</span>setup_data {setup_param-setup_data}</a></li>
+<li><a href="#setup_params-setup_data">Object$setup_params And Object$setup_data</a></li>
 <li><a href="#facetcompute_layout">Facet$compute_layout</a></li>
 <li><a href="#facetmap_data">Facet$map_data</a></li>
-<li><a href="#layercompute_aesthetic">Layer$compute_aesthetic</a></li>
+<li><a href="#layercompute_aesthetics">Layer$compute_aesthetics</a></li>
 <li><a href="#scaletransform_df">Scale$transform_df</a></li>
 <li><a href="#layoutmap_position">Layout$map_position</a></li>
 <li><a href="#stat-compute">Stat$compute_layer/panel/group</a></li>
@@ -340,17 +500,14 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <li><a href="#geomdraw_panel">Geom$draw_panel</a></li>
 <li><a href="#ggplot_gtable-1">ggplot_gtable</a></li>
 </ul></li>
-<li><a href="#hooks">Hooks</a></li>
-<li><a href="#understanding-the-data-object">Understanding the <code>data</code> Object</a></li>
 <li><a href="#grid-stuff">Grid Stuff</a></li>
-<li><a href="#glossary">Glossary</a></li>
+<li><a href="#definitions">Definitions</a></li>
 </ul>
 </div>
 
-<p><em>DRAFT</em></p>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>This document is an unofficial reference for developers looking to extend <code>ggplot2</code>. It supplements to existing documentation by providing more detail about how the extension mechanism interacts with other parts of the <code>ggplot2</code> plot building process. It is based on examination of the sources of <code>ggplot2</code> circa 5/2018 (version 2.3 pre-release), and may become out of date as <code>ggplot2</code> evolves.</p>
+<p>This document is an unofficial reference for developers looking to extend <code>ggplot2</code>. It supplements existing documentation by providing more detail about how the extension mechanism interacts with other parts of the <code>ggplot2</code> plot building process. It is based on examination of the sources of <code>ggplot2</code> circa 5/2018 (version 2.3 pre-release), and may become out of date as <code>ggplot2</code> evolves.</p>
 <p>We assume the reader is familiar with using <code>ggplot2</code> for generating plots, and that the reader has previously reviewed:</p>
 <ul>
 <li><code>?ggproto</code> for an introduction to the <code>ggplot2</code> object oriented programming system.</li>
@@ -359,79 +516,115 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </ul>
 <p>There are four major sections to this document:</p>
 <ol style="list-style-type: decimal">
-<li>Overview: A high level look at the process of converting data and user <code>ggplot2</code> plot specifications into a plot.</li>
-<li>Process Outline: The listing of all the key function calls used by <code>ggplot2</code> to generate the plot. This gives you a sense for where your extension fits in relation to the rest of the process. Most steps in the outline are hyperlinked to the “Process Detail” section.</li>
-<li>Process Detail: More detail on the important steps in the plot generation process, including descriptions of inputs, outputs, and other relevant information for anyone looking to modify those steps.</li>
-<li>Definitions: Definitions of key terms. These are hyperlinked throughout the document.</li>
+<li><a href="#overview">Overview</a>: A high level look at the process of converting data and user <code>ggplot2</code> plot specifications into a plot. This section provides context for the reference sections that follow.</li>
+<li><a href="#method-outline">Method Outline</a>: The listing of all the key function calls used by <code>ggplot2</code> to generate the plot. This gives you a sense for where your extension fits in relation to the rest of the process. Most steps in the outline are hyperlinked to the “Process Detail” section.</li>
+<li><a href="#method-detail">Method Detail</a>: More detail on the important steps in the plot generation process, including descriptions of inputs, outputs, and other relevant information for anyone looking to modify those steps.</li>
+<li><a href="#definitions">Definitions</a>: Definitions of key terms. These are hyperlinked throughout the document.</li>
 </ol>
 </div>
 <div id="overview" class="section level2">
 <h2>Overview</h2>
 <div id="its-all-in-the-printing" class="section level3">
 <h3>It’s All in the Printing</h3>
-<p>Four major steps are required to produce <code>ggplot</code>:</p>
+<p>Four major steps are required to produce a <code>ggplot</code>:</p>
 <ol style="list-style-type: decimal">
-<li>Specify (<code>ggplot() + ...</code>): user specifies what the plot should look like with <code>geom_*</code>, <code>stat_*</code>, <code>scale_*</code>, etc..</li>
-<li>Build (<code>ggplot_build</code>): <code>ggplot2</code> manipulates the data as directed by the user plot specification (e.g. apply stats, position adjustments, etc).</li>
-<li>Create Grobs (<code>ggplot_gtable</code>): <code>ggplot2</code> translates the data into <code>grid</code> graphical objects (grobs).</li>
-<li>Render (<code>grid.draw</code>): display the graphical objects on a graphics device.</li>
+<li>Specification: user specifies what the plot should look like with <code>ggplot(...) + geom_*(...)</code>, etc..</li>
+<li>Build: <code>ggplot2</code> manipulates the data as directed by the user plot specification (e.g. applies stats, position adjustments, scale transformation, mapping to <a href="#aesthetic">aesthetics</a> etc).</li>
+<li>Graphical Object Creation: <code>ggplot2</code> translates the data into <a href="#grid"><code>grid</code></a> <a href="#grob">graphical objects (grobs)</a>.</li>
+<li>Render: display the graphical objects on a graphics device.</li>
 </ol>
 <p>Step 1 is done directly by the user and will be familiar to all <code>ggplot2</code> users. Steps 2-4 are triggered by the printing of a <code>ggplot2</code> object, as shown by this simplified version of <code>print.ggplot</code>:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1">print.ggplot &lt;-<span class="st"> </span><span class="cf">function</span> (x, ...) {</a>
-<a class="sourceLine" id="cb1-2" data-line-number="2">  data &lt;-<span class="st"> </span><span class="kw">ggplot_build</span>(x)</a>
-<a class="sourceLine" id="cb1-3" data-line-number="3">  gtable &lt;-<span class="st"> </span><span class="kw">ggplot_gtable</span>(data)</a>
-<a class="sourceLine" id="cb1-4" data-line-number="4">  <span class="kw">grid.draw</span>(gtable)</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">  data &lt;-<span class="st"> </span><span class="kw">ggplot_build</span>(x)        <span class="co"># step 2: build</span></a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  gtable &lt;-<span class="st"> </span><span class="kw">ggplot_gtable</span>(data)  <span class="co"># step 3: create grobs</span></a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">  <span class="kw">grid.draw</span>(gtable)              <span class="co"># step 4: render</span></a>
 <a class="sourceLine" id="cb1-5" data-line-number="5">}</a></code></pre></div>
-<p>Almost all the work <code>ggplot2</code> does is in these last three steps. In order to successfully extend <code>ggplot2</code> it helps to understand what happens in them, particularly the <code>ggplot_build</code> and <code>ggplot_gtable</code> steps. This documents focuses mostly on the <code>ggplot_build</code> step.</p>
+<p>Almost all the work <code>ggplot2</code> does is in these last three steps. In order to successfully extend <code>ggplot2</code> it helps to understand what happens in them, particularly the <code>ggplot_build</code> and <code>ggplot_gtable</code> steps. This documents breaks down what happens in those two steps.</p>
 </div>
 <div id="extension-mechanism" class="section level3">
 <h3>Extension Mechanism</h3>
-<p><code>ggplot2</code> is extended by defining <a href="#ggproto"><code>ggproto</code> objects</a> that inherit from the existing <a href="#ggproto-geom"><code>Geom</code></a>, <a href="#ggproto-geom"><code>Stat</code></a>, <a href="#ggproto-geom"><code>Position</code></a>, <code>Scale</code>, <code>Coord</code> and/or <code>Facet</code> <code>ggproto</code> objects. <code>ggproto</code> objects contain both data and functions (a.k.a. methods), so this allows users to override <code>ggplot2</code> default behavior by providing new <a href="#ggproto-method"><code>ggproto</code> methods</a>.</p>
-<p>For example, if we want to define a new <code>Geom</code> “x”, we create a <code>GeomX</code> <code>ggproto</code> object that extends <code>Geom</code>, and we provide a <a href="#layer-function">layer function</a> that associates it and other <code>ggproto</code> objects and parameters with a <a href="#ggproto-layer"><code>Layer</code> <code>ggproto</code> object</a>.</p>
-<p><strong>DON’T LOVE TRANSITION FROM geom_x TO geom_point HERE</strong></p>
-<p>Once the layer function is done with the associations it returns the <code>Layer</code> <code>ggproto</code> object.</p>
-<p><code>ggproto</code> objects contain logic (i.e. functions, a.k.a. methods) in addition to data. <code>ggplot_build</code> and <code>ggplot_gtable</code> will use these <code>ggproto</code> methods to generate the plots. In this way the layer extension mechanism allows us to modify the plot generation mechanism.</p>
+<p>Before we get into the nitty-gritty of <code>ggplot_build</code> and <code>ggplot_gtable</code>, we need to review the <code>ggplot2</code> extension mechanism. <code>ggplot2</code> is extended by defining <a href="#ggproto"><code>ggproto</code> objects</a> that inherit from the existing <a href="#ggproto-geom"><code>Geom</code></a>, <a href="#ggproto-geom"><code>Stat</code></a>, <a href="#ggproto-geom"><code>Position</code></a>, <a href="#ggproto-scale"><code>Scale</code></a>, <code>Coord</code>, <code>Facet</code>, and other <a href="#ggproto"><code>ggproto</code> objects</a>. <a href="#ggproto"><code>ggproto</code> objects</a> contain both data and functions (a.k.a. <a href="#ggproto-method">methods</a>). This allows us to override existing functionality by providing <code>ggproto</code> objects with custom <a href="#ggproto-method">methods</a>.</p>
+<p>If we want to define a new <code>Geom</code> “x”, we create a <code>GeomX</code> <code>ggproto</code> object that extends <code>Geom</code> and modifies the relevant methods. We then provide a corresponding <a href="#layer-function">layer function</a> that associates it with a <a href="#ggproto-layer"><code>Layer</code> <code>ggproto</code> object</a> that can be added to the <code>ggplot</code>.</p>
+<p>For examples on how to do this see <code>vignette(package='ggplot2', 'extending-ggplot2')</code>.</p>
 </div>
-<div id="data-and-processing-patterns" class="section level3">
-<h3>Data and Processing Patterns</h3>
-<p>The structure of <code>ggplot2</code> plots consists of:</p>
+<div id="plot-structure" class="section level3">
+<h3>Plot Structure</h3>
+<p>A <code>ggplot</code> is a nested structure of <a href="#ggproto"><code>ggproto</code></a> and other objects. This is a simplified version of the structure:</p>
+<pre><code>plot (list)
++ Coord (ggproto)
++ Facet (ggproto)
++ Scales (ggproto) can contain multiple Scale objects
+  + Scale (ggproto)
++ layers (list) can contain multiple Layer objects
+  + Layer (ggproto)
+    + data (data.frame)
+    + Geom (ggproto)
+    + Stat (ggproto)
+    + Position (ggproto)</code></pre>
+<p>This structure implies several things about a plot:</p>
 <ul>
-<li>a plot</li>
-<li>that contains layers as specified by <code>geom_*</code> / <code>stat_*</code></li>
-<li>that contain panels as specified by <code>facet_*</code></li>
-<li>that contain groups as specified by the <code>group</code> aesthetic, or implicitly by the interaction of all the discrete aesthetics in the plot</li>
+<li>Can have multiple <a href="#layer">layers</a>.</li>
+<li>Can have multiple <a href="#scale">scales</a>, however the set of scales is shared across every <a href="#layer">layer</a> since layers themselves do not have scales.</li>
+<li>Has one coordinate system.</li>
+<li>Has one set of facets.</li>
 </ul>
-<p>Each layer has data associated to it. It can be either layer specific data, or data inherited from the plot itself (i.e. the data from <code>ggplot(data, ...)</code>). The data is then divided across the panels and then across the groups by adding the <code>PANEL</code> and <code>group</code> variables to the data.</p>
-<p>Other methods present in most <code>Geom</code>, <code>Stat</code>, and <code>Position</code> that we are interested in include:</p>
-<ul>
-<li><code>compute_[layer|panel|group]()</code></li>
-<li><code>draw_[layer|panel|group]()</code></li>
-</ul>
-<p>Typically a <code>ggproto</code> object will have one set or the other. For example <code>Geom</code> objects have <code>draw_*</code> methods, whereas <code>Stat</code> objects have <code>compute_*</code> methods. The method structure mirrors the data structure. The <code>*_layer</code> methods are called on the layer data, and they will typically call the <code>*_panel</code> methods with the corresponding subset of the data, which then call the <code>*_group</code> methods with the corresponding sub-subset of data.</p>
-<p>The recommend approach to creating custom stats and geoms involves overriding the <code>[compute|draw]_[panel|group]</code> methods for the <code>Geom*</code> and <code>Stat*</code> <code>ggproto</code> objects.</p>
+<p>Implicit in this structure is that every plot <a href="#layer">layer</a> maps onto the same space.</p>
+<p>The portion of the structure you are most likely to interact with when extending <code>ggplot2</code> is the <code>Layer</code> object and its sub-objects. Within each <code>Layer</code> object there is an additional level of implicit structure. The <a href="#ggplot-build"><code>ggplot_build</code></a> process adds <a href="#panel"><code>PANEL</code></a> and <code>group</code> variables to the <a href="#layer-data"><code>Layer$data</code></a> <code>data.frame</code>. This creates groups of rows that each correspond to a particular <a href="#panel">panel</a> or group within that <a href="#panel">panel</a>. The pseudo structure of a <code>Layer</code> is then:</p>
+<pre><code>Layer
+  + data
+  + Panel
+    + Group
+  + Geom
+  + Stat
+  + Position</code></pre>
+<p>We say “pseudo” structure because there are no actual distinct objects that represent panels and groups. They are implied by the <code>group</code> and <code>PANEL</code> variables of the <a href="#layer-data">layer data</a>.</p>
+<p>As a result of this structure a lot of the processing in the <code>ggplot</code> build process follows this pseudo code pattern:</p>
+<pre><code>For Each Layer:
+  For Each Panel:
+    For Each Group:
+      Do Something.</code></pre>
+<p>This is reflected in the structure of the layer-related <a href="#ggproto"><code>ggproto</code> objects</a>, which will often have <code>$*_layer</code>, <code>$*_panel</code>, and/or <code>$*_group</code> <a href="#ggproto-method">methods</a>.</p>
+</div>
+<div id="example-plot" class="section level3">
+<h3>Example Plot</h3>
+<p>Throughout the rest of this document we will use the following plot for illustrative purposes:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">dat &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">  <span class="dt">loc=</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span>)<span class="op">^</span><span class="dv">2</span>,</a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">  <span class="dt">val=</span>(<span class="dv">5</span><span class="op">:</span><span class="dv">8</span>)<span class="op">^</span><span class="dv">2</span>,</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">  <span class="dt">grp=</span><span class="kw">c</span>(<span class="st">'A'</span>, <span class="st">'B'</span>, <span class="st">'B'</span>, <span class="st">'C'</span>),</a>
+<a class="sourceLine" id="cb5-5" data-line-number="5">  <span class="dt">pnl=</span><span class="kw">c</span>(<span class="st">'P1'</span>, <span class="st">'P1'</span>, <span class="st">'P2'</span>, <span class="st">'P2'</span>)</a>
+<a class="sourceLine" id="cb5-6" data-line-number="6">)</a>
+<a class="sourceLine" id="cb5-7" data-line-number="7"><span class="kw">library</span>(ggplot2)</a>
+<a class="sourceLine" id="cb5-8" data-line-number="8">p &lt;-<span class="st"> </span><span class="kw">ggplot</span>(dat, <span class="kw">aes</span>(<span class="dt">x=</span>loc, <span class="dt">y=</span>val, <span class="dt">fill=</span>grp)) <span class="op">+</span></a>
+<a class="sourceLine" id="cb5-9" data-line-number="9"><span class="st">  </span><span class="kw">stat_bin2d</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb5-10" data-line-number="10"><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">position=</span><span class="st">&quot;jitter&quot;</span>, <span class="dt">shape=</span><span class="dv">21</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb5-11" data-line-number="11"><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="op">~</span>pnl, <span class="dt">scales=</span><span class="st">&quot;free_x&quot;</span>) <span class="op">+</span></a>
+<a class="sourceLine" id="cb5-12" data-line-number="12"><span class="st">  </span><span class="kw">scale_x_sqrt</span>() <span class="op">+</span></a>
+<a class="sourceLine" id="cb5-13" data-line-number="13"><span class="st">  </span><span class="kw">scale_y_sqrt</span>()</a></code></pre></div>
+<p>It involves a standard layer, a statistic layer, it has facets, and it scales the <a href="#position-aesthetic">position aesthetics</a>.</p>
 </div>
 </div>
 <div id="method-outline" class="section level2">
 <h2>Method Outline</h2>
 <div id="ggplot_build" class="section level3">
 <h3>ggplot_build</h3>
-<p><code>ggplot_build</code> starts with the input data and the plot specification. It then proceeds through several steps that sequentially transform the data by adding and/or recomputing variables, or in the case of statistics recomputing the entire data. In addition to transforming the data, the build process also updates and computes meta data for scales, facets, etc. The work is carried out by the methods of <code>ggproto</code> objects provided implicitly via the plot specification.</p>
+<p><code>ggplot_build</code> starts with the input data and the plot specification. It then proceeds through several steps that sequentially transform the data by adding and/or recomputing variables, or in the case of statistics recomputing the entire data. In addition to transforming the data, the build process also updates and computes meta data for scales, facets, etc. The work is carried out by the methods of <a href="#ggproto"><code>ggproto</code> objects</a> provided implicitly via the plot specification.</p>
 <p>A simplified outline of the methods called by <code>ggplot_build</code> follows. This is not comprehensive and hides some of the logic. For example, some methods are called for every layer, or every panel, and that is not shown here. This outline is intended to give a rough idea of what happens in what order. It also acts as an index to more comprehensive documentation for the key methods. Almost all methods you would override when extending <code>ggplot2</code> should be listed here so you can search for them. For example, if you are creating a new <code>Geom</code>, search for “Geom” in the index below. For context, we include calls to methods for the <code>Layer</code>, <code>Layout</code>, <code>Facet</code>, and <code>Coord</code> objects even though you are less likely to modify them.</p>
 <ul>
-<li><a href="#layer-layer_data"><code>Layer$layer_data</code></a>: assign data to layer</li>
+<li><a href="#layerlayer_data"><code>Layer$layer_data</code></a>: assign data to each layer.</li>
 <li><code>Layout$setup</code>:
 <ul>
 <li><a href="#setup_params-setup_data"><code>Facet$setup_params</code></a>: unused by common <code>Facet</code> objects.</li>
 <li><a href="#setup_params-setup_data"><code>Facet$setup_data</code></a>: unused by common <code>Facet</code> objects.</li>
 <li><a href="#setup_params-setup_data"><code>Coord$setup_data</code></a>: unused by common <code>Coord</code> objects.</li>
-<li><a href="#facet-compute_layout"><code>Facet$compute_layout</code></a>: generate facet meta data.</li>
+<li><a href="#facetcompute_layout"><code>Facet$compute_layout</code></a>: generate facet meta data.</li>
 <li><code>Coord$setup_layout</code>:</li>
-<li><a href="#facet-map-data"><code>Facet$map_data</code></a>: add the <code>PANEL</code> variable that maps data rows to facets.</li>
+<li><a href="#facetmap-data"><code>Facet$map_data</code></a>: add the <code>PANEL</code> variable that maps data rows to facets.</li>
 </ul></li>
-<li><a href="#layer-compute-aesthetics"><code>Layer$compute_aesthetics</code></a>: compute aesthetics, add <code>group</code> variable.</li>
-<li><a href="#scale-transform-df"><code>Scale$transform_df</code></a>: apply scale transformations to aesthetics.</li>
+<li><a href="#layercompute_aesthetics"><code>Layer$compute_aesthetics</code></a>: compute aesthetics, add <code>group</code> variable.</li>
+<li><a href="#scaletransform_df"><code>Scale$transform_df</code></a>: apply scale transformations to aesthetics.</li>
 <li><code>Layout$train_position</code>: initialize and <a href="#train-scale">train</a> position scales.</li>
-<li><a href="#layout-map_position"><code>Layout$map_position</code></a>: <a href="#map-scale">map</a> <a href="#position-scale">position scales</a>.</li>
+<li><a href="#layoutmap_position"><code>Layout$map_position</code></a>: <a href="#map-scale">map</a> <a href="#position-scale">position scales</a>.</li>
 <li><code>Layer$compute_statistic</code>: recompute data with statistics.
 <ul>
 <li><a href="#setup_params-setup_data"><code>Stat$setup_params</code></a>: adjust parameters.</li>
@@ -451,13 +644,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <ul>
 <li><a href="#setup_params-setup_data"><code>Position$setup_params</code></a>: adjust parameters.</li>
 <li><a href="#setup_params-setup_data"><code>Position$setup_data</code></a>: adjust data.</li>
-<li><a href="#position-compute_layer"><code>Position$compute_layer</code></a>: adjust positions for layer.</li>
-<li><a href="#position-compute_panel"><code>Position$compute_panel</code></a>: adjust positions for panel.</li>
+<li><a href="#positioncompute_layer"><code>Position$compute_layer</code></a>: adjust positions for layer.</li>
+<li><a href="#positioncompute_panel"><code>Position$compute_panel</code></a>: adjust positions for panel.</li>
 </ul></li>
 <li><code>Layout$reset_scales</code>: remove any previous <a href="#scale-train">scale training</a>.</li>
 <li><code>Layout$train_position</code>: <a href="#scale-train">re-train</a> the <a href="#ggproto-position-scale">position scales</a>.</li>
-<li><a href="#layout-setup_panel_params"><code>Layout$setup_panel_params</code></a>: compute meta-data for panels.</li>
-<li><a href="#layout-map_position"><code>Layout$map_position</code></a>: re-map <a href="#ggproto-position-scale">position scales</a>.</li>
+<li><a href="#layoutsetup_panel_params"><code>Layout$setup_panel_params</code></a>: compute meta-data for panels.</li>
+<li><a href="#layoutmap_position"><code>Layout$map_position</code></a>: re-map <a href="#ggproto-position-scale">position scales</a>.</li>
 <li><a href="#train-map-scale"><code>scales_train_df</code></a>: <a href="#train-scale">train</a> non-<a href="#position-scales">position scales</a>.</li>
 <li><a href="#train-map-scale"><code>scales_map_df</code></a>: <a href="#map-scale">map</a> non-<a href="#position-scales">position scales</a>.</li>
 <li><code>Layer$compute_geom_2</code>: add defaults and aesthetic parameters.
@@ -470,7 +663,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </ul></li>
 <li><code>Layout$finish_data</code>:
 <ul>
-<li><code>Facet$finish_data</code>: typically unused, gives <code>Facet</code> one last chance to modify data with access to the <a href="#layout-layout">layout</a> meta data and the position scales.</li>
+<li><code>Facet$finish_data</code>: typically unused, gives <code>Facet</code> one last chance to modify data with access to the <a href="#layoutlayout">layout</a> meta data and the position scales.</li>
 </ul></li>
 </ul>
 </div>
@@ -481,46 +674,28 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="method-details" class="section level2">
 <h2>Method Details</h2>
-<div id="example-plot" class="section level3">
-<h3>Example Plot</h3>
-<p>We illustrate inputs and outputs to some of the methods documented in this section with the following plot:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" data-line-number="1">dat &lt;-<span class="st"> </span><span class="kw">data.frame</span>(</a>
-<a class="sourceLine" id="cb2-2" data-line-number="2">  <span class="dt">loc=</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">4</span>)<span class="op">^</span><span class="dv">2</span>,</a>
-<a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="dt">val=</span>(<span class="dv">5</span><span class="op">:</span><span class="dv">8</span>)<span class="op">^</span><span class="dv">2</span>,</a>
-<a class="sourceLine" id="cb2-4" data-line-number="4">  <span class="dt">grp=</span><span class="kw">c</span>(<span class="st">'A'</span>, <span class="st">'B'</span>, <span class="st">'B'</span>, <span class="st">'C'</span>),</a>
-<a class="sourceLine" id="cb2-5" data-line-number="5">  <span class="dt">pnl=</span><span class="kw">c</span>(<span class="st">'P1'</span>, <span class="st">'P1'</span>, <span class="st">'P2'</span>, <span class="st">'P2'</span>)</a>
-<a class="sourceLine" id="cb2-6" data-line-number="6">)</a>
-<a class="sourceLine" id="cb2-7" data-line-number="7"><span class="kw">library</span>(ggplot2)</a>
-<a class="sourceLine" id="cb2-8" data-line-number="8">p &lt;-<span class="st"> </span><span class="kw">ggplot</span>(dat, <span class="kw">aes</span>(<span class="dt">x=</span>loc, <span class="dt">y=</span>val, <span class="dt">fill=</span>grp)) <span class="op">+</span></a>
-<a class="sourceLine" id="cb2-9" data-line-number="9"><span class="st">  </span><span class="kw">stat_bin2d</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb2-10" data-line-number="10"><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">position=</span><span class="st">&quot;jitter&quot;</span>, <span class="dt">shape=</span><span class="dv">21</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb2-11" data-line-number="11"><span class="st">  </span><span class="kw">facet_wrap</span>(<span class="op">~</span>pnl, <span class="dt">scales=</span><span class="st">&quot;free_x&quot;</span>) <span class="op">+</span></a>
-<a class="sourceLine" id="cb2-12" data-line-number="12"><span class="st">  </span><span class="kw">scale_x_sqrt</span>() <span class="op">+</span></a>
-<a class="sourceLine" id="cb2-13" data-line-number="13"><span class="st">  </span><span class="kw">scale_y_sqrt</span>()</a></code></pre></div>
-<p>It involves a standard layer, a statistic layer, it has facets, and it scales the <a href="#position-aesthetic">position aesthetics</a>.</p>
-</div>
 <div id="layerlayer_data" class="section level3">
 <h3>Layer$layer_data</h3>
-<p>For each layer, this process assigns the data to be used, which is either the data specified in the <code>geom_*</code> / <code>stat_*</code> call if any, or if not the data specified in the <code>ggplot()</code> call. Because neither layer in the plot had data they both acquire the plot data.</p>
+<p>For each layer, this method assigns the data to be used, which is either the data specified in the <code>geom_*</code> / <code>stat_*</code> <a href="#layer-function">layer function</a> call if any, or if not the data specified in the <code>ggplot()</code> call. Because neither layer in the <a href="#example-plot">example plot</a> had data they both acquire the plot data.</p>
 </div>
-<div id="objectsetup_params-and-objectsetup_data-setup_param-setup_data" class="section level3">
-<h3>Object<span class="math inline">\(setup_params And Object\)</span>setup_data {setup_param-setup_data}</h3>
+<div id="setup_params-setup_data" class="section level3">
+<h3>Object$setup_params And Object$setup_data</h3>
 <div id="description" class="section level4">
 <h4>Description</h4>
-<p><code>ggplot2</code> has a complex specification system. In most cases, the user input specification is relatively simple, but <code>ggplot2</code> then needs to set or compute default values for derived variables and parameters. To assist with this most of the <a href="#ggproto"><code>ggproto</code> objects</a> have <code>setup_params</code> and <code>setup_data</code> methods. These are often called after some of the initial setup has been done (e.g. assigning layer data) so that they can use this information to update the data or parameters.</p>
-<p>For example, <code>Facet$setup_params</code> is called with a list containing the plot data and every layer data after the data is associated to each layer. This gives the method the opportunity to update the parameters in the context of the entirety of the data.</p>
-<p>The <code>setup_data</code> methods provide an opportunity to update the data, also after the data has been assigned to layers, and after the parameters have been updated with the <code>setup_params</code> methods. An example is how some <code>Geoms</code> will add <code>xmin</code> and <code>xmax</code> aesthetics computed from existing <code>x</code> and <code>width</code> aesthetics with the <code>setup_data</code> method.</p>
+<p><code>ggplot2</code> has a complex plot specification system. In most cases, the users typed commands are relatively simple, but <code>ggplot2</code> then needs to set or compute default values for derived variables and parameters. To assist with this most of the <a href="#ggproto"><code>ggproto</code> objects</a> have <code>$setup_params</code> and <code>$setup_data</code> methods. These are often called after some of the initial setup has been done (e.g. <a href="#layerlayer_data">assigning layer data</a>) so that they can use this information to update the data or parameters.</p>
+<p>For example, <code>Facet$setup_params</code> is called with a list containing the plot data and the data for every layer after the data is associated to each layer. This gives the method the opportunity to update the parameters in the context of the entirety of the data.</p>
+<p>The <code>$setup_data</code> methods provide an opportunity to update the data, also after the data has been assigned to layers, and after the parameters have been updated with the <code>$setup_params</code> methods. An example is how some <code>Geoms</code> will add <code>xmin</code> and <code>xmax</code> aesthetics computed from existing <code>x</code> and <code>width</code> aesthetics with the <code>$setup_data</code> method.</p>
 </div>
 <div id="signature" class="section level4">
 <h4>Signature</h4>
-<p><code>$setup_params([self], data, params)</code> <code>$setup_data([self], data, params)</code></p>
+<p><code>$setup_params([self], data, params)</code><br /> <code>$setup_data([self], data, params)</code></p>
 <p>The <code>self</code> parameter, if present, can appear anywhere in the signature. The other two parameters must be in the relative order shown above.</p>
 </div>
 <div id="parameters" class="section level4">
 <h4>Parameters</h4>
 <ul>
 <li><code>self</code>: optional parameter, if present will point to the <code>ggproto</code> object the method belongs to.</li>
-<li><code>data</code>: the layer data. Depending on which <code>ggproto</code> object the <code>setup_*</code> method belongs to it may have undergone scale transformation and/or mapping. See the <a href="#method-outline">method outline</a> to get an idea of the state of the data by the time it gets to the <code>setup_*</code> method in question.</li>
+<li><code>data</code>: the layer data. Depending on which <code>ggproto</code> object the <code>$setup_*</code> method belongs to it may have undergone scale transformation and/or mapping. See the <a href="#method-outline">method outline</a> to get an idea of the state of the data by the time it gets to the <code>$setup_*</code> method in question.</li>
 <li><code>params</code>: a list of the parameters provided to the <a href="#layer-function">layer function</a> that match the parameters of the <code>$[compute|draw]_panel</code> of <code>self</code>, and if that method has a <code>...</code> parameter, then also the parameters of the <code>$[compute|draw]_group</code> method.</li>
 </ul>
 </div>
@@ -531,13 +706,13 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="see-also" class="section level4">
 <h4>See Also</h4>
-<p>Some of the default methods are documented in <code>?'ggplot2-ggproto'</code>. The definition of <a href="#ggproto-method">ggproto methods</a> for details about the <code>self</code> parameter.</p>
+<p>Some of the default methods are documented in <code>?'ggplot2-ggproto'</code>. The definition of <a href="#ggproto-method">ggproto methods</a> for details about the <code>self</code> parameter, <a href="#layer-function">layer functions</a> for details about how the <code>params</code> list is generated.</p>
 </div>
 </div>
 <div id="facetcompute_layout" class="section level3">
 <h3>Facet$compute_layout</h3>
 <p>Assigns a panel, row, column, and position scale ids to each facet. It is possible to have multiple position scales in a plot when the scales are “free”.</p>
-<p>This data is stored in the <code>$layout</code> {#layout-layout} member of the <a href="#ggproto-layout"><code>Layout</code> <code>ggproto</code></a> object. This is what it looks like for our <a href="#example-plot">example plot</a>:</p>
+<p>This data is stored in the <code>$layout</code> <a name="layout-layout"></a> member of the <a href="#ggproto-layout"><code>Layout</code> <code>ggproto</code></a> object. This is what it looks like for our <a href="#example-plot">example plot</a>:</p>
 <pre><code>  PANEL ROW COL pnl SCALE_X SCALE_Y
 1     1   1   1  P1       1       1
 2     2   1   2  P2       2       1</code></pre>
@@ -545,51 +720,37 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="facetmap_data" class="section level3">
 <h3>Facet$map_data</h3>
-<p>Add the <code>PANEL</code> variable to the data. Here we show the effect it has on the data of the first layer:</p>
-<pre><code>&lt; input                  
-&gt; output                 
-@@ 1,5 / 1,5 @@          
-&lt;   loc val grp pnl      
-&gt;   loc val grp pnl PANEL
-&lt; 1   1  25   A  P1      
-&gt; 1   1  25   A  P1     1
-&lt; 2   4  36   B  P1      
-&gt; 2   4  36   B  P1     1
-&lt; 3   9  49   B  P2      
-&gt; 3   9  49   B  P2     2
-&lt; 4  16  64   C  P2      
-&gt; 4  16  64   C  P2     2</code></pre>
+<p>For each layer, add the <code>PANEL</code> variable to the data. Here we show the effect it has on the data of the first layer of our <a href="#example-plot">example plot</a>:</p>
+<div class="diffobj_container light yb">
+<pre><div class="row"><div class="line banner"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="word delete">input</span></div></div></div></div><div class="line banner"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="word insert">output</span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 1,5 @@</div></div><div class="line"><div class="header">@@ 1,5 @@</div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim"></span>  loc val grp pnl<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim"></span>  loc val grp pnl <span class="word insert">PANEL</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">1 </span>  1  25   A  P1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">1 </span>  1  25   A  P1     <span class="word insert">1</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">2 </span>  4  36   B  P1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">2 </span>  4  36   B  P1     <span class="word insert">1</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">3 </span>  9  49   B  P2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">3 </span>  9  49   B  P2     <span class="word insert">2</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">4 </span> 16  64   C  P2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">4 </span> 16  64   C  P2     <span class="word insert">2</span><span class="trim"></span></div></div></div></div></div></pre>
 </div>
-<div id="layercompute_aesthetic" class="section level3">
-<h3>Layer$compute_aesthetic</h3>
-<p>For each layer, evaluates all the non-computed <code>aes(...)</code> expressions and replace the data variables with the resulting aesthetics. Computed aesthetics (i.e. those containing calls to <code>stat</code>) are calculated later <strong>WHEN?</strong>. This step also infers the <code>group</code> aesthetic from the interaction of categorical variables specified in <code>aes(...)</code>.</p>
+</div>
+<div id="layercompute_aesthetics" class="section level3">
+<h3>Layer$compute_aesthetics</h3>
+<p>For each layer, evaluates all the <a href="mapped-aesthetics">mapped aesthetic</a> <code>aes(...)</code> expressions and replace the data variables with the resulting aesthetics. <a href="#stat-aesthetic">Stat aesthetics</a> are evaluated later as part of the <a href="#stat-compute">stat computation</a> process.</p>
+<p>This step also infers the <code>group</code> aesthetic from the interaction of categorical <a href="#mapped-aesthetic">mapped aesthetics</a>.</p>
 <p>Here we show the effect on one of the layer’s data:</p>
-<pre><code>&lt; input                   
-&gt; output                  
-@@ 1,5 / 1,5 @@           
-&lt;   loc val grp pnl PANEL 
-&gt;    x  y fill PANEL group
-&lt; 1   1  25   A  P1     1 
-&gt; 1  1 25    A     1     1
-&lt; 2   4  36   B  P1     1 
-&gt; 2  4 36    B     1     2
-&lt; 3   9  49   B  P2     2 
-&gt; 3  9 49    B     2     2
-&lt; 4  16  64   C  P2     2 
-&gt; 4 16 64    C     2     3</code></pre>
+<div class="diffobj_container light yb">
+<pre><div class="row"><div class="line banner"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="word delete">input</span></div></div></div></div><div class="line banner"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="word insert">output</span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 1,5 @@</div></div><div class="line"><div class="header">@@ 1,5 @@</div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim"></span>  <span class="word delete">loc</span> <span class="word delete">val</span> <span class="word delete">grp</span> <span class="word delete">pnl</span> PANEL<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim"></span>   <span class="word insert">x</span>  <span class="word insert">y</span> <span class="word insert">fill</span> PANEL <span class="word insert">group</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">1 </span>  1  25   A  <span class="word delete">P1</span>     1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">1 </span> 1 25    A     <span class="word insert">1</span>     1<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">2 </span>  4  36   B  <span class="word delete">P1</span>     1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">2 </span> 4 36    B     1     <span class="word insert">2</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">3 </span>  9  49   B  <span class="word delete">P2</span>     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">3 </span> 9 49    B     <span class="word insert">2</span>     2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">4 </span> 16  64   C  <span class="word delete">P2</span>     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">4 </span>16 64    C     2     <span class="word insert">3</span><span class="trim"></span></div></div></div></div></div></pre>
+</div>
 <p>The variable have changed to be the aesthetics, and we gain the <code>group</code> variable.</p>
 </div>
 <div id="scaletransform_df" class="section level3">
 <h3>Scale$transform_df</h3>
 <p>This is applies scale transformations to each layer. In our example, we use <code>scale_*_sqrt</code>. Here is the effect on the data for one of the layers:</p>
-<p>&lt; trans.input<br />
-&gt; trans.output<br />
-@@ 1,5 / 1,5 @@<br />
-x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
-&lt; 2 4 36 B 1 2 &gt; 2 2 6 B 1 2<br />
-&lt; 3 9 49 B 2 2 &gt; 3 3 7 B 2 2<br />
-&lt; 4 16 64 C 2 3 &gt; 4 4 8 C 2 3</p>
-<p>The transformation is applied to all the aesthetics that are associated with the scale. For example, continuous <code>x</code> scales will transform the <code>x</code> aesthetic, but also <code>xmin</code>, <code>xmax</code>, <code>xend</code>, <code>xintercept</code>, and several others.</p>
+<div class="diffobj_container light yb">
+<pre><div class="row"><div class="line banner"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="word delete">trans.input</span></div></div></div></div><div class="line banner"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="word insert">trans.output</span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 1,5 @@</div></div><div class="line"><div class="header">@@ 1,5 @@</div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim"></span>   x  y fill PANEL group<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim"></span>  x y fill PANEL group<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">1 </span> 1 <span class="word delete">25</span>    A     1     1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">1 </span>1 <span class="word insert">5</span>    A     1     1<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">2 </span> <span class="word delete">4</span> <span class="word delete">36</span>    B     1     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">2 </span><span class="word insert">2</span> <span class="word insert">6</span>    B     1     2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">3 </span> <span class="word delete">9</span> <span class="word delete">49</span>    B     2     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">3 </span><span class="word insert">3</span> <span class="word insert">7</span>    B     2     2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">4 </span><span class="word delete">16</span> <span class="word delete">64</span>    C     2     3<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">4 </span><span class="word insert">4</span> <span class="word insert">8</span>    C     2     3<span class="trim"></span></div></div></div></div></div></pre>
+</div>
+<p>The transformation is applied by calling <code>Scale$transform</code> on all the aesthetics that are associated with the scale. You can check which aesthetics are associated with a stat with the <code>$aesthetics</code> member of the stat:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" data-line-number="1">scale &lt;-<span class="st"> </span><span class="kw">scale_x_continous</span>()</a></code></pre></div>
+<pre><code>Error in scale_x_continous(): could not find function &quot;scale_x_continous&quot;</code></pre>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1">scale</a></code></pre></div>
+<pre><code>&lt;ScaleContinuousPosition&gt;
+ Range:  
+ Limits:    0 --    1</code></pre>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">scale<span class="op">$</span>aesthetics</a></code></pre></div>
+<pre><code> [1] &quot;x&quot;          &quot;xmin&quot;       &quot;xmax&quot;       &quot;xend&quot;       &quot;xintercept&quot;
+ [6] &quot;xmin_final&quot; &quot;xmax_final&quot; &quot;xlower&quot;     &quot;xmiddle&quot;    &quot;xupper&quot;    </code></pre>
 </div>
 <div id="layoutmap_position" class="section level3">
 <h3>Layout$map_position</h3>
@@ -621,7 +782,11 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 <div id="value-1" class="section level4">
 <h4>Value</h4>
 <p>Statistics can completely change the data. Here is what the input to <code>Stat$compute_layer</code> looks like in <a href="#example-plot">example plot</a>:</p>
-<p>x y fill PANEL group 1 1 5 A 1 1 2 2 6 B 1 2 3 3 7 B 2 2 4 4 8 C 2 3</p>
+<pre><code>  x y fill PANEL group
+1 1 5    A     1     1
+2 2 6    B     1     2
+3 3 7    B     2     2
+4 4 8    C     2     3</code></pre>
 <p>And if you have not modified the layer method, then the input into <code>Stat$compute_panel</code> will look like (for the first panel):</p>
 <pre><code>  x y fill PANEL group
 1 1 5    A     1     1
@@ -630,11 +795,18 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 <pre><code>  x y fill PANEL group
 1 1 5    A     1     1</code></pre>
 <p>In the <a href="#example-plot">example plot</a> <code>StatBin2d</code> overrides the <code>$compute_group</code> method. The result for the first group of the first panel is then:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">structure</span>(<span class="kw">list</span>(<span class="dt">xbin =</span> 1L, <span class="dt">ybin =</span> 1L, <span class="dt">value =</span> <span class="dv">1</span>, <span class="dt">x =</span> <span class="fl">1.01666666666667</span>, <span class="dt">width =</span> <span class="fl">0.0333333400000002</span>, <span class="dt">y =</span> <span class="fl">5.05</span>, <span class="dt">height =</span> <span class="fl">0.10000002</span>, <span class="dt">count =</span> <span class="dv">1</span>, <span class="dt">density =</span> <span class="dv">1</span>), <span class="dt">.Names =</span> <span class="kw">c</span>(<span class="st">&quot;xbin&quot;</span>, <span class="st">&quot;ybin&quot;</span>, <span class="st">&quot;value&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;width&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;height&quot;</span>, <span class="st">&quot;count&quot;</span>, <span class="st">&quot;density&quot;</span>), <span class="dt">row.names =</span> 1L, <span class="dt">class =</span> <span class="st">&quot;data.frame&quot;</span>)</a></code></pre></div>
 <pre><code>  xbin ybin value x width y height count density
 1    1    1     1 1 0.033 5    0.1     1       1</code></pre>
 <p>If you only override the <code>$compute_group</code> method, <code>$compute_panel</code> will add back any variables that are lost by <code>$compute_group</code>, although it does so by recycling the first values of those variables. In this case <code>$compute_panel</code> adds back the <code>fill</code>, <code>PANEL</code>, and <code>group</code> variables that were dropped by <code>$compute_group</code>.</p>
 <p>The final output after <code>$compute_panel</code> and <code>$compute_layer</code> stitch back the groups and panels together:</p>
+<pre><code>Error in eval(expr, envir, enclos): object 'stat.output' not found</code></pre>
+<p>If we compare to the input to <code>$compute_layer</code> we can see that several variables (the <a href="#stat-aesthetic">stat aesthetics</a>) were added to the data:</p>
+<pre><code>Warning in value[[3L]](cond): restarting interrupted promise evaluation
+
+Warning in value[[3L]](cond): restarting interrupted promise evaluation
+
+Warning in value[[3L]](cond): restarting interrupted promise evaluation</code></pre>
+<pre><code>Error in value[[3L]](cond): object 'stat.output' not found</code></pre>
 <p>In this case the number of rows in input and output happens to be the same because each of our groups only has one row in it, but that is not a requirement.</p>
 <p>Ultimately, this step should produce data that once processed by <a href="#layer-map_statistic"><code>Layer$map_statistic</code></a> has all the required aesthetics required by the <a href="ggproto-geom"><code>Geom</code></a> associated with the layer.</p>
 </div>
@@ -664,7 +836,7 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 </div>
 <div id="value-2" class="section level4">
 <h4>Value</h4>
-<p>The data, with <a href="#computed-aesthetic">computed</a> and other aesthetics specified by the stat <a href="#layer-function">layer function</a> that were dropped by the statistic added back.</p>
+<p>The data, with <a href="#stat-aesthetic">computed</a> and other aesthetics specified by the stat <a href="#layer-function">layer function</a> that were dropped by the statistic added back.</p>
 </div>
 </div>
 <div id="position-compute" class="section level3">
@@ -691,7 +863,9 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 <div id="value-3" class="section level4">
 <h4>Value</h4>
 <p>The data with positions adjusted. Here is how <code>$compute_layer</code> changes the input data in our <a href="#example-plot">example plot</a> that uses <code>position_jitter</code>:</p>
-<pre><code>Error in diffPrint(pos.input, pos.output): could not find function &quot;diffPrint&quot;</code></pre>
+<div class="diffobj_container light yb">
+<pre><div class="row"><div class="line banner"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="word delete">pos.input</span></div></div></div></div><div class="line banner"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="word insert">pos.output</span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 1,5 @@</div></div><div class="line"><div class="header">@@ 1,5 @@</div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim"></span>  x y fill PANEL group<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim"></span>     x   y fill PANEL group<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">1 </span><span class="word delete">1</span> <span class="word delete">5</span>    A     1     1<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">1 </span><span class="word insert">0.91</span> <span class="word insert">5.1</span>    A     1     1<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">2 </span><span class="word delete">2</span> <span class="word delete">6</span>    B     1     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">2 </span><span class="word insert">2.02</span> <span class="word insert">6.1</span>    B     1     2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">3 </span><span class="word delete">3</span> <span class="word delete">7</span>    B     2     2<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">3 </span><span class="word insert">3.11</span> <span class="word insert">7.3</span>    B     2     2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">4 </span><span class="word delete">4</span> <span class="word delete">8</span>    C     2     3<span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">4 </span><span class="word insert">3.61</span> <span class="word insert">8.2</span>    C     2     3<span class="trim"></span></div></div></div></div></div></pre>
+</div>
 <p>This adjust the <code>x</code> and <code>y</code> aesthetics, though it would also adjust any other <a href="#position-aesthetic">position aesthetics</a> if they existed in the data.</p>
 <p>If you overrode the <code>$compute_panel</code> method instead of <code>$compute_layer</code> as <code>position_jitter</code> does, each input and output should be the same, except subset by the <code>PANEL</code> variable.</p>
 </div>
@@ -736,12 +910,15 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 <div id="description-4" class="section level4">
 <h4>Description</h4>
 <p><code>scales_train_df</code> runs the <a href="#train-scale">scale training</a> on every aesthetic corresponding to the provided scales (non-position scales in <code>ggplot_build</code>) across every layer.</p>
-<p><code>scales_map_df</code> <a href="#map-scale">maps</a>every aesthetic corresponding to the provided scales (non-position scales in <code>ggplot_build</code>) across every layer.</p>
+<p><code>scales_map_df</code> <a href="#map-scale">maps</a> every aesthetic corresponding to the provided scales (non-position scales in <code>ggplot_build</code>) across every layer.</p>
 </div>
 <div id="value-4" class="section level4">
 <h4>Value</h4>
 <p><code>scales_train_df</code> only update the scale meta data. <code>scales_map_df</code> will modify the data, as in our <a href="#example-plot">example plot</a>:</p>
-<pre><code>Error in diffStr(map.scale.input, map.scale.output): could not find function &quot;diffStr&quot;</code></pre>
+<div class="diffobj_container light yb">
+<pre><div class="row"><div class="line banner"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="word delete">str(map.scale.input)</span></div></div></div></div><div class="line banner"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="word insert">str(map.scale.output)</span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 8,5 @@</div></div><div class="line"><div class="header">@@ 8,5 @@</div></div></div><div class="row"><div class="line"><div class="guide"><div class="gutter"><div class="guide">~</div><div class="pad"> </div></div><div class="text"><div class="guide"><span class="trim"> $ </span>:'data.frame':       4 obs. of  14 variables:<span class="trim"></span></div></div></div></div><div class="line"><div class="guide"><div class="gutter"><div class="guide">~</div><div class="pad"> </div></div><div class="text"><div class="guide"><span class="trim"> $ </span>:'data.frame':       4 obs. of  14 variables:<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>count  : num [1:4] 1 1 1 1<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>count  : num [1:4] 1 1 1 1<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>density: num [1:4] 1 1 1 1<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>density: num [1:4] 1 1 1 1<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">  ..$ </span>fill   : <span class="word delete">Factor</span> <span class="word delete">w</span><span class="word delete">/</span> <span class="word delete">3</span> <span class="word delete">levels</span> <span class="word delete">&quot;A&quot;</span><span class="word delete">,</span><span class="word delete">&quot;B&quot;</span><span class="word delete">,</span><span class="word delete">&quot;</span><span class="word delete">C</span><span class="word delete">&quot;</span><span class="word delete">:</span> <span class="word delete">1</span> <span class="word delete">2</span> <span class="word delete">2</span> <span class="word delete">3</span><span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">  ..$ </span>fill   : <span class="word insert">chr</span> <span class="word insert">[1:4]</span> <span class="word insert">&quot;#F8766D&quot;</span> <span class="word insert">&quot;#00BA38&quot;</span> <span class="word insert">&quot;#00BA38&quot;</span> <span class="word insert">&quot;#619CFF&quot;</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>PANEL  : Factor w/ 2 levels &quot;1&quot;,&quot;2&quot;: 1 1 2 2<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>PANEL  : Factor w/ 2 levels &quot;1&quot;,&quot;2&quot;: 1 1 2 2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>group  : int [1:4] 1 2 2 3<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>group  : int [1:4] 1 2 2 3<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="header">@@ 18,5 @@</div></div><div class="line"><div class="header">@@ 18,5 @@</div></div></div><div class="row"><div class="line"><div class="guide"><div class="gutter"><div class="guide">~</div><div class="pad"> </div></div><div class="text"><div class="guide"><span class="trim"> $ </span>:'data.frame':       4 obs. of  5 variables:<span class="trim"></span></div></div></div></div><div class="line"><div class="guide"><div class="gutter"><div class="guide">~</div><div class="pad"> </div></div><div class="text"><div class="guide"><span class="trim"> $ </span>:'data.frame':       4 obs. of  5 variables:<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>x    : num [1:4] 0.803 2.151 3.068 4.366<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>x    : num [1:4] 0.803 2.151 3.068 4.366<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>y    : num [1:4] 4.77 6.03 6.73 8.21<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>y    : num [1:4] 4.77 6.03 6.73 8.21<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="delete"><div class="gutter"><div class="delete">&lt;</div><div class="pad"> </div></div><div class="text"><div class="delete"><span class="trim">  ..$ </span>fill : <span class="word delete">Factor</span> <span class="word delete">w</span><span class="word delete">/</span> <span class="word delete">3</span> <span class="word delete">levels</span> <span class="word delete">&quot;A&quot;</span><span class="word delete">,</span><span class="word delete">&quot;B&quot;</span><span class="word delete">,</span><span class="word delete">&quot;</span><span class="word delete">C</span><span class="word delete">&quot;</span><span class="word delete">:</span> <span class="word delete">1</span> <span class="word delete">2</span> <span class="word delete">2</span> <span class="word delete">3</span><span class="trim"></span></div></div></div></div><div class="line"><div class="insert"><div class="gutter"><div class="insert">&gt;</div><div class="pad"> </div></div><div class="text"><div class="insert"><span class="trim">  ..$ </span>fill : <span class="word insert">chr</span> <span class="word insert">[1:4]</span> <span class="word insert">&quot;#F8766D&quot;</span> <span class="word insert">&quot;#00BA38&quot;</span> <span class="word insert">&quot;#00BA38&quot;</span> <span class="word insert">&quot;#619CFF&quot;</span><span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>PANEL: Factor w/ 2 levels &quot;1&quot;,&quot;2&quot;: 1 1 2 2<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>PANEL: Factor w/ 2 levels &quot;1&quot;,&quot;2&quot;: 1 1 2 2<span class="trim"></span></div></div></div></div></div><div class="row"><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>group: int [1:4] 1 2 2 3<span class="trim"></span></div></div></div></div><div class="line"><div class="match"><div class="gutter"><div class="match"> </div><div class="pad"> </div></div><div class="text"><div class="match"><span class="trim">  ..$ </span>group: int [1:4] 1 2 2 3<span class="trim"></span></div></div></div></div></div></pre>
+</div>
+<p>The fill aesthetic is transformed into color codes.</p>
 </div>
 </div>
 <div id="geomuse_defaults" class="section level3">
@@ -765,7 +942,12 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 <div id="value-5" class="section level4">
 <h4>Value</h4>
 <p>Again, with our <a href="#example-plot">example plot</a>, we get:</p>
-<pre><code>Error in diffStr(defaults.input, defaults.output): could not find function &quot;diffStr&quot;</code></pre>
+<pre><code>Warning in value[[3L]](cond): restarting interrupted promise evaluation
+
+Warning in value[[3L]](cond): restarting interrupted promise evaluation
+
+Warning in value[[3L]](cond): restarting interrupted promise evaluation</code></pre>
+<pre><code>Error in value[[3L]](cond): object 'defaults.output' not found</code></pre>
 <p>The second layer is the geom layer, and you can see how it gains defaults (e.g <code>colour</code>, <code>alpha</code>, <code>stroke</code>) as well as the <code>shape</code> aesthetic that was specified in the <code>geom_point</code> call of the <a href="#example-plot">example plot</a>.</p>
 </div>
 </div>
@@ -790,214 +972,286 @@ x y fill PANEL group &lt; 1 1 25 A 1 1 &gt; 1 1 5 A 1 1<br />
 </div>
 <div id="ggplot_gtable-1" class="section level3">
 <h3>ggplot_gtable</h3>
-<p>the user can call to provide the <code>GeomX</code> object in the plot specification step. Then <code>ggplot_build</code> (step 2) and <code>ggplot_gtable</code> will use the methods in the provided <code>ggproto</code> object to manipulate the data and produce grobs.</p>
+<p>can call to provide the <code>GeomX</code> object in the plot specification step. Then <code>ggplot_build</code> (step 2) and <code>ggplot_gtable</code> will use the methods in the provided <code>ggproto</code> object to manipulate the data and produce grobs.</p>
 </div>
-</div>
-<div id="hooks" class="section level2">
-<h2>Hooks</h2>
-<ol style="list-style-type: decimal">
-<li>Build (<code>ggplot_build</code>): analyzes and transforms data into a format suited for translation into graphical objects:
-<ol style="list-style-type: decimal">
-<li>Assigns facet panels.</li>
-<li>Computes aesthetic values from data and <code>aes(...)</code> specifications.</li>
-<li>Assigns groups.</li>
-<li>Rescales data if non linear scales are specified.</li>
-<li>Computes and maps statistics.</li>
-<li>Transforms special aesthetics (e.g. <code>width</code> to <code>xmin</code>-<code>xmax</code>) (Layer<span class="math inline">\(compute_geom_1 -&gt; Geom\)</span>setup_data, check_required_aesthetic)</li>
-<li>Adjusts positions (e.g. dodging/stacking with <code>$compute_positions</code>). (Layer<span class="math inline">\(compute_positions -&gt; Position\)</span>setup_params/setup_data/compute_layer)</li>
-<li>Recompute scales.</li>
-<li>Adds default aesthetics as needed.</li>
-</ol></li>
-<li>Graphical Object Construction (<code>ggplot_gtable</code>):
-<ol style="list-style-type: decimal">
-<li>Applies coordinate transformations (if necessary)</li>
-<li>Translate the data into shapes, colors, positions, etc.</li>
-</ol></li>
-<li>Rendering (<code>grid.draw</code>): display the resulting plot in a viewport.</li>
-</ol>
-<p>Need to discuss what is implemented via the <code>ggproto</code> objects.</p>
-<p>Each of the sub-steps in the build step is applied to every layer before moving to the next step with the <code>by_layer</code> function. Additionally, each proto driven calculation follows this hierarchy:</p>
-<p><code>(draw|compute)_layer</code> <code>(draw|compute)_panel</code> <code>(draw|compute)_group</code></p>
-<p>The <code>*_layer</code> functions typically split the data by panel and forward each chunk to the corresponding <code>*_panel</code> function. The base <code>ggproto</code> <code>*_panel</code> methods will split the data by group and forward it to the corresponding <code>*_group</code> function. This allows you to override either the <code>*_panel</code> or the <code>*_group</code> function depending on what you are trying to do.</p>
-</div>
-<div id="understanding-the-data-object" class="section level2">
-<h2>Understanding the <code>data</code> Object</h2>
-<ul>
-<li>Internal aesthetics</li>
-<li>Special variables (<code>group</code>, <code>panel</code>)
-<ul>
-<li><code>group</code> are “integer” values from 1 to n where n is the number of groups, or -1 if there aren’t any groups.</li>
-</ul></li>
-<li>Computed variables (<code>..level..</code>)</li>
-</ul>
 </div>
 <div id="grid-stuff" class="section level2">
 <h2>Grid Stuff</h2>
-<p>You cannot use <code>gList</code> in the key/legend. However, <code>grobTree</code> works.</p>
 </div>
-<div id="glossary" class="section level2">
-<h2>Glossary</h2>
+<div id="definitions" class="section level2">
+<h2>Definitions</h2>
+<p>These definitions are unofficial. Some of them were made up by yours truly to make it easier to reference recurrent concepts that lack formal definitions.</p>
 <dl>
+<!---------------------------------------------------------------------------->
 <dt>
 <a name="aesthetic"></a>Aesthetic
 </dt>
-<p>A variable that maps to a plot property, such as <code>x</code> position, or <code>size</code>, or <code>color</code>. <code>ggplot2</code> allows users to specify the mapping with the <code>mapping</code> argument to either the <code>ggplot</code> function or the <a href="#layer-function">layer functions</a>.</p>
-After the initial specification by the user, aesthetic values are scaled, and eventually mapped to their actual display values.
 <dd>
+<p>Strictly speaking in the context of <code>ggplot2</code> an aesthetic is a graphical property of a plot, such as position, color, size, and line type. Most of the time when we say “aesthetic” we mean “aesthetic variable”. These are variables that contain data that is to be represented as an aesthetic on the plot. For example the <code>x</code> aesthetic variable will contain values that ultimately are intended to represent a position along the <code>x</code> axis in a plot.</p>
+<p>Aesthetic variables come about in three ways in <code>ggplot2</code>:</p>
+<ul>
+<li><a name="mapped-aesthetic"></a>Mapped aesthetics are specified with <code>aes(...)</code> via the <code>mapping</code> parameter to <code>ggplot()</code> or <a href="#layer-function">layer functions</a> (e.g. <code>ggplot(data) + geom_point(aes(x=time, y=value)</code> where the mapped aesthetics are <code>x</code> and <code>y</code>.</li>
+<li><a name="stat-aesthetic"></a>Stat aesthetics are generated by the <a href="#stat-compute">stat computation</a> process. They end up as additional variables in the computed layer data, and can be referenced with the <code>stat</code> call in the mapping specification (e.g. <code>stat_bin(aes(y=stat(ncount)))</code>). Which stat aesthetics are generated depends on the statistic. Sometimes this is documented in the <a href="#layer-function">layer function</a> that applies the stat (e.g. <code>?stat_bin</code>), but not always. If the variables are not documented, you can look at the most specific <a href="#stat-compute"><code>Stat$compute_*</code></a> method that the <a href="#ggproto-stat"><code>Stat</code></a> defines.</li>
+<li><a name="param-aesthetic"></a>Parameter aesthetics are specified in <a href="#layer-function">layer functions</a> as part of <code>...</code>. For example, in <code>geom_point(size=3)</code>, <code>size</code> is considered a parameter aesthetic because it is not part of the <code>mapping=aes(...)</code> call. Unlike mapped aesthetics, parameter aesthetics are neither <a href="scaletransform_df">transformed</a> nor <a href="#map-scale">mapped</a>.</li>
+</ul>
 </dd>
-<dt>
-<a name="computed-aesthetic"></a>Aesthetic, Computed
-</dt>
-<dd>
-<p>Aesthetic variables that are generated by <a href="#ggproto-stat"><code>Stat</code></a>. These can be referenced in the aesthetic specification by using the <code>stat</code> function (e.g. <code>aes(y=stat(count))</code>). The <code>count</code> variable does not exist in the input data, but it does exist in the data produced by the <a href="#ggproto-stat"><code>Stat</code></a>.</p>
-What computed variables are available will depend on the statistic. Sometimes this is documented in the <a href="#layer-function">layer functions</a> that use those <code>Stat</code> objects (e.g. <code>?stat_bin</code>), but not always. If the variables are not documented, you can look at the most specific <a href="#stat-compute"><code>Stat$compute_*</code></a> that the <a href="#ggproto-stat"><code>Stat</code></a> defines.
-</dd>
+<!---------------------------------------------------------------------------->
 <dt>
 <a name="position-aesthetic"></a>Aesthetic, Position
 </dt>
 <dd>
-<a href="#aesthetic">Aesthetic</a> variables that correspond to position values. <code>x</code> and <code>y</code> are the most common ones, but there are many others such as <code>xmin</code>, <code>xmax</code>, <code>xend</code>.
+<p><a href="#aesthetic">Aesthetic</a> variables that correspond to position values. <code>x</code> and <code>y</code> are the most common ones, but there are many others such as <code>xmin</code>, <code>xmax</code>, <code>xend</code>, and the corresponding <code>y</code> versions of those.</p>
+Position and non-position aesthetics are treated slightly differently in the <a href="#ggplot_build"><code>ggplot_build</code></a> process. This is primarily because position aesthetics are subject to coordinate transformations, whereas non-position aesthetics are not.
 </dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggprot-coord"></a>Coord, <code>ggproto</code>
+</dt>
+<dd>
+<p><a href="#ggproto"><code>ggproto</code></a> object responsible for:</p>
+<ul>
+<li>Coordinate transformations of the <a href="#position-aesthetic">position aesthetics</a>.</li>
+<li><a href="#render">Rendering</a> of the plot/panel <a href="#grob">grob</a> meta-elements such as gridlines, panel-outline, panel-background, etc.</li>
+</ul>
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="facet"></a>Facet
+</dt>
+<p>Facets are sub-viewports in which a subset of the data is displayed. Each plot has a set of facets, or by default a single facet that corresponds to the main viewport. Each plot <a href="#layer">layer</a> is displayed across all plot facets, although some layers may not have data to show in every facet.</p>
+The area of a facet that is wholly bounded by the axes (i.e. excluding axis labels, etc.) is the <a href="#panel">panel</a>.
+<dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-facet"></a>Facet, <code>ggproto</code>
+</dt>
+<dd>
+<p><a href="#ggproto"><code>ggproto</code></a> object that:</p>
+<ul>
+<li>Computes <a href="#facet">facet</a> layout.</li>
+<li>Assigns data to <a href="#panel">panels</a>.</li>
+<li><a href="#render">Renders</a> the facets by combining the panels with axes, labels, facet labels, etc., into a <a href="#gtable"><code>gtable</code></a>.</li>
+</ul>
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-geom"></a>Geom, <code>ggproto</code>
+</dt>
+<dd>
+<p><code>Geom*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>GeomPoint</code> or <code>GeomRect</code> are responsible for translating the <a href="#layer-data">layer data</a> into graphical objects. In <code>ggplot</code> these graphical objects are called <a href="#grob">grobs</a>. In order to create your own geoms you will need to learn how to use <code>grid</code>, or alternatively to re-use existing <code>Geom*</code> objects to generate grobs suited for your purposes.</p>
+See <code>vignette(package='ggplot2', 'extending-ggplot2')</code> for examples of how to extend <code>Geom</code> objects.
+</dd>
+<!---------------------------------------------------------------------------->
 <dt>
 <a name="ggproto"></a>Ggproto
 </dt>
 <dd>
-<p>Object oriented framework used by <code>ggplot2</code>. See <code>?ggplot2::ggproto</code> for details. A few highlights:</p>
+<p>Object oriented framework used by <code>ggplot2</code>. See <code>?ggplot2::ggproto</code> for details. <code>ggproto</code> objects contain functions (a.k.a. <a href="#ggproto-method">methods</a>) and data, both of which can be accessed with the <code>$</code> or <code>[[</code> operators. Common <code>ggproto</code> objects include:</p>
 <ul>
-<li>Objects that contain member functions and data</li>
-<li>The members can be accessed like list objects <code>object$member</code></li>
-<li>When member functions are invoked they are always automatically provided with a <code>self</code> object if <code>self</code> is part of the signature (you can probably still access <code>self</code> even if it isn’t in the sig, need to test).</li>
-<li>You cannot debug <code>ggproto</code> methods directly because they are wrapped on the fly by <code>$.ggproto</code>. To debug, first extract the method, then <code>debug</code> it, then <code>debug</code> <code>f</code> inside of it…</li>
+<li><a href="#ggproto-coord"><code>Coord</code></a>.</li>
+<li><a href="#ggproto-geom"><code>Geom</code></a>.</li>
+<li><a href="#ggproto-layer"><code>Layer</code></a>.</li>
+<li><a href="#ggproto-layout"><code>Layout</code></a>.</li>
+<li><a href="#ggproto-position"><code>Position</code></a>.</li>
+<li><a href="#ggproto-scale"><code>Scale</code></a>.</li>
+<li><a href="#ggproto-stat"><code>Stat</code></a>.</li>
 </ul>
+<code>ggproto</code> objects are reference objects, so they can be modified in place. Several <code>ggproto</code> <a href="#ggproto-method">methods</a> will update the object they belong to by reference.
 </dd>
-<dt>
-<a name="ggproto-geom"></a>Ggproto Geom
-</dt>
-<dd>
-<p><code>Geom*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>GeomPoint</code> or <code>GeomRect</code> are responsible for translating your data into graphical objects. In <code>ggplot</code> these graphical objects are called <a href="#grid-graphical-object">grobs</a>. In order to create your own geoms you will need to learn how to use <code>grid</code>, or alternatively to re-use existing <code>Geom*</code> objects to generate grobs suited for your purposes.</p>
-You can extend <code>Geom</code> objects by overriding the <a href="#geom-setup-data"><code>Geom$setup_data</code></a>, <a href="#geom-setup-param"><code>Geom$setup_param</code></a>, <a href="#geom-draw-panel"><code>Geom$draw_panel</code></a>, and/or <a href="#geom-draw-group"><code>Geom$draw_group</code></a> methods. See <code>vignette(package='ggplot2', 'extending-ggplot2')</code> for examples.
-</dd>
-<dt>
-<a name="ggproto-layer"></a>Ggproto Layer
-</dt>
-<dd>
-<code>ggproto</code> object responsible for computing and rendering plot layers. It contains <code>Geom</code>, <code>Stat</code>, and <code>Position</code> <code>ggproto</code> sub-objects, along with other data and the methods that carry out the computation and translation of layer data into <a href="#grid-graphical-objects">grobs</a>.
-</dd>
-<dt>
-<a name="ggproto-layout"></a>Ggproto Layout
-</dt>
-<dd>
-<p>Contains all the metadata required to lay out the plot across the panels.</p>
-<p>One particular useful method is <code>Layout$get_scales</code>, which when given a panel id will return a list with the position scales associated with that panel.</p>
-The <a href="#layout-layout"><code>Layout$layout</code> member</a> is a table mapping panels to scales and positions in the overall plot.
-</dd>
+<!---------------------------------------------------------------------------->
 <dt>
 <a name="ggproto-method"></a>Ggproto Method
 </dt>
 <dd>
-<p>A function that is part of a <a href="#ggproto"><code>ggproto</code></a> object. It differs from standard R functions because of the optional <code>self</code> parameter. A <code>ggroto</code> method that has the <code>self</code> parameter will be passed the <a href="#ggproto"><code>ggproto</code></a> object the method belongs to as the value of that parameter when the it is called. This gives the method access to the object data and other methods.</p>
+<p>A function that is part of a <a href="#ggproto"><code>ggproto</code></a> object. It differs from standard R functions because of the optional <code>self</code> parameter. A <code>ggroto</code> method that has the <code>self</code> parameter will be passed the <a href="#ggproto"><code>ggproto</code></a> object the method belongs to as the value of that parameter when the it is called. This gives the method access to the object data and other methods, and the opportunity to modify the <code>ggproto</code> object by reference.</p>
 <p>We illustrate the use of <code>self</code> with a simple example. Neither method call provides the <code>self</code> parameter:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1">Example &lt;-<span class="st"> </span><span class="kw">ggproto</span>(</a>
-<a class="sourceLine" id="cb14-2" data-line-number="2">  <span class="st">&quot;Example&quot;</span>, <span class="ot">NULL</span>,</a>
-<a class="sourceLine" id="cb14-3" data-line-number="3">  <span class="dt">method1=</span><span class="cf">function</span>(self, x) <span class="kw">cat</span>(<span class="kw">sprintf</span>(<span class="st">&quot;%s %s</span><span class="ch">\n</span><span class="st">&quot;</span>, x, self<span class="op">$</span>secret)),</a>
-<a class="sourceLine" id="cb14-4" data-line-number="4">  <span class="dt">method2=</span><span class="cf">function</span>(x) <span class="kw">cat</span>(<span class="kw">sprintf</span>(<span class="st">&quot;%s %s</span><span class="ch">\n</span><span class="st">&quot;</span>, x, self<span class="op">$</span>secret)),</a>
-<a class="sourceLine" id="cb14-5" data-line-number="5">  <span class="dt">secret=</span><span class="st">&quot;secret&quot;</span></a>
-<a class="sourceLine" id="cb14-6" data-line-number="6">)</a></code></pre></div>
-<pre><code>Error in ggproto(&quot;Example&quot;, NULL, method1 = function(self, x) cat(sprintf(&quot;%s %s\n&quot;, : could not find function &quot;ggproto&quot;</code></pre>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">Example<span class="op">$</span><span class="kw">method1</span>(<span class="st">&quot;big&quot;</span>)</a></code></pre></div>
-<pre><code>Error in eval(expr, envir, enclos): object 'Example' not found</code></pre>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">Example<span class="op">$</span><span class="kw">method2</span>(<span class="st">&quot;big&quot;</span>)</a></code></pre></div>
-<pre><code>Error in eval(expr, envir, enclos): object 'Example' not found</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1">Example &lt;-<span class="st"> </span><span class="kw">ggproto</span>(</a>
+<a class="sourceLine" id="cb23-2" data-line-number="2">  <span class="st">&quot;Example&quot;</span>, <span class="ot">NULL</span>,</a>
+<a class="sourceLine" id="cb23-3" data-line-number="3">  <span class="dt">method1=</span><span class="cf">function</span>(self, x) <span class="kw">cat</span>(<span class="kw">sprintf</span>(<span class="st">&quot;%s %s</span><span class="ch">\n</span><span class="st">&quot;</span>, x, self<span class="op">$</span>secret)),</a>
+<a class="sourceLine" id="cb23-4" data-line-number="4">  <span class="dt">method2=</span><span class="cf">function</span>(x) <span class="kw">cat</span>(<span class="kw">sprintf</span>(<span class="st">&quot;%s %s</span><span class="ch">\n</span><span class="st">&quot;</span>, x, self<span class="op">$</span>secret)),</a>
+<a class="sourceLine" id="cb23-5" data-line-number="5">  <span class="dt">secret=</span><span class="st">&quot;secret&quot;</span></a>
+<a class="sourceLine" id="cb23-6" data-line-number="6">)</a>
+<a class="sourceLine" id="cb23-7" data-line-number="7">Example<span class="op">$</span><span class="kw">method1</span>(<span class="st">&quot;big&quot;</span>)</a></code></pre></div>
+<pre><code>big secret</code></pre>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb25-1" data-line-number="1">Example<span class="op">$</span><span class="kw">method2</span>(<span class="st">&quot;big&quot;</span>)</a></code></pre></div>
+<pre><code>Error in sprintf(&quot;%s %s\n&quot;, x, self$secret): object 'self' not found</code></pre>
 <p><code>ggproto</code> methods are generated at call time by the <code>$</code> method for <code>ggproto</code> objects. There are several implications to this. One is that in order to see the method body you need to resort to some contortions. Here we do it for <code>GeomPoint$setup_data</code>:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">GeomPoint<span class="op">$</span>setup_data</a></code></pre></div>
-<pre><code>Error in eval(expr, envir, enclos): object 'GeomPoint' not found</code></pre>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" data-line-number="1"><span class="kw">environment</span>(GeomPoint<span class="op">$</span>setup_data)<span class="op">$</span>f</a></code></pre></div>
-<pre><code>Error in environment(GeomPoint$setup_data): object 'GeomPoint' not found</code></pre>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" data-line-number="1">GeomPoint<span class="op">$</span>setup_data</a></code></pre></div>
+<pre><code>&lt;ggproto method&gt;
+  &lt;Wrapper function&gt;
+    function (...) 
+f(...)
+
+  &lt;Inner function (f)&gt;
+    function (data, params) 
+data</code></pre>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb29-1" data-line-number="1"><span class="kw">environment</span>(GeomPoint<span class="op">$</span>setup_data)<span class="op">$</span>f</a></code></pre></div>
+<pre><code>function (data, params) 
+data
+&lt;bytecode: 0x7f8258709410&gt;
+&lt;environment: namespace:ggplot2&gt;</code></pre>
 <p>Additionally <code>debug(Object$method)</code> will not work because next time you call <code>Object$method</code> a new copy of the function is created. To <code>debug</code> <code>ggproto</code> methods you need to follow these steps:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb24-1" data-line-number="1">fun &lt;-<span class="st"> </span>Object<span class="op">$</span>method</a></code></pre></div>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb31-1" data-line-number="1">fun &lt;-<span class="st"> </span>Object<span class="op">$</span>method</a></code></pre></div>
 <pre><code>Error in eval(expr, envir, enclos): object 'Object' not found</code></pre>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb26-1" data-line-number="1"><span class="kw">debug</span>(<span class="kw">environment</span>(fun)<span class="op">$</span>f)</a></code></pre></div>
+<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb33-1" data-line-number="1"><span class="kw">debug</span>(<span class="kw">environment</span>(fun)<span class="op">$</span>f)</a></code></pre></div>
 <pre><code>Error in environment(fun): object 'fun' not found</code></pre>
-<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" data-line-number="1"><span class="kw">fun</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb35-1" data-line-number="1"><span class="kw">fun</span>()</a></code></pre></div>
 <pre><code>Error in fun(): could not find function &quot;fun&quot;</code></pre>
 Depending on circumstances it may be easier to add a <code>browser</code> call to the sources.
 </dd>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="ggproto-position"></a>Ggproto Position
-</dt>
-<dd>
-<p><code>Position*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>PositionDodge</code> are responsible for adjusting the position aesthetics in the layer data. For example, <code>PositionDodge</code> shifts <code>x</code> <a href="#position-aesthetic">position aesthetics</a> bins the data and computes <code>y</code> values a well as other <a href="#computed-aesthetics">computed aesthetics</a> stats such as <code>count</code> and <code>ncount</code>.</p>
-You can extend <code>Position</code> objects by overriding the <a href="#position-setup-data"><code>Position$setup_data</code></a>, <a href="#position-setup-param"><code>Position$setup_param</code></a>, <a href="#position-compute-panel"><code>Position$compute_panel</code></a>, and/or <a href="#position-compute-group"><code>Position$compute_group</code></a> methods. See the sources for <code>Position</code> objects for examples.
-</dd>
-<dt>
-<a name="ggproto-stat"></a>Ggproto Stat
-</dt>
-<dd>
-<p><code>Stat*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>StatBin</code> are responsible for recomputing the plot data with a statistic and potentially adding new variables. For example, <code>StatBin</code> bins the data and computes <code>y</code> values as well as other stats such as <code>count</code> and <code>ncount</code>.</p>
-You can extend <code>Stat</code> objects by overriding the <a href="#stat-setup-data"><code>Stat$setup_data</code></a>, <a href="#stat-setup-param"><code>Stat$setup_param</code></a>, <a href="#stat-compute-panel"><code>Stat$compute_panel</code></a>, and/or <a href="#stat-compute-group"><code>Stat$compute_group</code></a> methods. See <code>vignette(package='ggplot2', 'extending-ggplot2')</code> for examples.
-</dd>
-<dt>
-<a name="grid">Grid
+<a name="grid"></a>Grid
 </dt>
 <dd>
 Low level graphics package that comes packaged by default with R. It is used by <code>ggplot</code> to draw the plots. There are several useful vignettes you can find with <code>browseVignettes('grid')</code>.
 </dd>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="grid-graphical-object">Grid Graphical Objects
+<a name="grob"></a>Grid Graphical Objects
 </dt>
 <dd>
-A.k.a. grobs, R objects that contain description of graphical elements that can be used by the <code>grid</code> package to draw them on a graphical device.
+A.k.a. grobs, R objects that contain a description of graphical elements that can be used by the <code>grid</code> package to draw them on a graphical device.
 </dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="gtable"></a>Gtable
+</dt>
+<dd>
+An object containing a collection of <a href="#grob">grobs</a> intended to be displayed in a table-like layout. <code>gtable</code> objects are used by <code>ggplot2</code> to simplify the manipulation of the layout of plots.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="layer"></a>Layer
+</dt>
+<dd>
+<p><code>ggplot2</code> plots are rendered in layers, one on top of each other. This makes it possible to have multiple super-imposed graphical representations of data. For example, we can overlay a representation of a model fit on top of a scatter-plot of the data the model was trained on.</p>
+<p>A <code>ggplot</code> may contain multiple layers.</p>
+Internally, layers and the logic required to compute and render them are built into the <a href="#ggproto-layer"><code>Layer</code> <code>ggproto</code></a> object.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-layer"></a>Layer, <code>ggproto</code>
+</dt>
+<dd>
+<a href="#ggproto"><code>ggproto</code></a> object responsible for computing and rendering plot <a href="#layer">layers</a>. It contains <code>Geom</code>, <code>Stat</code>, and <code>Position</code> <code>ggproto</code> sub-objects, along with other data and the methods that carry out the computation and translation of layer data into <a href="#grob">grobs</a>.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-layer"></a>Layer Data
+</dt>
+<dd>
+The data associated with a particular <code>Layer</code>. This is a <code>data.frame</code>. Layers that do not have a <code>data.frame</code> explicitly associated by the <a href="#layer-function">layer function</a> will typically inherit the <a href="#plot-data">plot data</a>.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-layout"></a>Layout, <code>ggproto</code>
+</dt>
+<dd>
+<p><a href="#ggproto"><code>ggproto</code></a> object that contains all the metadata required to lay out the plot across the <a href="#facet">facets</a>, and the methods to render the facet, panel, and layer <a href="#grob">grobs</a> together into a <a href="#gtable">gtable</a>.</p>
+<p>Some useful methods/members:</p>
+<ul>
+<li><code>Layout$get_scales</code>: a method which when given a panel id will return a list with the position scales associated with that panel.</li>
+<li><a href="#layout-layout"><code>Layout$layout</code> member</a>: a <code>data.frame</code> mapping panels to scales and positions in the overall plot.</li>
+<li><code>Layout$render</code>: creates a <a href="#gtable"><code>gtable</code></a> by combining the layer, facet, and coordinate <a href="#grob">grobs</a>.</li>
+</ul>
+</dd>
+<!---------------------------------------------------------------------------->
 <dt>
 <a name="layer-function"></a>Layer Function
 </dt>
 <dd>
 <p>Functions that create <a href="#ggproto-layer"><code>Layer</code> <code>ggproto</code></a>) objects like <code>geom_point</code> or <code>stat_bin</code>. For example, in (a simplified version of) <code>geom_point</code>:</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb30-1" data-line-number="1">geom_point &lt;-<span class="st"> </span><span class="cf">function</span>(</a>
-<a class="sourceLine" id="cb30-2" data-line-number="2">  <span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span></a>
-<a class="sourceLine" id="cb30-3" data-line-number="3">)</a>
-<a class="sourceLine" id="cb30-4" data-line-number="4">  <span class="kw">layer</span>(</a>
-<a class="sourceLine" id="cb30-5" data-line-number="5">    <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">stat =</span> stat, <span class="dt">geom =</span> GeomPoint,</a>
-<a class="sourceLine" id="cb30-6" data-line-number="6">    <span class="dt">position =</span> position,</a>
-<a class="sourceLine" id="cb30-7" data-line-number="7">  )</a></code></pre></div>
-<p>The layer function calls <code>ggplot2::layer</code>. This function expands shortcut names for <a href="#ggproto"><code>ggproto</code> objects</a> into the corresponding <code>ggproto</code> objects. In <code>geom_point(position='jitter', size=2)</code> it translates the <code>'jitter'</code> string into a <code>PositionJitter</code> <code>ggproto</code> object, and implicitly due to the default value for <code>stat</code> parameter it also translates the string <code>'identity'</code> into the <code>StatIdentity</code> <code>ggproto</code> object.</p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb37-1" data-line-number="1">geom_point &lt;-<span class="st"> </span><span class="cf">function</span>(</a>
+<a class="sourceLine" id="cb37-2" data-line-number="2">  <span class="dt">mapping =</span> <span class="ot">NULL</span>, <span class="dt">data =</span> <span class="ot">NULL</span>, <span class="dt">stat =</span> <span class="st">&quot;identity&quot;</span>, <span class="dt">position =</span> <span class="st">&quot;identity&quot;</span></a>
+<a class="sourceLine" id="cb37-3" data-line-number="3">)</a>
+<a class="sourceLine" id="cb37-4" data-line-number="4">  <span class="kw">layer</span>(</a>
+<a class="sourceLine" id="cb37-5" data-line-number="5">    <span class="dt">data =</span> data, <span class="dt">mapping =</span> mapping, <span class="dt">stat =</span> stat, <span class="dt">geom =</span> GeomPoint,</a>
+<a class="sourceLine" id="cb37-6" data-line-number="6">    <span class="dt">position =</span> position,</a>
+<a class="sourceLine" id="cb37-7" data-line-number="7">  )</a></code></pre></div>
+<p>The layer function calls <code>ggplot2::layer</code>. This function expands shortcut names for <a href="#ggproto"><code>ggproto</code> objects</a> into the corresponding <code>ggproto</code> objects. In <code>geom_point(position='jitter', size=2)</code> it translates the <code>'jitter'</code> shortcut name into a <code>PositionJitter</code> <a href="#ggproto"><code>ggproto</code> object</a>, and implicitly due to the default value for <code>stat</code> parameter it also translates the string <code>'identity'</code> into the <code>StatIdentity</code> <code>ggproto</code> object.</p>
 <p>These functions will allocate their parameters to the various subcomponents of the <a href="#ggproto-layer"><code>Layer</code> <code>ggproto</code></a>) object such as the <a href="#ggproto-stat"><code>Stat</code></a>, <a href="#ggproto-geom"><code>Geom</code></a>, or alternatively to the aesthetic mapping specification.</p>
-<p>Parameter matching is typically done by looking at the parameters for the corresponding <code>ggproto</code> <code>$compute/draw_panel</code> methods, and if that method contains <code>...</code> in the signature, also by looking at the parameters of the <code>ggproto</code> <code>$compute/draw_group</code> methods. For example, for <code>StatBin</code> we have:</p>
-<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb31-1" data-line-number="1"><span class="kw">args</span>(<span class="kw">environment</span>(StatBin<span class="op">$</span>compute_panel)<span class="op">$</span>f)</a></code></pre></div>
-<pre><code>Error in environment(StatBin$compute_panel): object 'StatBin' not found</code></pre>
-<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb33-1" data-line-number="1"><span class="kw">args</span>(<span class="kw">environment</span>(StatBin<span class="op">$</span>compute_group)<span class="op">$</span>f)</a></code></pre></div>
-<pre><code>Error in environment(StatBin$compute_group): object 'StatBin' not found</code></pre>
+<p>Parameter matching is done by looking at the parameters for the corresponding <code>ggproto</code> <code>$compute/draw_panel</code> methods, and if that method contains <code>...</code> in the signature, also by looking at the parameters of the <code>ggproto</code> <code>$compute/draw_group</code> methods. For example, for <code>StatBin</code> we have:</p>
+<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb38-1" data-line-number="1"><span class="kw">args</span>(<span class="kw">environment</span>(ggplot2<span class="op">::</span>StatBin<span class="op">$</span>compute_panel)<span class="op">$</span>f)</a></code></pre></div>
+<pre><code>function (self, data, scales, ...) 
+NULL</code></pre>
+<div class="sourceCode" id="cb40"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb40-1" data-line-number="1"><span class="kw">args</span>(<span class="kw">environment</span>(ggplot2<span class="op">::</span>StatBin<span class="op">$</span>compute_group)<span class="op">$</span>f)</a></code></pre></div>
+<pre><code>function (data, scales, binwidth = NULL, bins = NULL, center = NULL, 
+    boundary = NULL, closed = c(&quot;right&quot;, &quot;left&quot;), pad = FALSE, 
+    breaks = NULL, origin = NULL, right = NULL, drop = NULL, 
+    width = NULL) 
+NULL</code></pre>
 <p>Note: the <code>args(environment(...)$f)</code> business is required because <a href="ggproto-methods"><code>ggproto</code> methods</a> are not directly accessible.</p>
-Since <code>StatBin$compute_panel</code> has a <code>...</code> parameter, layer functions with <code>StatBin</code> as the stat will match their parameters against the union of the parameter list for <code>$compute_panel</code> and <code>$compute_group</code>. So in the call <code>stat_bin(bins=10)</code> the layer function <code>stat_bin</code> will match the parameter <code>bin</code> to the <code>$compute_group</code> parameters, and as a result store that parameter in the <code>StatBin$parameters</code> list. This parameter list can then be used by other <code>StatBin</code> methods such as <a href="#stat-compute"><code>StatBin$compute_group</code></a>.
+Since <code>StatBin$compute_panel</code> has a <code>...</code> parameter, layer functions with <code>StatBin</code> will match their parameters against the union of the parameters for <code>$compute_panel</code> and <code>$compute_group</code>. In the call <code>stat_bin(bins=10)</code> the layer function <code>stat_bin</code> will match the parameter <code>bin</code> to the <code>$compute_group</code> parameters, and as a result store that parameter in the <code>StatBin$parameters</code> list. This parameter list can then be used by other <code>StatBin</code> methods such as <a href="#stat-compute"><code>StatBin$compute_group</code></a>.
 </dd>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="ggproto-scale"></a>Scale, Ggproto
+<a name="panel"></a>Panel
 </dt>
 <dd>
-<p>Contains meta data about the scales (e.g. the range) and methods to transform the data.</p>
-<p>For example, <code>scale_x_sqrt</code> produces a <code>ScaleContinuous</code> <code>ggproto</code> object with a <code>$trans</code> method that will covert any <code>x</code> related aesthetics to their square roots.</p>
-There are is also typically the <code>$map</code> to map the aesthetics into the display space (e.g. categories into colors), although for <a href="#position-aesthetic">position aesthetics</a> that is typically handled by <code>Coord$transform</code> <strong>This needs to be confirmed</strong>.
+<p>Each plot layer is displayed across the plot <a href="#facet">facets</a>. The part of the facet that displays the layer data is the panel. If a facet is a window, then the panel is the glass pane.</p>
+Internally, each panel corresponds to a subset of the rows of the layer data. The <code>PANEL</code> variable designates what panel/<a href="#facet">facet</a> each row in the layer data should be displayed in.
 </dd>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="ggproto-scale-position"></a>Scale, Position, Ggproto
+<a name="panel"></a>Plot Data
+</dt>
+<dd>
+The <code>data.frame</code> specified in the <code>ggplot(data=...)</code> call is the plot data. <a href="#layer">Layers</a> that are not explicitly assigned <a href="#layer-data">layer data</a> inherit this <code>data.frame</code> as their data.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-position"></a>Position, <code>ggproto</code>
+</dt>
+<dd>
+<p><code>Position*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>PositionDodge</code> are responsible for adjusting the position aesthetics in the layer data. For example, <code>PositionDodge</code> shifts and adjusts<code>x</code> <a href="#position-aesthetic">position aesthetics</a> such that objects overlapping on the <code>xmin</code> aesthetic are placed side by side.</p>
+See <a href="#position-compute"><code>Position$compute_*</code></a> for details and <code>?Position</code>.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-position"></a>Render
+</dt>
+<dd>
+In <code>ggplot2</code>, the terms “draw” and “render” are used to denote the process of creating <a href="#grob">grobs</a> or <a href="#gtable"><code>gtable</code> objects</a>. This is different to the more traditional definition of converting the graphical object models (e.g. the <a href="#grob">grobs</a>/<a href="#gtable">gtable</a>) into a 2D image.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-scale"></a>Scale
+</dt>
+<dd>
+<p><a href="#ggproto"><code>ggproto</code> object</a> that Contains meta data about the scales (e.g. the range of values plotted under the scale) and <a href="#ggproto-method">methods</a> to transform the data.</p>
+<p>For example, <code>scale_x_sqrt</code> produces a <code>ScaleContinuous</code> <a href="#ggproto"><code>ggproto</code></a> object with a <a href="#scaletransform_df"><code>$transform</code> method</a> that will covert any <code>x</code> related aesthetics to their square roots.</p>
+There are is also typically a <code>$map</code> method to map the aesthetics into the display space (e.g. categories into colors), although for <a href="#position-aesthetic">position aesthetics</a> that is typically handled by <code>Coord$transform</code>.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-scale-position"></a>Scale, Position
 </dt>
 <dd>
 <a href="#ggproto-scale">Scales</a> that correspond to the <a href="#position-aesthetic">position aesthetics</a>.
 </dd>
-</dl>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="scale-map"></a>Scale, Map
+<a name="map-scale"></a>Scale, Map
 </dt>
 <dd>
-Use scales to convert aesthetic values into the space they will be plotted in. For example, values on a color/fill scale are converted to the colors they will be displayed as. Mapping for <a href="#ggproto-scale-position">position scales</a> would in theory convert values into the 0-1 range, but that is actually handled by the coordinate transformation instead.
+Use scales to convert aesthetic values into the domain they will be plotted in. For example, values on a color/fill scale are converted to the colors they will be displayed as. Mapping for <a href="#ggproto-scale-position">position scales</a> would in theory convert values into the 0-1 range, but that is actually handled by the coordinate transformation instead.
 </dd>
-</dl>
+<!---------------------------------------------------------------------------->
 <dt>
-<a name="scale-train"></a>Scale, Train
+<a name="train-scale"></a>Scale, Train
 </dt>
 <dd>
 <p>Process that computes the range of values covered by a scale. For continuous scales this is typically just the min and max values, whereas for discrete scales it is the sorted unique listing of all the different values.</p>
 Typically <a href="#ggproto-scale-position">position scales</a> are trained several times in the plot build process as they are used therein and the data is changed, e.g. via statistics or position adjustments.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt>
+<a name="ggproto-stat"></a>Stat
+</dt>
+<dd>
+<p><code>Stat*</code> <a href="#ggproto"><code>ggproto</code></a> objects such as <code>StatBin</code> are responsible for <a href="#stat-compute">recomputing</a> the layer data with a statistic and potentially adding new variables. For example, <code>StatBin</code> bins the data and computes <code>y</code> values as well as other stats such as <code>count</code> and <code>ncount</code>.</p>
+See <code>vignette(package='ggplot2', 'extending-ggplot2')</code> for examples.
 </dd>
 </dl>
 </div>
