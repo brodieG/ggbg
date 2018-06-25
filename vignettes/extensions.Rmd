@@ -102,10 +102,10 @@ Before we get into the nitty-gritty of `ggplot_build` and `ggplot_gtable`, we
 need to review the `ggplot2` extension mechanism.  `ggplot2` is extended by
 defining [`ggproto` objects](#ggproto) that inherit from the existing
 [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom), [`Position`](#ggproto-geom),
-[`Scale`](#ggproto-scale), `Coord`, `Facet`, and other [`ggproto`
-objects](#ggproto).  [`ggproto` objects](#ggproto) contain both data and
-functions (a.k.a.  [methods](#ggproto-method)).  This allows us to override
-existing functionality by providing `ggproto` objects with custom
+[`Scale`](#ggproto-scale), [`Coord`](#ggroto-coord), [`Facet`](#ggproto-facet),
+and other [`ggproto` objects](#ggproto).  [`ggproto` objects](#ggproto) contain
+both data and functions (a.k.a.  [methods](#ggproto-method)).  This allows us to
+override existing functionality by providing `ggproto` objects with custom
 [methods](#ggproto-method).
 
 If we want to define a new `Geom` "x", we create a `GeomX` `ggproto` object that
@@ -871,8 +871,8 @@ Aesthetic variables come about in three ways in `ggplot2`:
 
 Position and non-position aesthetics are treated slightly differently in the
 [`ggplot_build`](#ggplot_build) process.  This is primarily because position
-aesthetics are subject to coordinate transformations, whereas non-position
-aesthetics are not.
+aesthetics are subject to [coordinate](#ggproto-coord) transformations, whereas
+non-position aesthetics are not.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggprot-coord'></a>Coord, `ggproto`</dt>
@@ -900,8 +900,8 @@ labels, etc.) is the [panel](#panel).
 
 * Computes [facet](#facet) layout.
 * Assigns data to [panels](#panel).
-* [Renders](#render) the facets by combining the panels with axes, labels, facet
-  labels, etc., into a [`gtable`](#gtable).
+* [Renders](#render) the facets by combining the panels with the layer
+  [grobs](#grob), axes, labels, facet labels, etc., into a [`gtable`](#gtable).
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-geom'></a>Geom, `ggproto`</dt>
@@ -939,49 +939,55 @@ to by reference.
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-method'></a>Ggproto Method</dt>
 <dd>
-A function that is part of a [`ggproto`](#ggproto) object.  It differs from
-standard R functions because of the optional `self` parameter.  A `ggroto`
-method that has the `self` parameter will be passed the [`ggproto`](#ggproto)
-object the method belongs to as the value of that parameter when the it is
-called.  This gives the method access to the object data and other methods, and
-the opportunity to modify the `ggproto` object by reference.
+A function that is part of a [`ggproto`](#ggproto) object.  Typically these are
+called with the `$` operator:
+
+```{r eval=FALSE}
+Object$method()
+```
+
+One special feature of `ggproto` methods is that they can have a special `self`
+parameter.  Methods that have the `self` parameter will be passed the
+[`ggproto`](#ggproto) object they belong to as the value of that parameter.
+This gives the method access to the object data and other methods, and the
+opportunity to modify the `ggproto` object by reference.
 
 We illustrate the use of `self` with a simple example.  Neither method call
 provides the `self` parameter:
 
 ```{r eval=TRUE}
-Example <- ggproto(
+Object <- ggplot2::ggproto(
   "Example", NULL,
   method1=function(self, x) cat(sprintf("%s %s\n", x, self$secret)),
   method2=function(x) cat(sprintf("%s %s\n", x, self$secret)),
   secret="secret"
 )
-Example$method1("big")
-Example$method2("big")
+Object$method1("big")  # works, `self` is provided automatically
+Object$method2("big")  # Error because `self` not in signature
 ```
 
-`ggproto` methods are generated at call time by the `$` method for `ggproto`
+`ggproto` methods are generated at call time by the `$` operator for `ggproto`
 objects.  There are several implications to this.  One is that in order to see
 the method body you need to resort to some contortions.  Here we do it for
 `GeomPoint$setup_data`:
 
 ```{r}
-GeomPoint$setup_data
-environment(GeomPoint$setup_data)$f
+ggplot2::GeomPoint$setup_data
+environment(ggplot2::GeomPoint$setup_data)$f
 ```
 
 Additionally `debug(Object$method)` will not work because next
 time you call `Object$method` a new copy of the function is created.  To
 `debug` `ggproto` methods you need to follow these steps:
 
-```{r}
-fun <- Object$method
+```{r, eval=FALSE}
+fun <- Object$method1
 debug(environment(fun)$f)
 fun()
 ```
 
-Depending on circumstances it may be easier to add a `browser` call to the
-sources.
+If you can build the code using `ggproto` methods it will probably be
+easier to add a `browser` call to the sources.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='grid'></a>Grid</dt>
@@ -1050,8 +1056,62 @@ Some useful methods/members:
 <!---------------------------------------------------------------------------->
 <dt><a name='layer-function'></a>Layer Function</dt>
 <dd>
-Functions that create [`Layer` `ggproto`](#ggproto-layer)) objects like
-`geom_point` or `stat_bin`.  For example, in (a simplified version
+Functions like `geom_point` or `stat_bin` that are used to add layers to a
+`ggplot`.  These functions return [`Layer` `ggproto`](#ggproto-layer) objects
+that contain the layer specification, including the [`Geom`](#ggproto-geom),
+[`Stat`](#ggproto-stat), and [`Position`](#ggproto-position) `ggproto`
+sub-objects, and other relevant data.
+
+A layer function's primary objectives are to:
+
+* Translate shorthand geom/stat/position strings into the actual [ggproto
+  objects](#ggproto).
+* Assign parameters to the [`Layer`](#ggproto-layer) object and sub-objects.
+
+To illustrate consider the following call to a layer function:
+```{r eval=FALSE}
+layer <- ggplot2::stat_bin(geom='point', shape=21, bins=10)
+```
+The layer function converts the shorthand "point" into a `GeomPoint` `ggproto`
+sub-object and assigns it the `shape` parameter, and assigns the "bins"
+parameter to the `StatBin` `ggproto` sub-object:
+```{r}
+class(layer$geom)
+layer$geom_params
+layer$stat_params$bins
+```
+
+Parameter assignment is done by matching against the
+`Geom`/`Stat` `$[compute|draw]_[panel|group]` methods, and against the `Geom`
+aesthetics.  For example, `StatBin` has both `$compute_panel` and
+`$compute_group` methods.  The layer function will look at the parameters of the
+`$*_panel` method, and if that method has a `...` parameter as is the case here,
+it will also look at the parameters of the `$*_group` method.
+
+```{r}
+args(environment(ggplot2::StatBin$compute_panel)$f)
+args(environment(ggplot2::StatBin$compute_group)$f)
+```
+
+Note: the `args(environment(...)$f)` business is required because [`ggproto`
+methods](ggproto-methods) are not directly accessible.
+
+Because of the `...` in the `$compute_panel` method, the `stat_bin` layer
+function will match parameters to the union of the `$compute_panel` and
+`$compute_group` methods argument lists.  Matched parameters will then be stored
+as the `$parameters` member of the [`Stat`](#ggproto-stat) object for use by
+`$compute_panel` and `$compute_group` in the [stat computation
+step](#stat-compute).
+
+
+A similar process occurs with `GeomPoint` and the `$draw_panel` methods.
+
+
+Most of the work a layer function does is translate  and assign their parameters 
+
+The key role of the 
+kkkkk
+like `geom_point` or `stat_bin`.  For example, in (a simplified version
 of) `geom_point`:
 
 ```{r eval=FALSE}
@@ -1066,36 +1126,14 @@ geom_point <- function(
 The layer function calls `ggplot2::layer`. This function expands shortcut names
 for [`ggproto` objects](#ggproto) into the corresponding `ggproto` objects.  In
 `geom_point(position='jitter', size=2)` it translates the `'jitter'`
-shortcut name into a `PositionJitter` [`ggproto` object](#ggproto), and
-implicitly due to the default value for `stat` parameter it also translates the
-string `'identity'` into the `StatIdentity` `ggproto` object.
+shortcut name into a `PositionJitter` [`ggproto` object](#ggproto).  The string
+"identity" is translated into `StatIdentity` and `PositionIdentity` for the
+`stat` and `position` parameters respectively.
 
-These functions will allocate their parameters to
-the various subcomponents of the [`Layer` `ggproto`](#ggproto-layer)) object
-such as the [`Stat`](#ggproto-stat), [`Geom`](#ggproto-geom), or alternatively
-to the aesthetic mapping specification.
-
-Parameter matching is done by looking at the parameters for the corresponding
-`ggproto` `$compute/draw_panel` methods, and if that method contains `...` in
-the signature, also by looking at the parameters of the `ggproto`
-`$compute/draw_group` methods.  For example, for `StatBin` we have:
-
-```{r}
-args(environment(ggplot2::StatBin$compute_panel)$f)
-args(environment(ggplot2::StatBin$compute_group)$f)
-```
-
-Note: the `args(environment(...)$f)` business is required because [`ggproto`
-methods](ggproto-methods) are not directly accessible.
-
-Since `StatBin$compute_panel` has a `...` parameter, layer functions with
-`StatBin` will match their parameters against the union of the
-parameters for `$compute_panel` and `$compute_group`.  In the call
-`stat_bin(bins=10)` the layer function `stat_bin` will match the parameter `bin`
-to the `$compute_group` parameters, and as a result store that parameter in the
-`StatBin$parameters` list.  This parameter list can then be used by other
-`StatBin` methods such as [`StatBin$compute_group`](#stat-compute).
-</dd>
+In addition to expanding shortcut names into [`ggproto` objects](#ggproto),
+layer functions allocate their other parameters to those `ggproto` objects, or
+or alternatively to the aesthetics as a [parameter
+aesthetic](#parameter-aesthetic).  </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='panel'></a>Panel</dt>
 <dd>
