@@ -38,10 +38,10 @@ This document is an unofficial reference for developers looking to extend
 `ggplot2`.  It supplements existing documentation by providing more
 detail about how the extension mechanism interacts with other parts of the
 `ggplot2` plot building process.  It is based on examination of the sources of
-`ggplot2` circa 5/2018 (version 2.3 pre-release), and may become out of date as
+`ggplot2` circa 5/2018 (version 3.0 pre-release), and may become out of date as
 `ggplot2` evolves.  Please be aware that by virtue of this documentation being
 unofficial, behavior it documents that is not also documented officially may be
-changed by the `ggplot2` authors without warning.
+changed by the `ggplot2` maintainers without warning.
 
 We assume the reader is familiar with using `ggplot2` for generating plots, and
 that the reader has previously reviewed:
@@ -56,7 +56,8 @@ There are four major sections to this document:
 
 1. [Overview](#overview): A high level look at the process of converting data
    and user `ggplot2` plot specifications into a plot.  This section provides
-   context for the reference sections that follow.
+   context for the reference sections that follow and is the only section
+   intended to be read from beginning to end.
 2. [Method Outline](#method-outline): The listing of all the key function calls
    used by `ggplot2` to generate the plot.  This gives you a sense for where
    your extension fits in relation to the rest of the process.  Most steps in
@@ -77,7 +78,7 @@ Four major steps are required to produce a `ggplot`:
    `ggplot(...) + geom_*(...)`, etc..
 2. Build: `ggplot2` manipulates the data as directed by the user plot
    specification (e.g. applies stats, position adjustments, scale
-   transformation, mapping to [aesthetics](#aesthetic) etc).
+   transformations, mapping to [aesthetics](#aesthetic) etc).
 3. Graphical Object Creation: `ggplot2` translates the data into [`grid`](#grid)
    [graphical objects (grobs)](#grob).
 4. Render: display the graphical objects on a graphics device.
@@ -104,7 +105,7 @@ Before we get into the nitty-gritty of `ggplot_build` and `ggplot_gtable`, we
 need to review the `ggplot2` extension mechanism.  `ggplot2` is extended by
 defining [`ggproto` objects](#ggproto) that inherit from the existing
 [`Geom`](#ggproto-geom), [`Stat`](#ggproto-geom), [`Position`](#ggproto-geom),
-[`Scale`](#ggproto-scale), [`Coord`](#ggroto-coord), [`Facet`](#ggproto-facet),
+[`Scale`](#ggproto-scale), [`Coord`](#ggproto-coord), [`Facet`](#ggproto-facet),
 and other [`ggproto` objects](#ggproto).  [`ggproto` objects](#ggproto) contain
 both data and functions (a.k.a.  [methods](#ggproto-method)).  This allows us to
 override existing functionality by providing `ggproto` objects with custom
@@ -139,7 +140,7 @@ plot (list)
 + ...
 ```
 
-This structure implies several things about a plot:
+This implies a plot:
 
 * Can have multiple [layers](#layer).
 * Can have multiple [scales](#scale), however the set of scales is shared
@@ -148,9 +149,8 @@ This structure implies several things about a plot:
 * Has one set of facets.
 * Has independent data, [`Geom`](#ggproto-geom), [`Stat`](#ggproto-stat), and
   [`Position`](#ggproto-position) for each layer.
-
-Implicit in this structure is that every plot [layer](#layer) maps onto the same
-space.
+* Every layer maps onto the same space since layers rely on the plot-level
+  scales and facets.
 
 The portion of the structure you are most likely to interact with when extending
 `ggplot2` is the `Layer` object and its sub-objects.  Within each `Layer` object
@@ -180,9 +180,9 @@ process follows this pseudo code pattern:
 
 ```
 For Each Layer:
-  For Each Panel:
-    For Each Group:
-      Do Something.
+    For Each Panel:
+        For Each Group:
+            Do Something!
 ```
 
 This is reflected in the structure of the layer-related [`ggproto`
@@ -462,7 +462,7 @@ that are associated with the scale.  You can check which aesthetics are
 associated with a stat with the `$aesthetics` member of the stat:
 
 ```{r}
-scale <- ggplot2::scale_x_continous()
+scale <- ggplot2::scale_x_continuous()
 scale
 scale$aesthetics
 ```
@@ -883,7 +883,7 @@ aesthetics are subject to [coordinate](#ggproto-coord) transformations, whereas
 non-position aesthetics are not.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='ggprot-coord'></a>Coord, `ggproto`</dt>
+<dt><a name='ggproto-coord'></a>Coord, `ggproto`</dt>
 <dd>
 [`ggproto`](#ggproto) object responsible for:
 
@@ -893,13 +893,13 @@ non-position aesthetics are not.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='facet'></a>Facet</dt>
-Facets are sub-viewports in which a subset of the data is displayed.  Each plot
-has a set of facets, or by default a single facet that corresponds to the main
-viewport.  Each plot [layer](#layer) is displayed across all plot facets,
-although some layers may not have data to show in every facet.
+Facets are sub-viewports in which a subset of the data is displayed.  By default
+plots have one facet that comprises the plot [panel](#panel), axes, and axis
+labels.  More facets can be added by subdividing the data across
+[panels](#panel) with the `facet_*` facet specification functions.
 
-The area of a facet that is wholly bounded by the axes (i.e. excluding axis
-labels, etc.) is the [panel](#panel).
+Each plot [layer](#layer) is displayed across all plot facets, although some
+layers may not have data to show in every facet.
 <dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-facet'></a>Facet, `ggproto`</dt>
@@ -940,7 +940,8 @@ or `[[` operators.  Common `ggproto` objects include:
 * [`Scale`](#ggproto-scale).
 * [`Stat`](#ggproto-stat).
 
-`ggproto` objects are reference objects, so they can be modified in place.
+`ggproto` objects are [reference objects](#reference-object), so they can be
+modified in place.  They are actually environments with a class attribute.
 Several `ggproto` [methods](#ggproto-method) will update the object they belong
 to by reference.
 </dd>
@@ -954,48 +955,47 @@ called with the `$` operator:
 Object$method()
 ```
 
-One special feature of `ggproto` methods is that they can have a special `self`
+A feature of `ggproto` methods is that they can have a special `self`
 parameter.  Methods that have the `self` parameter will be passed the
 [`ggproto`](#ggproto) object they belong to as the value of that parameter.
 This gives the method access to the object data and other methods, and the
-opportunity to modify the `ggproto` object by reference.
+opportunity to modify the [`ggproto` object](#ggproto) by reference as these are
+[reference objects](#reference-object).
 
-We illustrate the use of `self` with a simple example.  Neither method call
-provides the `self` parameter:
+We illustrate the use of `self` with a simple example.  None of the method calls
+provides the `self` parameter directly:
 
 ```{r eval=TRUE}
 Object <- ggplot2::ggproto(
   "Example", NULL,
   method1=function(self, x) cat(sprintf("%s %s\n", x, self$secret)),
   method2=function(x) cat(sprintf("%s %s\n", x, self$secret)),
+  method3=function(self, x) self$secret <- x,
   secret="secret"
 )
 Object$method1("big")  # works, `self` is provided automatically
 Object$method2("big")  # Error because `self` not in signature
+Object$method3("NEW SECRET")  # update `secret` member by reference
+Object$method1("big")  # `secret` member updated
 ```
 
 `ggproto` methods are generated at call time by the `$` operator for `ggproto`
-objects.  There are several implications to this.  One is that in order to see
-the method body you need to resort to some contortions.  Here we do it for
-`GeomPoint$setup_data`:
+objects.  The return value of `$` is a wrapper around the function provided to
+the `ggplot2::ggproto` call.  It is this wrapper that passes the `self` object:
 
 ```{r}
-ggplot2::GeomPoint$setup_data
-environment(ggplot2::GeomPoint$setup_data)$f
+Object$method1
 ```
 
-Additionally `debug(Object$method)` will not work because next
-time you call `Object$method` a new copy of the function is created.  To
-`debug` `ggproto` methods you need to follow these steps:
+This 'wrapping' behavior requires us to circumvent `$` and `[[` if we want
+direct access to the method, e.g. for setting the `debug` state:
 
 ```{r, eval=FALSE}
-fun <- Object$method1
-debug(environment(fun)$f)
-fun()
+debug(get("method1", envir=Object))
+Object$method1("big")  # this will be a debugged version of `method1`
 ```
 
-If you can build the code using `ggproto` methods it will probably be
-easier to add a `browser` call to the sources.
+Recall [`ggproto` objects](#ggproto) are actually environments.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='grid'></a>Grid</dt>
@@ -1016,6 +1016,8 @@ can be used by the `grid` package to draw them on a graphical device.
 An object containing a collection of [grobs](#grob) intended to
 be displayed in a table-like layout.  `gtable` objects are used by `ggplot2` to
 simplify the manipulation of the layout of plots.
+
+See `?gtable::gtable`.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='layer'></a>Layer</dt>
@@ -1025,18 +1027,19 @@ possible to have multiple super-imposed graphical representations of data.  For
 example, we can overlay a representation of a model fit on top of a scatter-plot
 of the data the model was trained on.
 
-A `ggplot` may contain multiple layers.
+Each layer will be rendered across all [panels](#panel) it contains data for.
 
-Internally, layers and the logic required to compute and render them are built
-into the [`Layer` `ggproto`](#ggproto-layer) object.
+Internally, layers are represented by [`Layer` `ggproto`](#ggproto-layer)
+objects.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-layer'></a>Layer, `ggproto`</dt>
 <dd>
 [`ggproto`](#ggproto) object responsible for computing and rendering plot
-[layers](#layer).  It contains `Geom`, `Stat`, and `Position` `ggproto`
-sub-objects, along with other data and the methods that carry out the
-computation and translation of layer data into [grobs](#grob).
+[layers](#layer).  It contains [`Geom`](#ggproto-geom), [`Stat`](#ggproto-stat),
+and [`Position`](#ggproto-position) `ggproto` sub-objects, along with other data
+and the methods that carry out the computation and translation of layer data
+into [grobs](#grob).
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-layer'></a>Layer Data</dt>
@@ -1118,7 +1121,7 @@ then the panel is the glass pane.
 
 Internally, each panel corresponds to a subset of the rows of the layer data.
 The `PANEL` variable in the [layer data](#layer-data) designates what
-panel/[facet](#facet) each row in the layer data should be displayed in.
+panel each row in the layer data should be displayed in.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='panel'></a>Plot Data</dt>
@@ -1137,6 +1140,31 @@ aesthetics](#position-aesthetic) such that objects overlapping on the `xmin`
 aesthetic are placed side by side.
 
 See [`Position$compute_*`](#position-compute) for details and `?Position`.
+</dd>
+<!---------------------------------------------------------------------------->
+<dt><a name='ggproto-position'></a>Reference Object</dt>
+<dd>
+Objects that are tied to a particular memory reference, and as such break the
+default pass-by-value semantics of R.  This means that an object provided to
+a function and modified in that function's scope will also be modified in the
+calling scope (and everywhere else it is referenced).  Environment objects are
+of this type, whereas list are not:
+
+```{r}
+env <- new.env()
+lst <- list()
+env$a <- lst$a <- 1
+
+f <- function(e, l) {
+  e$a <- 2
+  l$a <- 2
+}
+f(env, lst)
+
+env$a
+lst$a
+```
+[`ggproto` objects](#ggproto) are reference objects.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-position'></a>Render</dt>
