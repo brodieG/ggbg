@@ -149,12 +149,13 @@ This implies a plot:
 * Has one set of facets.
 * Has independent data, [`Geom`](#ggproto-geom), [`Stat`](#ggproto-stat), and
   [`Position`](#ggproto-position) for each layer.
-* Every layer maps onto the same space since layers rely on the plot-level
-  scales and facets.
+
+Additionally this implies every layer maps onto the same space since layers rely
+on the plot-level scales and facets.
 
 The portion of the structure you are most likely to interact with when extending
-`ggplot2` is the `Layer` object and its sub-objects.  Within each `Layer` object
-there is an additional level of implicit structure. The
+`ggplot2` is the `Layer` object and its sub-objects.  Within each [`Layer`
+object](#layer) there is an additional level of implicit structure. The
 [`ggplot_build`](#ggplot-build) process adds [`PANEL`](#panel) and `group`
 variables to the [`Layer$data`](#layer-data) `data.frame`.  This creates groups
 of rows that each correspond to a particular [panel](#panel) or group within
@@ -196,22 +197,18 @@ illustrative purposes:
 
 ```{r, eval=FALSE}
 dat <- data.frame(
-  loc=(1:4)^2,
-  val=(5:8)^2,
+  loc=1:4,
+  val=5:8,
   grp=c('A', 'B', 'B', 'C'),
   pnl=c('P1', 'P1', 'P2', 'P2')
 )
 library(ggplot2)
-p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
-  stat_bin2d() +
-  geom_point(position="jitter", shape=21) +
+p <- ggplot(dat, aes(x=loc)) +
+  stat_bin(bins=1, aes(weight=val)) +
+  geom_point(aes(y=val, fill=grp), position="jitter", shape=21, size=4) +
   facet_wrap(~pnl, scales="free_x") +
-  scale_x_sqrt() +
-  scale_y_sqrt()
+  scale_x_reverse()
 ```
-
-It involves a standard layer, a statistic layer, it has facets, and it scales
-the [position aesthetics](#position-aesthetic).
 
 ## Method Outline
 
@@ -391,81 +388,69 @@ facet specification for the plot.
 ### Facet$map_data
 
 For each layer, add the `PANEL` variable to the data.  Here we show the effect
-it has on the data of the first layer of our [example plot](#example-plot):
+it has on the data of the first layer of our [example plot](#example-plot),
+although the effect will be the same on the second as they both share the [plot
+data](#plot-data):
 
 ```{r, echo=FALSE, results="asis"}
-input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor")), .Names = c("loc", "val", "grp",
-"pnl"), row.names = c(NA, -4L), class = "data.frame")
-output <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
-    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
-"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
-diffobj::diffPrint(input, output)
+facet.map.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor")), class = "data.frame", row.names = c(NA, -4L))
+facet.map.out <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA, 4L), class = "data.frame")
+
+diffobj::diffPrint(facet.map.in, facet.map.out)
 ```
 
 ### Layer$compute_aesthetics
 
 For each layer, evaluates all the [mapped aesthetic](mapped-aesthetics)
-`aes(...)` expressions and replace the data variables with the resulting
+`aes(...)` expressions and replaces the data variables with the resulting
 aesthetics.  [Stat aesthetics](#stat-aesthetic) are evaluated later as part of
 the [stat computation](#stat-compute) process.
 
 This step also infers the `group` aesthetic from the interaction of categorical
 [mapped aesthetics](#mapped-aesthetic).
 
-Here we show the effect on one of the layer's data:
+Here we show the effect on the `geom_point` [layer data](#layer-data):
 
 ```{r, echo=FALSE, results="asis"}
-input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
-    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
-"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
-output <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), row.names = c(NA, -4L), class = "data.frame")
-diffobj::diffPrint(input, output)
+comp.aes.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA, 4L), class = "data.frame")
+comp.aes.out <- structure(list(y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), x = 1:4, PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+diffobj::diffPrint(comp.aes.in, comp.aes.out)
 ```
 
-The variable have changed to be the aesthetics, and we gain the `group`
-variable.
+The variables have changed to be the [aesthetics](#aesthetic), and we gain the
+`group` variable.
 
 ### Scale$transform_df
 
 This is applies scale transformations to each layer.  In our example, we use
-`scale_*_sqrt`.  Here is the effect on the data for one of the layers:
+`scale_x_reverse`.  Here is the effect on the data for the `geom_point` layer
+(note we are actually showing the effect of `ggplot2:::scales_transform_df`, a
+wrapper around the `$transform_df` method):
 
 ```{r, echo=FALSE, results="asis"}
-trans.input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), row.names = c(NA, -4L), class = "data.frame")
-trans.output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), class = "data.frame", row.names = c(NA, -4L))
-diffobj::diffPrint(trans.input, trans.output)
+
+trans.in <- comp.aes.out
+trans.out <- structure(list(x = -1:-4, y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA, -4L))
+
+diffobj::diffPrint(trans.in, trans.out)
 ```
 
 The transformation is applied by calling `Scale$transform` on all the aesthetics
-that are associated with the scale.  You can check which aesthetics are
-associated with a stat with the `$aesthetics` member of the stat:
+that are associated with the scale.
+
+You can check which aesthetics are
+associated with a scale with the `$aesthetics` member of the scale:
 
 ```{r}
 scale <- ggplot2::scale_x_continuous()
-scale
 scale$aesthetics
 ```
+
+In this case the only `aesthetic` transformed is `x`, but if `xmin` and `xmax`
+had been present they too would have been transformed.
+
+For our numeric `x` aesthetic the transformation was achieved by making the
+numbers negative, effectively reversing them.
 
 ### Layout$map_position
 
@@ -538,29 +523,27 @@ Statistics can completely change the data.  Here is what the input to
 `Stat$compute_layer` looks like in [example plot](#example-plot):
 
 ```{r echo=FALSE}
-stat.input <- trans.output
-stat.input
+stat.in <- structure(list(x = c(-1, -2, -3, -4), weight = 5:8, PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(-1L, -1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")
 ```
 
-And if you have not modified the layer method, then the input into
-`Stat$compute_panel` will look like (for the first panel):
+And if you have not modified the `$compute_layer` method, then the input into
+`$compute_panel` will look like (for the first panel):
 
 ```{r echo=FALSE}
-structure(list(x = c(1, 2), y = c(5, 6), fill = structure(1:2, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = 1:2), .Names = c("x", "y", "fill", "PANEL", "group"), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+structure(list(x = c(-1, -2), weight = 5:6, PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
 ```
 
-And if you have not modified the panel method, the input into `Stat$group_panel`
-will look like (for the first group of the first panel):
+In this case, because we only have one group, if you did not modify the panel
+method (as is the case with `StatBin`), the input into `$compute_group` will look
+the same as the input into `$compute_panel`.  If we had multiple groups then
+`$compute_group` would be called repeatedly with the subset of rows
+corresponding to each group.
+
+In the [example plot](#example-plot) `StatBin` overrides the `$compute_group`
+method.  The result for the first (and only) group of the first panel is then:
 
 ```{r echo=FALSE}
-structure(list(x = 1, y = 5, fill = structure(1L, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(1L, .Label = c("1", "2"), class = "factor"), group = 1L), .Names = c("x", "y", "fill", "PANEL", "group"), vars = "PANEL", row.names = 1L, class = "data.frame")
-```
-
-In the [example plot](#example-plot) `StatBin2d` overrides the `$compute_group`
-method.  The result for the first group of the first panel is then:
-
-```{r echo=FALSE}
-structure(list(xbin = 1L, ybin = 1L, value = 1, x = 1.01666666666667, width = 0.0333333400000002, y = 5.05, height = 0.10000002, count = 1, density = 1), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density"), row.names = 1L, class = "data.frame")
+structure(list(count = 11, x = -2.5, xmin = -4, xmax = -1, width = 3, density = 0.333333333333333, ncount = 1, ndensity = 1), class = "data.frame", row.names = c(NA, -1L))
 ```
 
 If you only override the `$compute_group` method, `$compute_panel` will add back
@@ -573,21 +556,15 @@ The final output after `$compute_panel` and `$compute_layer` stitch back the
 groups and panels together:
 
 ```{r echo=FALSE}
-stat.output <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B",
-"C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L)), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame")
-stat.output
+stat.out <- structure(list(count = c(11, 15), x = c(-2.5, -2.5), xmin = c(-4, -4), xmax = c(-1, -1), width = c(3, 3), density = c(0.333333333333333, 0.333333333333333), ncount = c(1, 1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1", "2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA, -2L))
 ```
 
 If we compare to the input to `$compute_layer` we can see that several variables
 (the [stat aesthetics](#stat-aesthetic)) were added to the data:
 
 ```{r echo=FALSE, results="asis"}
-diffobj::diffStr(stat.input, stat.output)
+diffobj::diffStr(stat.in, stat.out)
 ```
-
-In this case the number of rows in input and output happens to be the same
-because each of our groups only has one row in it, but that is not a
-requirement.
 
 Ultimately, this step should produce data that once processed by
 [`Layer$map_statistic`](#layermap_statistic) has all the required aesthetics
@@ -1040,6 +1017,9 @@ objects.
 and [`Position`](#ggproto-position) `ggproto` sub-objects, along with other data
 and the methods that carry out the computation and translation of layer data
 into [grobs](#grob).
+
+The `Layer` objects is not exported and as such not part of the `ggplot2`
+extension API.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='ggproto-layer'></a>Layer Data</dt>
