@@ -91,7 +91,7 @@ simplified version of `print.ggplot`:
 print.ggplot <- function (x, ...) {
   data <- ggplot_build(x)        # step 2: build
   gtable <- ggplot_gtable(data)  # step 3: create grobs
-  grid.draw(gtable)              # step 4: render
+  grid.draw(gtable)              # step 4: display grobs
 }
 ```
 Almost all the work `ggplot2` does is in these last three steps.  In order to
@@ -296,7 +296,23 @@ likely to modify them.
 
 ### ggplot_gtable
 
-TBD.
+In this step we [render](#render) the `ggplot_built` object produced by
+[`ggplot_build`](#ggplot_build) into the [`grobs`](#grob) that will ultimately
+be turned into shapes, colors, and text on screen.  Unlike
+[`ggplot_build`](#ggplot_build), only a small portion of the work is done by
+[`ggproto` methods](ggproto-method) that can be extended by users, so there is
+not as much for us to document here.
+
+* `Layer$draw_geom`: render the layer geom [grobs](#grob) and arrange them in a
+  [`gtable`](#gtable)
+    * [`Geom$draw_layer`](#geom-draw): render [grobs](#grob) for layer.
+    * [`Geom$draw_panel`](#geom-draw): render [grobs](#grob) for panel.
+    * [`Geom$draw_group`](#geom-draw): render [grobs](#grob) for group
+* `Layout$render`: render the rest of the [panel](#panel) and [facet](#facet)
+  elements, combine them with the layer geom [grobs](#grob), and return as a
+  [`gtable`](#gtable).
+* Generate legend and add it to the layout [`gtable`](#gtable).
+* Add tag, title, subtitle, and margins to the [`gtable`](#gtable).
 
 ## Method Details
 
@@ -493,7 +509,7 @@ group.  This is why you can just override the more specific methods.
 The `self` parameter, if present, can appear anywhere in the signature.  The
 other parameters must be in the relative order shown above.  If you override
 `$compute_panel` and `$compute_group` you may add additional parameters after
-the `scales` parameter.  These parameters will be automatically matched and
+the `scales` parameter.  These parameters will be automatically matched by and
 passed on from the [layer function](#layer-function).  See [`ggproto`
 methods](ggproto-method).
 
@@ -810,9 +826,11 @@ methods](ggproto-method).
 
 Again, with the `geom_point` layer of our [example plot](#example-plot):
 
+<!--
+note we mess with the PANEL name to get around the bug with unable to ignore
+whitespace around colon in diffStr
+-->
 ```{r, echo=FALSE, results="asis"}
-## note we mess with the PANEL name to get around the bug with unable to ignore
-## whitespace around colon
 defaults.in <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
 ), x = c(-1.18914774078876, -2.14726227596402, -3.04320267718285, 
 -4.36120297014713), y = c(5.19393369983882, 5.69687749966979, 
@@ -838,7 +856,7 @@ You can see how the data gains defaults (e.g `colour`, `alpha`, `stroke`) as
 well as the `shape` and `size` [parameter aesthetics](#param-aesthetic) that
 were specified in the `geom_point` call of the [example plot](#example-plot).
 
-### Geom$draw_panel
+### Geom$draw_layer/panel/group {#geom-draw}
 
 #### Description
 
@@ -853,8 +871,8 @@ were specified in the `geom_point` call of the [example plot](#example-plot).
 
 The `self` parameter, if present, can appear anywhere in the signature.  The
 other parameters must be in the relative order shown above.  If you override
-`$draw_panel` or `$draw_group` you may add additional parameters after
-the `coord` parameter.  These parameters will be automatically matched and
+`$draw_panel`, or `$draw_group` methods you may add additional parameters after
+the `coord` parameter.  These parameters will be automatically matched by and
 passed on from the [layer function](#layer-function).
 
 #### Parameters
@@ -879,10 +897,10 @@ make it easier to reference recurrent concepts that lack formal definitions.
 <dt><a name='aesthetic'></a>Aesthetic</dt>
 <dd>
 Strictly speaking in the context of `ggplot2` an aesthetic is a graphical
-property of a plot, such as position, color, size, and line type.  Most of the
+property of a plot, such as position, color, size, or line-type.  Most of the
 time when we say "aesthetic" we mean "aesthetic variable".  These are variables
 that contain data that is to be represented as an aesthetic on the plot.  For
-example the `x` aesthetic variable will contain values that ultimately are
+example the `x` aesthetic variable will contain values that are
 intended to represent a position along the `x` axis in a plot.
 
 Aesthetic variables come about in three ways in `ggplot2`:
@@ -1043,17 +1061,20 @@ by `ggplot` to draw the plots.  There are several useful vignettes you can
 find with `browseVignettes('grid')`.
 </dd>
 <!---------------------------------------------------------------------------->
-<dt><a name='grob'></a>Grid Graphical Objects</dt>
+<dt><a name='grob'></a>Grid Graphical Objects, a.k.a Grobs</dt>
 <dd>
-A.k.a. grobs, R objects that contain a description of graphical elements that
+R objects that contain a description of graphical elements that
 can be used by the `grid` package to draw them on a graphical device.
+
+See `?grid::grob`.
 </dd>
 <!---------------------------------------------------------------------------->
 <dt><a name='gtable'></a>Gtable</dt>
 <dd>
 An object containing a collection of [grobs](#grob) intended to
 be displayed in a table-like layout.  `gtable` objects are used by `ggplot2` to
-simplify the manipulation of the layout of plots.
+simplify the manipulation of the layout of plots.  `gtable` objects are
+themselves [`grobs`](#grob) and can be drawn by [`grid`](#grid).
 
 See `?gtable::gtable`.
 </dd>
@@ -1079,7 +1100,7 @@ and [`Position`](#ggproto-position) `ggproto` sub-objects, along with other data
 and the methods that carry out the computation and translation of layer data
 into [grobs](#grob).
 
-The `Layer` objects is not exported and as such not part of the `ggplot2`
+The `Layer` object is not exported and as such not part of the `ggplot2`
 extension API.
 </dd>
 <!---------------------------------------------------------------------------->
