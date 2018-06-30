@@ -198,12 +198,21 @@ dat <- data.frame(
   loc=1:4,
   val=5:8,
   grp=c('A', 'B', 'B', 'C'),
-  pnl=c('P1', 'P1', 'P2', 'P2')
+  pnl=c('P_ONE', 'P_ONE', 'P_TWO', 'P_TWO')
 )
 library(ggplot2)
 p <- ggplot(dat, aes(x=loc)) +
-  stat_bin(bins=1, aes(weight=val)) +
+  stat_bin(bins=1, aes(weight=val), fill="lightgray") +
   geom_point(aes(y=val, fill=grp), position="jitter", shape=21, size=4) +
+  facet_wrap(~pnl, scales="free_x") +
+  scale_x_reverse()
+```
+```{r, eval=FALSE, echo=FALSE}
+p <- ggplot(dat, aes(x=loc)) +
+  stat_bin(bins=1, aes(weight=val), fill="lightgray") +
+  geom_point(
+    aes(y=val, fill=grp), position=position_jitter(seed=24), shape=21, size=4
+  ) +
   facet_wrap(~pnl, scales="free_x") +
   scale_x_reverse()
 ```
@@ -237,10 +246,13 @@ for the [`ggproto` objects](#ggproto) you are extending.
       objects.
     * [`Facet$setup_data`](#setup_params-setup_data): unused by common `Facet`
       objects.
+    * [`Coord$setup_params`](#setup_params-setup_data): unused by common `Coord`
+      objects.
     * [`Coord$setup_data`](#setup_params-setup_data): unused by common `Coord`
       objects.
     * [`Facet$compute_layout`](#facetcompute_layout): generate facet meta data.
-    * `Coord$setup_layout`:
+    * `Coord$setup_layout`: unused by common `Coord` objects, provides an
+      opportunity to adjust the [facet layout](#facetcompute_layout).
     * [`Facet$map_data`](#facetmap_data): add the `PANEL` variable that maps
       data rows to facets.
 * [`Layer$compute_aesthetics`](#layercompute_aesthetics): compute
@@ -322,8 +334,24 @@ not as much for us to document here.
 For each layer, this method assigns the data to be used, which is either the
 data specified in the `geom_*` / `stat_*` [layer function](#layer-function) call
 if any, or if not the data specified in the `ggplot()` call.  Because neither
-layer in the [example plot](#example-plot) had data they both acquire the plot
-data.
+layer in the [example plot](#example-plot) had data they both acquire the [plot
+data](#plot-data):
+
+```
+ $ :'data.frame':	4 obs. of  4 variables:          # STAT LAYER
+  ..$ loc: int [1:4] 1 2 3 4
+  ..$ val: int [1:4] 5 6 7 8
+  ..$ grp: Factor w/ 3 levels "A","B","C": 1 2 2 3
+  ..$ pnl: Factor w/ 2 levels "P_ONE","P_TWO": 1 1 2 2
+ $ :'data.frame':	4 obs. of  4 variables:          # GEOM LAYER
+  ..$ loc: int [1:4] 1 2 3 4
+  ..$ val: int [1:4] 5 6 7 8
+  ..$ grp: Factor w/ 3 levels "A","B","C": 1 2 2 3
+  ..$ pnl: Factor w/ 2 levels "P_ONE","P_TWO": 1 1 2 2
+```
+
+The [layer data](#layer-data) is then kept in a list that is updated throughout
+the [`ggplot_build`](#ggplot_build) process.
 
 ### Object\$setup_params And Object\$setup_data {#setup_params-setup_data}
 
@@ -381,7 +409,10 @@ For `$setup_data`, the updated data.
 Some of the default methods are documented in `?'ggplot2-ggproto'`.  The
 definition of [ggproto methods](#ggproto-method) for details about the `self`
 parameter, [layer functions](#layer-function) for details about how the `params`
-list is generated.
+list is generated, the [stat](#stat-compute) and
+[position](#position-compute) computation methods, or the [geom
+draw](#geom-draw) methods for methods that operate on the data after it has been
+setup.
 
 ### Facet$compute_layout
 
@@ -394,9 +425,9 @@ This data is stored in the `$layout` <a name='layout-layout'></a> member of the
 our [example plot](#example-plot):
 
 ```
-  PANEL ROW COL pnl SCALE_X SCALE_Y
-1     1   1   1  P1       1       1
-2     2   1   2  P2       2       1
+  PANEL ROW COL   pnl SCALE_X SCALE_Y
+1     1   1   1 P_ONE       1       1
+2     2   1   2 P_TWO       2       1
 ```
 
 Our data has two facets (panels) arranged across two columns and in one row.
@@ -411,8 +442,15 @@ although the effect will be the same on the second as they both share the [plot
 data](#plot-data):
 
 ```{r, echo=FALSE, results="asis"}
-facet.map.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor")), class = "data.frame", row.names = c(NA, -4L))
-facet.map.out <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA, 4L), class = "data.frame")
+facet.map.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L,
+1L, 2L, 2L), .Label = c("P_ONE", "P_TWO"), class = "factor")), class = "data.frame", row.names = c(NA,
+-4L))
+facet.map.out <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L,
+1L, 2L, 2L), .Label = c("P_ONE", "P_TWO"), class = "factor"),
+    PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA,
+4L), class = "data.frame")
 
 diffobj::diffPrint(facet.map.in, facet.map.out)
 ```
@@ -430,8 +468,11 @@ This step also infers the `group` aesthetic from the interaction of categorical
 Here we show the effect on the `geom_point` [layer data](#layer-data):
 
 ```{r, echo=FALSE, results="asis"}
-comp.aes.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1", "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA, 4L), class = "data.frame")
-comp.aes.out <- structure(list(y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), x = 1:4, PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+comp.aes.in <- facet.map.out
+comp.aes.out <- structure(list(y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A",
+"B", "C"), class = "factor"), x = 1:4, PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
 diffobj::diffPrint(comp.aes.in, comp.aes.out)
 ```
 
@@ -444,9 +485,12 @@ This is applies scale transformations to each layer.  In our example, we use
 `scale_x_reverse`.  Here is the effect on the data for the `geom_point` layer:
 
 ```{r, echo=FALSE, results="asis"}
-
 trans.in <- comp.aes.out
-trans.out <- structure(list(x = -1:-4, y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA, -4L))
+trans.out <- structure(list(x = -1:-4, y = 5:8, fill = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA,
+-4L))
 
 diffobj::diffPrint(trans.in, trans.out)
 ```
@@ -541,8 +585,10 @@ methods](ggproto-method).
 Statistics can completely change the data.  Here is what the value of the `data`
 parameter for `Stat$compute_layer` looks like in [example plot](#example-plot):
 
-```{r echo=FALSE}
-stat.comp.in <- structure(list(x = c(-1, -2, -3, -4), weight = 5:8, PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(-1L, -1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")
+```{r, echo=FALSE}
+stat.comp.in <- structure(list(x = c(-1, -2, -3, -4), weight = 5:8, PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(-1L,
+-1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")   x weight PANEL group
 stat.comp.in
 ```
 
@@ -550,7 +596,9 @@ And if you have not modified the `$compute_layer` method, then the value of the
 `data` parameter for `$compute_panel` will look like (for the first panel):
 
 ```{r echo=FALSE}
-structure(list(x = c(-1, -2), weight = 5:6, PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+   x weight PANEL group
+1 -1      5     1    -1
+2 -2      6     1    -1
 ```
 
 Finally, if you did not modify the `$compute_panel` method (as is the case with
@@ -562,10 +610,9 @@ of rows corresponding to each group.
 In the [example plot](#example-plot) `StatBin` overrides the `$compute_group`
 method.  The result for the first (and only) group of the first panel is then:
 
-```{r echo=FALSE}
-structure(list(count = 11, x = -1.5, xmin = -2, xmax = -1, width = 1, 
-    density = 1, ncount = 1, ndensity = 1, PANEL = structure(1L, .Label = c("1", 
-    "2"), class = "factor"), group = -1L), class = "data.frame", row.names = 1L)
+```
+  count    x xmin xmax width density ncount ndensity
+1    11 -1.5   -2   -1     1       1      1        1
 ```
 
 `$compute_group` changed number of rows, and both added and dropped
@@ -587,10 +634,11 @@ The final output after `$compute_panel` and `$compute_layer` stitch back the
 groups and panels together:
 
 ```{r echo=FALSE}
-stat.comp.out <- structure(list(count = c(11, 15), x = c(-1.5, -3.5), xmin =
-c(-2, -4), xmax = c(-1, -3), width = c(1, 1), density = c(1, 1), ncount = c(1,
-  1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1", "2"), class =
-  "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA, -2L))
+stat.comp.out <- structure(list(count = c(11, 15), x = c(-1.5, -3.5), xmin = c(-2,
+-4), xmax = c(-1, -3), width = c(1, 1), density = c(1, 1), ncount = c(1,
+1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1",
+"2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA,
+-2L))
 ```
 
 If we compare to the input to `$compute_layer` we can see that several variables
@@ -643,10 +691,11 @@ added back.
 
 ```{r, echo=FALSE, results="asis"}
 stat.map.in <- stat.comp.out
-stat.map.out <- structure(list(y = c(11, 15), count = c(11, 15), x = c(-1.5, 
--3.5), xmin = c(-2, -4), xmax = c(-1, -3), width = c(1, 1), density = c(1, 
-1), ncount = c(1, 1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1", 
-"2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA, -2L))
+stat.map.out <- structure(list(y = c(11, 15), count = c(11, 15), x = c(-1.5,
+-3.5), xmin = c(-2, -4), xmax = c(-1, -3), width = c(1, 1), density = c(1,
+1), ncount = c(1, 1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1",
+"2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA,
+-2L))
 
 diffobj::diffStr(stat.map.in, stat.map.out)
 ```
@@ -696,23 +745,21 @@ methods](ggproto-method).
 
 #### Data Manipulation
 
-The data with positions adjusted.  Here is how `$compute_panel` changes the
+The data with positions adjusted.  Here is how `$compute_layer` changes the
 layer data for the `geom_point` layer from our [example plot](#example-plot)
 that uses `position_jitter`:
 
 ```{r, echo=FALSE, results="asis"}
-pos.comp.in <- structure(list(x = c(-1, -2, -3, -4), y = c(5, 6, 7, 8), fill =
-structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL
-= structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group =
-structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class =
-"data.frame")
-pos.comp.out <- structure(list(x = c(-0.663717901706696, -2.17424187399447,
-  -3.05681485142559, -4.28745166156441), y = c(5.13081755675375,
-    6.17909746430814, 7.03512939997017, 7.87351626232266), fill =
-    structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"),
-    PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class =
-    "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA,
-      -4L), class = "data.frame")
+pos.comp.in <- structure(list(x = c(-1, -2, -3, -4), y = c(5, 6, 7, 8), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+pos.comp.out <- structure(list(x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), fill = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
 diffobj::diffPrint(pos.comp.in, pos.comp.out)
 ```
 
@@ -736,12 +783,12 @@ this list looks like in our [example plot](#example-plot):
 ```
 List of 2
  $ :List of 14
-  ..$ x.range       : num [1:2] -2.07 -0.534
-  ..$ x.labels      : chr [1:3] "1.0" "1.5" "2.0"
-  ..$ x.major       : num [1:3] 0.6967 0.3711 0.0455
-  ..$ x.minor       : num [1:6] 0.859 0.697 0.534 0.371 0.208 ...
-  ..$ x.major_source: num [1:3] -1 -1.5 -2
-  ..$ x.minor_source: num [1:6] -0.75 -1 -1.25 -1.5 -1.75 -2
+  ..$ x.range       : num [1:2] -2.281 -0.939
+  ..$ x.labels      : chr [1:6] "1.00" "1.25" "1.50" "1.75" ...
+  ..$ x.major       : num [1:6] 0.955 0.768 0.582 0.396 0.209 ...
+  ..$ x.minor       : num [1:11] 0.955 0.861 0.768 0.675 0.582 ...
+  ..$ x.major_source: num [1:6] -1 -1.25 -1.5 -1.75 -2 -2.25
+  ..$ x.minor_source: num [1:11] -1 -1.12 -1.25 -1.38 -1.5 ...
   ..$ x.arrange     : chr [1:2] "secondary" "primary"
   ..$ y.range       : num [1:2] -0.75 15.75
   ..$ y.labels      : chr [1:4] "0" "5" "10" "15"
@@ -751,12 +798,12 @@ List of 2
   ..$ y.minor_source: num [1:7] 0 2.5 5 7.5 10 12.5 15
   ..$ y.arrange     : chr [1:2] "primary" "secondary"
  $ :List of 14
-  ..$ x.range       : num [1:2] -4.41 -2.93
-  ..$ x.labels      : chr [1:3] "3.0" "3.5" "4.0"
-  ..$ x.major       : num [1:3] 0.955 0.617 0.279
-  ..$ x.minor       : num [1:6] 0.955 0.786 0.617 0.448 0.279 ...
-  ..$ x.major_source: num [1:3] -3 -3.5 -4
-  ..$ x.minor_source: num [1:6] -3 -3.25 -3.5 -3.75 -4 -4.25
+  ..$ x.range       : num [1:2] -4.06 -2.78
+  ..$ x.labels      : chr [1:5] "3.00" "3.25" "3.50" "3.75" ...
+  ..$ x.major       : num [1:5] 0.8269 0.6315 0.4362 0.2408 0.0455
+  ..$ x.minor       : num [1:10] 0.925 0.827 0.729 0.632 0.534 ...
+  ..$ x.major_source: num [1:5] -3 -3.25 -3.5 -3.75 -4
+  ..$ x.minor_source: num [1:10] -2.88 -3 -3.12 -3.25 -3.38 ...
   ..$ x.arrange     : chr [1:2] "secondary" "primary"
   ..$ y.range       : num [1:2] -0.75 15.75
   ..$ y.labels      : chr [1:4] "0" "5" "10" "15"
@@ -788,19 +835,13 @@ the data.  In our [example plot](#example-plot) only the `geom_point` layer has
 
 ```{r, echo=FALSE, results="asis"}
 
-map.scale.in <- structure(list(x = c(-0.864777388423681, -2.10850843768567, -3.18321079164743, 
--4.23832643423229), y = c(4.7609717823565, 5.70522983931005, 
-7.06110801026225, 8.22130034621805), fill = structure(c(1L, 2L, 
-2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 
-2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
-
+map.scale.in <- pos.comp.out
 map.scale.out <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
-), x = c(-0.864777388423681, -2.10850843768567, -3.18321079164743, 
--4.23832643423229), y = c(4.7609717823565, 5.70522983931005, 
-7.06110801026225, 8.22130034621805), PANEL = structure(c(1L, 
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 
-2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA, 
+), x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), PANEL = structure(c(1L, 1L,
+2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA,
 -4L))
 diffobj::diffPrint(map.scale.in, map.scale.out[names(map.scale.in)])
 ```
@@ -842,23 +883,17 @@ note we mess with the PANEL name to get around the bug with unable to ignore
 whitespace around colon in diffStr
 -->
 ```{r, echo=FALSE, results="asis"}
-defaults.in <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
-), x = c(-1.18914774078876, -2.14726227596402, -3.04320267718285, 
--4.36120297014713), y = c(5.19393369983882, 5.69687749966979, 
-6.78337125554681, 7.75601978879422), 'PANEL ' = structure(c(1L, 
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 
-2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA, 
--4L))
+defaults.in <- map.scale.out
+names(defaults.in)[names(defaults.in) == 'PANEL'] <- 'PANEL '
 defaults.out <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
-), x = c(-1.18914774078876, -2.14726227596402, -3.04320267718285, 
--4.36120297014713), y = c(5.19393369983882, 5.69687749966979, 
-6.78337125554681, 7.75601978879422), 'PANEL ' = structure(c(1L, 
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 
-2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black", 
-"black", "black", "black"), size = c(4, 4, 4, 4), alpha = c(NA, 
-NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA, 
+), x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), PANEL = structure(c(1L, 1L,
+2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black",
+"black", "black", "black"), size = c(4, 4, 4, 4), alpha = c(NA,
+NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA,
 -4L), class = "data.frame")
-
 
 diffobj::diffStr(defaults.in, defaults.out)
 ```
@@ -921,29 +956,24 @@ This is the data that `$draw_panel` starts with on the first [panel](#panel) of
 the `geom_point` layer of the [example plot](#example-plot):
 
 ```{r echo=FALSE}
-structure(list(fill = c("#F8766D", "#00BA38"), x = c(-0.652728859521449, 
--2.3874772593379), y = c(5.21457787621766, 5.85442789699882), 
-    PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), 
-    group = 1:2, shape = c(21, 21), colour = c("black", "black"
-    ), size = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5
-    )), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+defaults.out
 ```
 
 It then returns a [`grob`](#grob):
 
 ```
 List of 7
- $ x   : 'unit' num [1:2] 0.9545native 0.0455native
+ $ x   : 'unit' num [1:2] 0.8309native 0.0455native
   ..- attr(*, "valid.unit")= int 4
   ..- attr(*, "unit")= chr "native"
- $ y   : 'unit' num [1:2] 0.361native 0.4native
+ $ y   : 'unit' num [1:2] 0.356native 0.429native
   ..- attr(*, "valid.unit")= int 4
   ..- attr(*, "unit")= chr "native"
  $ pch : int [1:2] 21 21
  $ size: 'unit' num 1char
   ..- attr(*, "valid.unit")= int 18
   ..- attr(*, "unit")= chr "char"
- $ name: chr "geom_point.points.481"
+ $ name: chr "geom_point.points.852"
  $ gp  :List of 4
   ..$ col     : chr [1:2] "#000000FF" "#000000FF"
   ..$ fill    : chr [1:2] "#F8766DFF" "#00BA38FF"
@@ -959,7 +989,7 @@ List of 7
 #### Description
 
 Transforms non-Cartesian coordinates into Cartesian coordinates,
-and then rescales them to fit in the 0-1 range as that is what [`grid`](#grid) 
+and then rescales them to fit in the 0-1 range as that is what [`grid`](#grid)
 uses for its viewports.  This is akin to what happens to the non-[position
 aesthetics](#position-aesthetic) in the [scale map](#train-map-scale) step.
 
@@ -974,19 +1004,18 @@ here is what it does to the first panel of the  `geom_point` layer in our
 [example plot](#example-plot):
 
 ```{r, echo=FALSE, results="asis"}
-coord.trans.in <- structure(list(fill = c("#F8766D", "#00BA38"), x =
-c(-1.11671940125525, -1.77017053775489), y = c(4.79062976539135,
-  6.30908769629896), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class =
-  "factor"), group = 1:2, shape = c(21, 21), colour = c("black", "black"), size
-  = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5)), class = "data.frame",
-  row.names = c(NA, -2L), vars = "PANEL")
-coord.trans.out <- structure(list(fill = c("#F8766D", "#00BA38"), x =
-c(0.848436907949773, 0.254390420222824), y = c(0.335795743357051,
-  0.427823496745391), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class =
-  "factor"), group = 1:2, shape = c(21, 21), colour = c("black", "black"), size
-  = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5)), row.names = c(NA, -2L),
-  vars = "PANEL", class = "data.frame")
-
+coord.trans.in <- structure(list(fill = c("#F8766D", "#00BA38"), x = c(-1.16594083365053,
+-2.22008708454669), y = c(5.13009568769485, 6.33635502737016),
+    PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"),
+    group = 1:2, shape = c(21, 21), colour = c("black", "black"
+    ), size = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5
+    )), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+coord.trans.out <- structure(list(fill = c("#F8766D", "#00BA38"), x = c(0.830902392317063, 
+0.0454545454545454), y = c(0.35636943561787, 0.429476062264858
+), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), 
+    group = 1:2, shape = c(21, 21), colour = c("black", "black"
+    ), size = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5
+    )), row.names = c(NA, -2L), vars = "PANEL", class = "data.frame")
 diffobj::diffPrint(coord.trans.in, coord.trans.out)
 ```
 
@@ -1306,7 +1335,7 @@ data](#layer-data) inherit this `data.frame` as their data.
 <dd>
 The result of a `ggplot(...) + ...` call.  This is a `ggplot` S3 object that
 is initialized with the plot data and any additional instructions the user
-provided, such as layers and [aesthetic mappings](#mapped-aesthetic), 
+provided, such as layers and [aesthetic mappings](#mapped-aesthetic),
 [scales](#ggproto-scale), themes, etc.
 
 See the [plot structure](#plot-structure) section for details.
