@@ -20,139 +20,196 @@ library(ggbg)
 #  print.ggplot <- function (x, ...) {
 #    data <- ggplot_build(x)        # step 2: build
 #    gtable <- ggplot_gtable(data)  # step 3: create grobs
-#    grid.draw(gtable)              # step 4: render
+#    grid.draw(gtable)              # step 4: display grobs
 #  }
 
 ## ---- eval=FALSE---------------------------------------------------------
 #  dat <- data.frame(
-#    loc=(1:4)^2,
-#    val=(5:8)^2,
+#    loc=1:4,
+#    val=5:8,
 #    grp=c('A', 'B', 'B', 'C'),
-#    pnl=c('P1', 'P1', 'P2', 'P2')
+#    pnl=c('P_ONE', 'P_ONE', 'P_TWO', 'P_TWO')
 #  )
 #  library(ggplot2)
-#  p <- ggplot(dat, aes(x=loc, y=val, fill=grp)) +
-#    stat_bin2d() +
-#    geom_point(position="jitter", shape=21) +
+#  p <- ggplot(dat, aes(x=loc)) +
+#    stat_bin(bins=1, aes(weight=val), fill="lightgray") +
+#    geom_point(aes(y=val, fill=grp), position="jitter", shape=21, size=4) +
 #    facet_wrap(~pnl, scales="free_x") +
-#    scale_x_sqrt() +
-#    scale_y_sqrt()
+#    scale_x_reverse()
+
+## ---- eval=FALSE, echo=FALSE---------------------------------------------
+#  p <- ggplot(dat, aes(x=loc)) +
+#    stat_bin(bins=1, aes(weight=val), fill="lightgray") +
+#    geom_point(
+#      aes(y=val, fill=grp), position=position_jitter(seed=24), shape=21, size=4
+#    ) +
+#    facet_wrap(~pnl, scales="free_x") +
+#    scale_x_reverse()
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor")), .Names = c("loc", "val", "grp",
-"pnl"), row.names = c(NA, -4L), class = "data.frame")
-output <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
-    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
-"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
-diffobj::diffPrint(input, output)
+facet.map.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L,
+1L, 2L, 2L), .Label = c("P_ONE", "P_TWO"), class = "factor")), class = "data.frame", row.names = c(NA,
+-4L))
+facet.map.out <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), pnl = structure(c(1L,
+1L, 2L, 2L), .Label = c("P_ONE", "P_TWO"), class = "factor"),
+    PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor")), row.names = c(NA,
+4L), class = "data.frame")
+
+diffobj::diffPrint(facet.map.in, facet.map.out)
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-input <- structure(list(loc = c(1, 4, 9, 16), val = c(25, 36, 49, 64),
-    grp = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"
-    ), class = "factor"), pnl = structure(c(1L, 1L, 2L, 2L), .Label = c("P1",
-    "P2"), class = "factor"), PANEL = structure(c(1L, 1L, 2L,
-    2L), .Label = c("1", "2"), class = "factor")), .Names = c("loc",
-"val", "grp", "pnl", "PANEL"), row.names = c(NA, 4L), class = "data.frame")
-output <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+comp.aes.in <- facet.map.out
+comp.aes.out <- structure(list(y = 5:8, fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A",
+"B", "C"), class = "factor"), x = 1:4, PANEL = structure(c(1L,
 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), row.names = c(NA, -4L), class = "data.frame")
-diffobj::diffPrint(input, output)
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+diffobj::diffPrint(comp.aes.in, comp.aes.out)
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-trans.input <- structure(list(x = c(1, 4, 9, 16), y = c(25, 36, 49, 64), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+trans.in <- comp.aes.out
+trans.out <- structure(list(x = -1:-4, y = 5:8, fill = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), row.names = c(NA, -4L), class = "data.frame")
-trans.output <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L,
-2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
-1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
-2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL",
-"group"), class = "data.frame", row.names = c(NA, -4L))
-diffobj::diffPrint(trans.input, trans.output)
+2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA,
+-4L))
+
+diffobj::diffPrint(trans.in, trans.out)
 
 ## ------------------------------------------------------------------------
-scale <- scale_x_continous()
-scale
+scale <- ggplot2::scale_x_continuous()
 scale$aesthetics
 
-## ----echo=FALSE----------------------------------------------------------
-stat.input <- trans.output
-stat.input
+## ---- echo=FALSE---------------------------------------------------------
+stat.comp.in <- structure(list(x = c(-1, -2, -3, -4), weight = 5:8, PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(-1L,
+-1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")   x weight PANEL group
+stat.comp.in
 
 ## ----echo=FALSE----------------------------------------------------------
-structure(list(x = c(1, 2), y = c(5, 6), fill = structure(1:2, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), group = 1:2), .Names = c("x", "y", "fill", "PANEL", "group"), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+   x weight PANEL group
+1 -1      5     1    -1
+2 -2      6     1    -1
 
 ## ----echo=FALSE----------------------------------------------------------
-structure(list(x = 1, y = 5, fill = structure(1L, .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(1L, .Label = c("1", "2"), class = "factor"), group = 1L), .Names = c("x", "y", "fill", "PANEL", "group"), vars = "PANEL", row.names = 1L, class = "data.frame")
-
-## ----echo=FALSE----------------------------------------------------------
-structure(list(xbin = 1L, ybin = 1L, value = 1, x = 1.01666666666667, width = 0.0333333400000002, y = 5.05, height = 0.10000002, count = 1, density = 1), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density"), row.names = 1L, class = "data.frame")
-
-## ----echo=FALSE----------------------------------------------------------
-stat.ouptput <- structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), width = c(0.0333333400000002, 0.033333333333333, 0.0333333399999995, 0.0333333333333337), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), height = c(0.10000002, 0.0999999999999996, 0.0999999999999996, 0.100000000000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B",
-"C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L)), .Names = c("xbin", "ybin", "value", "x", "width", "y", "height", "count", "density", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame")
-stat.output
+stat.comp.out <- structure(list(count = c(11, 15), x = c(-1.5, -3.5), xmin = c(-2,
+-4), xmax = c(-1, -3), width = c(1, 1), density = c(1, 1), ncount = c(1,
+1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1",
+"2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA,
+-2L))
 
 ## ----echo=FALSE, results="asis"------------------------------------------
-diffobj::diffStr(stat.input, stat.output)
+diffobj::diffStr(stat.comp.in, stat.comp.out)
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-pos.input <- structure(list(x = c(1, 2, 3, 4), y = c(5, 6, 7, 8), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
-pos.output <- structure(list(x = c(0.909038454852998, 2.01686128247529, 3.11151186432689, 3.61253762301058), y = c(5.05882231164724, 6.13020793590695, 7.29328686017543, 8.22853694036603), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
-diffobj::diffPrint(pos.input, pos.output)
+stat.map.in <- stat.comp.out
+stat.map.out <- structure(list(y = c(11, 15), count = c(11, 15), x = c(-1.5,
+-3.5), xmin = c(-2, -4), xmax = c(-1, -3), width = c(1, 1), density = c(1,
+1), ncount = c(1, 1), ndensity = c(1, 1), PANEL = structure(1:2, .Label = c("1",
+"2"), class = "factor"), group = c(-1L, -1L)), class = "data.frame", row.names = c(NA,
+-2L))
+
+diffobj::diffStr(stat.map.in, stat.map.out)
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-map.scale.input <- list(structure(list(xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("xbin", "ybin", "value", "x", "y", "count", "density", "fill", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), row.names = c(NA, -4L), class = "data.frame"), structure(list(x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), fill = structure(c(1L, 2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("x", "y", "fill", "PANEL", "group"), row.names = c(NA, -4L), class = "data.frame"))
-map.scale.output <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001)), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax"), class = "data.frame", row.names = c(NA, -4L)), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L)), .Names = c("fill", "x", "y", "PANEL", "group"), class = "data.frame", row.names = c(NA, -4L)))
-
-map.scale.output[[1]] <- map.scale.output[[1]][names(map.scale.input[[1]])]
-map.scale.output[[2]] <- map.scale.output[[2]][names(map.scale.input[[2]])]
-
-diffobj::diffStr(map.scale.input, map.scale.output)
+pos.comp.in <- structure(list(x = c(-1, -2, -3, -4), y = c(5, 6, 7, 8), fill = structure(c(1L,
+2L, 2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+pos.comp.out <- structure(list(x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), fill = structure(c(1L, 2L,
+2L, 3L), .Label = c("A", "B", "C"), class = "factor"), PANEL = structure(c(1L,
+1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), row.names = c(NA, -4L), class = "data.frame")
+diffobj::diffPrint(pos.comp.in, pos.comp.out)
 
 ## ---- echo=FALSE, results="asis"-----------------------------------------
-defaults.input <- map.scale.output
-defaults.ouput <- list(structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), xbin = c(1L, 30L, 1L, 30L), ybin = c(1L, 10L, 20L, 30L), value = c(1, 1, 1, 1), x = c(1.01666666666667, 1.98333333666667, 3.01666666666667, 3.98333333666667), y = c(5.05, 5.95000001, 6.95000001, 7.95000001), count = c(1, 1, 1, 1), density = c(1, 1, 1, 1), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(1L, 2L, 2L, 3L), xmin = c(0.999999996666667, 1.96666667, 2.99999999666667, 3.96666667), xmax = c(1.03333333666667, 2.00000000333333, 3.03333333666667, 4.00000000333333), ymin = c(4.99999999, 5.90000001, 6.90000001, 7.90000001), ymax = c(5.10000001, 6.00000001, 7.00000001, 8.00000001), colour = c(NA, NA, NA, NA), size = c(0.1, 0.1, 0.1, 0.1), linetype = c(1, 1, 1, 1), alpha = c(NA, NA, NA, NA), width = c(NA, NA, NA, NA), height = c(NA, NA, NA, NA)), row.names = c(NA, -4L), .Names = c("fill", "xbin", "ybin", "value", "x", "y", "count", "density", "PANEL", "group", "xmin", "xmax", "ymin", "ymax", "colour", "size", "linetype", "alpha", "width", "height"), class = "data.frame"), structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"), x = c(0.802855186536908, 2.15149602368474, 3.06846169922501, 4.36551264487207), y = c(4.76531683262438, 6.03128328304738, 6.72641851641238, 8.20721130892634), PANEL = structure(c(1L, 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L, 2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black", "black", "black", "black"), size = c(1.5, 1.5, 1.5, 1.5), alpha = c(NA, NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA, -4L), .Names = c("fill", "x", "y", "PANEL", "group", "shape", "colour", "size", "alpha", "stroke"), class = "data.frame"))
-diffobj::diffStr(defaults.input, defaults.output)
+
+map.scale.in <- pos.comp.out
+map.scale.out <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
+), x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), PANEL = structure(c(1L, 1L,
+2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L)), class = "data.frame", row.names = c(NA,
+-4L))
+diffobj::diffPrint(map.scale.in, map.scale.out[names(map.scale.in)])
+
+## ---- echo=FALSE, results="asis"-----------------------------------------
+defaults.in <- map.scale.out
+names(defaults.in)[names(defaults.in) == 'PANEL'] <- 'PANEL '
+defaults.out <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CFF"
+), x = c(-1.16594083365053, -2.22008708454669, -2.83662163671106,
+-3.9848822819069), y = c(5.13009568769485, 6.33635502737016,
+6.8237884586677, 8.21105636898428), PANEL = structure(c(1L, 1L,
+2L, 2L), .Label = c("1", "2"), class = "factor"), group = structure(c(1L,
+2L, 2L, 3L), n = 3L), shape = c(21, 21, 21, 21), colour = c("black",
+"black", "black", "black"), size = c(4, 4, 4, 4), alpha = c(NA,
+NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA,
+-4L), class = "data.frame")
+
+diffobj::diffStr(defaults.in, defaults.out)
+
+## ----echo=FALSE----------------------------------------------------------
+defaults.out
+
+## ---- echo=FALSE, results="asis"-----------------------------------------
+coord.trans.in <- structure(list(fill = c("#F8766D", "#00BA38"), x = c(-1.16594083365053,
+-2.22008708454669), y = c(5.13009568769485, 6.33635502737016),
+    PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"),
+    group = 1:2, shape = c(21, 21), colour = c("black", "black"
+    ), size = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5
+    )), class = "data.frame", row.names = c(NA, -2L), vars = "PANEL")
+coord.trans.out <- structure(list(fill = c("#F8766D", "#00BA38"), x = c(0.830902392317063, 
+0.0454545454545454), y = c(0.35636943561787, 0.429476062264858
+), PANEL = structure(c(1L, 1L), .Label = c("1", "2"), class = "factor"), 
+    group = 1:2, shape = c(21, 21), colour = c("black", "black"
+    ), size = c(4, 4), alpha = c(NA, NA), stroke = c(0.5, 0.5
+    )), row.names = c(NA, -2L), vars = "PANEL", class = "data.frame")
+diffobj::diffPrint(coord.trans.in, coord.trans.out)
+
+## ----eval=FALSE----------------------------------------------------------
+#  Object$method()
 
 ## ----eval=TRUE-----------------------------------------------------------
-Example <- ggproto(
+Object <- ggplot2::ggproto(
   "Example", NULL,
   method1=function(self, x) cat(sprintf("%s %s\n", x, self$secret)),
   method2=function(x) cat(sprintf("%s %s\n", x, self$secret)),
+  method3=function(self, x) self$secret <- x,
   secret="secret"
 )
-Example$method1("big")
-Example$method2("big")
+Object$method1("big")  # works, `self` is provided automatically
+Object$method2("big")  # Error because `self` not in signature
+Object$method3("NEW SECRET")  # update `secret` member by reference
+Object$method1("big")  # `secret` member updated
 
 ## ------------------------------------------------------------------------
-GeomPoint$setup_data
-environment(GeomPoint$setup_data)$f
+Object$method1
 
-## ------------------------------------------------------------------------
-fun <- Object$method
-debug(environment(fun)$f)
-fun()
+## ---- eval=FALSE---------------------------------------------------------
+#  debug(get("method1", envir=Object))
+#  Object$method1("big")  # this will be a debugged version of `method1`
 
 ## ----eval=FALSE----------------------------------------------------------
-#  geom_point <- function(
-#    mapping = NULL, data = NULL, stat = "identity", position = "identity"
-#  )
-#    layer(
-#      data = data, mapping = mapping, stat = stat, geom = GeomPoint,
-#      position = position,
-#    )
+#  ggplot2::stat_bin(geom='point', shape=21, bins=10)
+
+## ----}-------------------------------------------------------------------
+ggplot2::GeomPoint$aesthetics()
 
 ## ------------------------------------------------------------------------
-args(environment(ggplot2::StatBin$compute_panel)$f)
-args(environment(ggplot2::StatBin$compute_group)$f)
+env <- new.env()
+lst <- list()
+env$a <- lst$a <- 1
+
+f <- function(e, l) {
+  e$a <- 2
+  l$a <- 2
+}
+f(env, lst)
+
+env$a
+lst$a
 

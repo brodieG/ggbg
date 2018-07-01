@@ -436,10 +436,10 @@ facet specification for the plot.
 
 ### Facet$map_data
 
-For each layer, add the `PANEL` variable to the data.  Here we show the effect
-it has on the data of the first layer of our [example plot](#example-plot),
-although the effect will be the same on the second as they both share the [plot
-data](#plot-data):
+For each layer, add the [`PANEL`](#panel) variable to the data.  Here we show
+the effect it has on the data of the first layer of our [example
+plot](#example-plot), although the effect will be the same on the second as they
+both share the [plot data](#plot-data):
 
 ```{r, echo=FALSE, results="asis"}
 facet.map.in <- structure(list(loc = 1:4, val = 5:8, grp = structure(c(1L, 2L,
@@ -457,7 +457,7 @@ diffobj::diffPrint(facet.map.in, facet.map.out)
 
 ### Layer$compute_aesthetics
 
-For each layer, evaluates all the [mapped aesthetic](mapped-aesthetics)
+For each layer, evaluates all the [mapped aesthetic](#mapped-aesthetics)
 `aes(...)` expressions and replaces the data variables with the resulting
 aesthetics.  [Stat aesthetics](#stat-aesthetic) are evaluated later as part of
 the [stat computation](#stat-compute) process.
