@@ -84,13 +84,8 @@ scale$aesthetics
 ## ---- echo=FALSE---------------------------------------------------------
 stat.comp.in <- structure(list(x = c(-1, -2, -3, -4), weight = 5:8, PANEL = structure(c(1L,
 1L, 2L, 2L), .Label = c("1", "2"), class = "factor"), group = c(-1L,
--1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")   x weight PANEL group
+-1L, -1L, -1L)), row.names = c(NA, -4L), class = "data.frame")
 stat.comp.in
-
-## ----echo=FALSE----------------------------------------------------------
-   x weight PANEL group
-1 -1      5     1    -1
-2 -2      6     1    -1
 
 ## ----echo=FALSE----------------------------------------------------------
 stat.comp.out <- structure(list(count = c(11, 15), x = c(-1.5, -3.5), xmin = c(-2,
@@ -150,7 +145,7 @@ defaults.out <- structure(list(fill = c("#F8766D", "#00BA38", "#00BA38", "#619CF
 NA, NA, NA), stroke = c(0.5, 0.5, 0.5, 0.5)), row.names = c(NA,
 -4L), class = "data.frame")
 
-diffobj::diffStr(defaults.in, defaults.out)
+diffobj::diffStr(defaults.in, defaults.out, mode='unified')
 
 ## ----echo=FALSE----------------------------------------------------------
 defaults.out
@@ -190,7 +185,7 @@ Object$method1("big")  # `secret` member updated
 Object$method1
 
 ## ---- eval=FALSE---------------------------------------------------------
-#  debug(get("method1", envir=Object))
+#  debug(get("method1", Object))
 #  Object$method1("big")  # this will be a debugged version of `method1`
 
 ## ----eval=FALSE----------------------------------------------------------
