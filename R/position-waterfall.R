@@ -29,7 +29,8 @@
 #' `xmin` and `xmax` aesthetics.  It may not make sense to apply
 #' `position_waterfall` to arbitrary geoms, particularly those that represent
 #' single graphical elements with multiple x/y coordinates such as
-#' `geom_polygon`.
+#' `geom_polygon`.  `ymin`/`ymax` aesthetics will be shifted by the cumulative
+#' `y` value.
 #'
 #' Since stat layers are computed prior to position adjustments, you can also
 #' use `position_waterfall` with stats (e.g `stat_bin`, see examples).
@@ -74,6 +75,7 @@
 #'
 #' @inheritParams ggplot2::position_dodge
 #' @inheritParams ggplot2::position_stack
+#' @importFrom utils head tail
 #' @param dodge TRUE (default) or FALSE, controls how to resolve
 #'   groups that overlap on the `x` axis.  The default is to dodge them
 #'   to form mini-waterfalls within each `x` value, but you can chose to stack
@@ -94,7 +96,7 @@
 #'   labeling `geom_col` waterfalls.  Use `1` to position at the "end" of each
 #'   waterfall step.  This is different to the `vjust` for geoms like
 #'   `geom_text` where `vjust=1` shift the text down, but it is consistent with
-#'   what [`gggplot2::position_stack`] does.
+#'   what [`ggplot2::position_stack`] does.
 #' @param vjust.mode character(1L), one of "end" (default), or "top" where "top"
 #'   results in the same behavior as in [`ggplot2::position_stack`].  "end"
 #'   means the justification is relative to the "end" of the waterfall bar.  So
@@ -110,8 +112,6 @@
 #'   waterfalls with other layers and need the waterfall to start at a specific
 #'   value.
 #' @export
-#' @param dodge TRUE or FALSE (default), whether to dodge waterfall bars when
-#'   there are multiple bars for a single x value.
 #' @examples
 #' ## These examples are best run via `example(position_waterfall)`
 #' library(ggplot2)
@@ -190,194 +190,158 @@ position_waterfall <- function(
 
 ## Much of this code is lifted from ggplot2/R/position-dodge.R
 
-#' Compute Position Adjustments Based on Cumulative Value
-#'
-#' `PositionWaterfall` is the `ggproto` object used to generate the position
-#' adjustments that correspond to [position_waterfall].
-#'
-#' @rdname ggbg-ggproto
-#' @format NULL
-#' @export
+## Check in puts and pre-compute variables that are based on the entire data.
+##
+## One of the key things is work through the potential hierarchy of width data,
+## with a preference for explicit width via xmin/xmax, or failing that via the
+## width aesthetic, or failing that implicit via the x values and resolution.
+##
+## Beware that the 'width' aesthetic is not the same as the 'width' parameter to
+## `position_waterfall`; the former is the width of the graphical element, the
+## latter is the dodging width.
 
-PositionWaterfall <- ggproto(
-  "PositionWaterfall", Position,
-  name = "position_waterfall",
-  width = NULL,              # dodge width
-  width.geom.unique = NULL,  # all geoms have same width
-  width.default = 1,
-  reverse = FALSE,
-  preserve = "total",
-  dodge = TRUE,
-  vjust = 0.5,
-  vjust.mode="end",
-  has.x.width=FALSE,         # xmin and xmax are present and reasonable
-  has.width=FALSE,           # width aesthetic present and reasonable
-  groups=integer(),          # all possible groups,
-  # significance for x values to compute, width, overlap, etc.
-  signif=11,
-  y.start=0,
+setup_params_waterfall <- function(self, data) {
+  signif <- self[['signif']]
+  x.check <- all(c("xmin", "xmax") %in% names(data))
+  self[['has.x.width']] <-
+    is.numeric(data[["xmin"]]) && is.numeric(data[["xmax"]]) &&
+    !anyNA(data[['xmin']]) && !anyNA(data[['xmax']]) &&
+    all(data[['xmax']] >= data[['xmin']])
 
-  setup_params = function(self, data) {
-
-    signif <- self[['signif']]
-
-    x.check <- all(c("xmin", "xmax") %in% names(data))
-    self[['has.x.width']] <-
-      is.numeric(data[["xmin"]]) && is.numeric(data[["xmax"]]) &&
-      !anyNA(data[['xmin']]) && !anyNA(data[['xmax']]) &&
-      all(data[['xmax']] >= data[['xmin']])
-
-    if(!self[['has.x.width']] && any(x.check)) {
-      warning(
-        "Cannot interpret 'xmin' and 'xmax' aesthetics either because ",
-        "one of them is missing, either contains missing values, either ",
-        "is not numeric, or some 'xmax' values are less than the corresponding ",
-        "'xmin' values.  Geom width adjustments will not be applied by `",
-        self[['name']], "`."
-      )
-    }
-    width.geom.unique <- self[['width.geom.unique']]
-    if(is.null(width.geom.unique)) {
-      # We want to know if the geom comes with a consistent width on `xmin` and
-      # `xmax` (those should have been created by Geom$setup_data by this point)
-
-      if(self[['has.x.width']]) {
-        width.tmp <-
-          unique(signif(data[["xmax"]] - data[["xmin"]], digits=signif))
-        if(length(width.tmp) == 1 && !is.na(width.tmp) && width.tmp > 0)
-          width.geom.unique <- width.tmp
-      }
-    }
-    preserve <- self[['preserve']]
-    if(isTRUE(preserve == 'single') && is.null(width.geom.unique)) {
-      warning(
-        "`preserve='single'` for `", self$name, "` only works if all widths ",
-        "for a layer as implied by 'xmin' and 'xmax' are the same, positive, ",
-        "and not NA.  Proceeding with `preserve='total'`."
-      )
-      preserve <- "total"
-    }
-    if("x" %in% names(data)) {
-      self[['width.default']] =
-        signif(resolution(data[['x']], FALSE) * 0.9, digits=signif)
-    }
-    if(
-      "width" %in% names(data) && is.numeric(data[['width']]) &&
-      all(data[['width']] > 0)
-    ) {
-      self[['has.width']] <- TRUE
-    } else if('width' %in% names(data) && !has.x.width && is.null(width)) {
-      warning(
-        "'width' aesthetic contains values that are not strictly positive ",
-        "numerics, so it cannot be used for dodging."
-      )
-    }
-    list(
-      width = self[['width']],
-      preserve = self[['preserve']],
-      dodge = self[['dodge']],
-      reverse = self[['reverse']],
-      vjust = self[['vjust']],
-      vjust.mode = self[['vjust.mode']],
-      width.geom.unique = width.geom.unique,
-      width.default = self[['width.default']],
-      has.x.width = self[['has.x.width']],
-      has.width = self[['has.width']],
-      groups=sort(unique(data[['group']])),
-      signif=signif,
-      y.start=self[['y.start']]
+  if(!self[['has.x.width']] && any(x.check)) {
+    warning(
+      "Cannot interpret 'xmin' and 'xmax' aesthetics either because ",
+      "one of them is missing, either contains missing values, either ",
+      "is not numeric, or some 'xmax' values are less than the corresponding ",
+      "'xmin' values.  Geom width adjustments will not be applied by `",
+      self[['name']], "`."
     )
-  },
-  # We don't want to modify the data at this point because we don't want to add
-  # aesthetics to the data frame, so we'll do everything at the compute panel
-  # step.  This is out of an abundance of caution to avoid messing with
-  # downstream rendering of geoms.
-
-  setup_data = function(self, data, params) {
-    data
-  },
-
-  compute_panel = function(self, data, params, scales) {
-    # Cases are:
-    # * preserve == 'single' && width.geom is not null
-    # * width.geom is not null
-    # * width.geom is null, but there are defined xmin/xmax
-    # * no xmin/xmax but dodge width specified
-    # * no xmin/xmax and dodge width not specified
-    #
-    # The dodging does two things: changes the xmin/xmax distance
-    # Shifts the x values around.
-    #
-    # If preserve == 'single' && width.geom availablejjjjjjj
-
-    # We need a geom width, and we need a dodge width.
-
-
-    check.x <- c("xmin", "xmax") %in% names(data)
-    x <- if("x" %in% names(data)) signif(data[['x']], digits=params[['signif']])
-    else if (params[['has.x.width']])
-      signif(
-        (data[['xmax']] - data[['xmin']]) / 2 + data[['xmin']],
-        digits=params[['signif']]
-      )
-    else {
-      warning(
-        "Either 'x', or 'xmin' and 'xmax' must be specified; `",
-        self$name, "` will not be applied."
-      )
-      NULL
-    }
-    if(!is.null(x)) {
-      if(!"y" %in% names(data)) {
-        warning(
-          "'y' aesthetic is missing; `", self$name, "` will not be applied."
-        )
-      } else {
-        # group by x, and then stack / dodge, we also need to track the
-        # cumulative height of the previous bars
-
-        ord.idx <- order(x, data[['group']] * if(params[['reverse']]) -1 else 1)
-        data <- data[ord.idx , , drop=FALSE]
-        x <- x[ord.idx]
-
-        y.cum <- cumsum(c(params[['y.start']], data[["y"]]))
-        y.cum.last <- tapply(tail(y.cum, -1L), x, tail, 1L)
-        prev.last <- c(params[['y.start']], head(y.cum.last, -1))
-
-        # For each `x` value, compute stacking and dodging
-
-        d.s <- split(data, x)
-
-        d.s.proc <- mapply(
-          pos_waterfall,
-          df=d.s,
-          y.start=prev.last,
-          MoreArgs=list(
-            width=params[['width']],
-            width.geom.unique=params[['width.geom.unique']],
-            width.default=params[['width.default']],
-            dodge=params[['dodge']],
-            has.x.width=params[['has.x.width']],
-            has.width=params[['has.width']],
-            vjust=params[['vjust']],
-            vjust.mode=params[['vjust.mode']],
-            groups=params[['groups']],
-            preserve=params[['preserve']],
-            signif=params[['signif']],
-            reverse=params[['reverse']]
-          ),
-          SIMPLIFY=FALSE
-        )
-        # Re-assemble and restore order of data
-
-        data <- do.call(rbind, d.s.proc)[
-          order(seq(length.out=length(ord.idx))[ord.idx]), , drop=FALSE
-        ]
-      }
-    }
-    data
   }
-)
+  # Detect the special case where graphical objects have a pre-defined
+  # width based on xmin/xmax that is the same for all objects.
+
+  width.geom.unique <- self[['width.geom.unique']]
+  if(is.null(width.geom.unique)) {
+    if(self[['has.x.width']]) {
+      width.tmp <-
+        unique(signif(data[["xmax"]] - data[["xmin"]], digits=signif))
+      if(length(width.tmp) == 1 && !is.na(width.tmp) && width.tmp > 0)
+        width.geom.unique <- width.tmp
+    }
+  }
+  preserve <- self[['preserve']]
+  if(isTRUE(preserve == 'single') && is.null(width.geom.unique)) {
+    warning(
+      "`preserve='single'` for `", self$name, "` only works if all widths ",
+      "for a layer as implied by 'xmin' and 'xmax' are the same, positive, ",
+      "and not NA.  Proceeding with `preserve='total'`."
+    )
+    preserve <- "total"
+  }
+  # Default width based on the x data
+
+  if("x" %in% names(data)) {
+    self[['width.default']] =
+      signif(resolution(data[['x']], FALSE) * 0.9, digits=signif)
+  }
+  if(
+    "width" %in% names(data) && is.numeric(data[['width']]) &&
+    all(data[['width']] > 0)
+  ) {
+    self[['has.width']] <- TRUE
+  } else if('width' %in% names(data) && !has.x.width && is.null(width)) {
+    warning(
+      "'width' aesthetic contains values that are not strictly positive ",
+      "numerics, so it cannot be used for dodging."
+    )
+  }
+  list(
+    width = self[['width']],
+    preserve = self[['preserve']],
+    dodge = self[['dodge']],
+    reverse = self[['reverse']],
+    vjust = self[['vjust']],
+    vjust.mode = self[['vjust.mode']],
+    width.geom.unique = width.geom.unique,
+    width.default = self[['width.default']],
+    has.x.width = self[['has.x.width']],
+    has.width = self[['has.width']],
+    groups=sort(unique(data[['group']])),
+    signif=signif,
+    y.start=self[['y.start']]
+  )
+}
+## Compute Panel for Waterfall
+##
+## Chunk data by `x` aesthetic, and also compute the `y` starting point for each
+## chunk.
+
+compute_panel_waterfall <- function(self, data, params, scales) {
+  check.x <- c("xmin", "xmax") %in% names(data)
+  x <- if("x" %in% names(data)) signif(data[['x']], digits=params[['signif']])
+  else if (params[['has.x.width']])
+    signif(
+      (data[['xmax']] - data[['xmin']]) / 2 + data[['xmin']],
+      digits=params[['signif']]
+    )
+  else {
+    warning(
+      "Either 'x', or 'xmin' and 'xmax' must be specified; `",
+      self$name, "` will not be applied."
+    )
+    NULL
+  }
+  if(!is.null(x)) {
+    if(!"y" %in% names(data)) {
+      warning(
+        "'y' aesthetic is missing; `", self$name, "` will not be applied."
+      )
+    } else {
+      # group by x, and then stack / dodge, we also need to track the
+      # cumulative height of the previous bars
+
+      ord.idx <- order(x, data[['group']] * if(params[['reverse']]) -1 else 1)
+      data <- data[ord.idx , , drop=FALSE]
+      x <- x[ord.idx]
+
+      y.cum <- cumsum(c(params[['y.start']], data[["y"]]))
+      y.cum.last <- tapply(tail(y.cum, -1L), x, tail, 1L)
+      prev.last <- c(params[['y.start']], head(y.cum.last, -1))
+
+      # For each `x` value, compute stacking and dodging
+
+      d.s <- split(data, x)
+
+      d.s.proc <- mapply(
+        pos_waterfall,
+        df=d.s,
+        y.start=prev.last,
+        MoreArgs=list(
+          width=params[['width']],
+          width.geom.unique=params[['width.geom.unique']],
+          width.default=params[['width.default']],
+          dodge=params[['dodge']],
+          has.x.width=params[['has.x.width']],
+          has.width=params[['has.width']],
+          vjust=params[['vjust']],
+          vjust.mode=params[['vjust.mode']],
+          groups=params[['groups']],
+          preserve=params[['preserve']],
+          signif=params[['signif']],
+          reverse=params[['reverse']]
+        ),
+        SIMPLIFY=FALSE
+      )
+      # Re-assemble and restore order of data
+
+      data <- do.call(rbind, d.s.proc)[
+        order(seq(length.out=length(ord.idx))[ord.idx]), , drop=FALSE
+      ]
+    }
+  }
+  data
+}
+
 ## Recompute widths based on group size
 
 calc_width <- function(widths, width.geom.unique, group.map, groups, preserve) {
@@ -496,3 +460,44 @@ stack_waterfall <- function(df, y.start, vjust, vjust.mode) {
   if("ymax" %in% names(df)) df[["ymax"]] <- df[["ymax"]] + y.lag - y.orig
   df
 }
+
+#' Compute Position Adjustments Based on Cumulative Value
+#'
+#' `PositionWaterfall` is the `ggproto` object used to generate the position
+#' adjustments that correspond to [position_waterfall].
+#'
+#' @rdname ggbg-ggproto
+#' @format NULL
+#' @export
+
+PositionWaterfall <- ggproto(
+  "PositionWaterfall", Position,
+  name = "position_waterfall",
+  width = NULL,              # dodge width
+  width.geom.unique = NULL,  # all geoms have same width
+  width.default = 1,
+  reverse = FALSE,
+  preserve = "total",
+  dodge = TRUE,
+  vjust = 0.5,
+  vjust.mode="end",
+  has.x.width=FALSE,         # xmin and xmax are present and reasonable
+  has.width=FALSE,           # width aesthetic present and reasonable
+  groups=integer(),          # all possible groups,
+  # significance for x values to compute, width, overlap, etc.
+  signif=11,
+  y.start=0,
+
+  setup_params = setup_params_waterfall,
+
+  # We don't want to modify the data at this point because we don't want to add
+  # aesthetics to the data frame, so we'll do everything at the compute panel
+  # step.  This is out of an abundance of caution to avoid messing with
+  # downstream rendering of geoms.
+
+  setup_data = function(self, data, params) {
+    data
+  },
+  compute_panel = compute_panel_waterfall
+)
+
