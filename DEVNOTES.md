@@ -7,22 +7,103 @@
 * ggplot2 vignette
 * [B. Rudis in-progress Book](https://rud.is/books/creating-ggplot2-extensions/)
 
+## Scale
+
+### Gamma correction
+
+Do we need to apply it the way swatches does (although at least on my system
+whatever `gamma=TRUE` does is promptly undone by `as(, "LAB")`.
+
+```
+identical(
+  as(colorspace::hex2RGB(rainbow(5), gamma=FALSE), "LAB"),
+  as(colorspace::hex2RGB(rainbow(5), gamma=TRUE), "LAB")
+)
+```
+
+### Re-use?
+
+One question is whether this should be built on top of `scale_fill_gradientn` or
+with its own dedicated `ggproto` object.  In favor of the latter is to easily
+get access to the training data for the whole set.
+
+Probably closest basis is `scale_*_gradientn`, which uses
+`continuous_scale` with `gradient_n_pal` as the `palette` parameter.  It seems
+the way the `palette` parameter is used is by requesting a specific number of
+colors (or whatevers) as per `?continuous_scale`, but then not at all clear how
+we can have non-linear mappings.
+
+Actually the `palette` business is probably a documentation problem?  Clearly
+`gradient_n_pal` does not meet the description, nor does `div_gradient_pal`.
+Correct definition should be:
+
+> A function that when called with a number between 0 and 1 returns a color
+> code.
+
+The problem might be that the docs in `?scale_fill_gradientn` and similar:
+
+> A palette function that when called with a single integer argument (the number
+> of levels in the scale) returns the values that they should take
+
+Is really intended for `discrete_scale` where that might make more sense and
+indeed where `hue_pal` is used to generate functions that meet that description.
+
+ToDo: examine the @inheritDotArgs and - roxygen shortcuts.
+
+So, given that our function will be given a number between 0 and 1, we now have
+to figure out how to make sure our "anchors", etc., convey.
+
+Looks like the mapping is governed by this:
+
+```{r}
+  map = function(self, x, limits = self$get_limits()) {
+    ## x should have values in 0-1, as well as NAs
+    x <- self$rescaler(self$oob(x, range = limits), from = limits)
+
+    uniq <- unique(x)
+    pal <- self$palette(uniq)     # a color for each unique value
+    scaled <- pal[match(x, uniq)]
+
+    ifelse(!is.na(scaled), scaled, self$na.value)
+  },
+```
+
+So the scaling is linear.  I "think" this works properly so long as we generate
+the `gradient_n_pal` function with the correct values scaled in the same way the
+rescaler does here?
+
+Are there problems with `self$get_limits`?  The underlying value is populated by
+the training process, but can be overridden if a user sets limits.
+
+So one gut-feel issue is that normal course of business is to  generate our
+'palette' function at spec time, but really we need to generate it at map time
+once we have the totality of the data.  We can then, knowing the limits, do so
+in `Scale$map`?  Well, one issue is that this only works if we have the entirety
+of the data, so we'll have to modify `Scale$range` to be an object that records
+all of the data, not just the extremes.  So we'll need a new `Range` object with
+that field.  
+
+One issue is that those objects are not exported, but maybe we do different
+objects, and calling them something other than `Range`?  We lose the semantics
+of `self$range$train()`, but that's probably okay.
+
+### Interface
+
+What do we need:
+
+* Input colors
+* Anchor points? (these will need to be part of the training set)
+* Should not have to provide values as those should be 
+
+### Color Palette Generation
+
+Need to do some research on what the right way to generate a semi-reasonable
+colorful scale is.  Some ideas were to maybe get the baseline hues, normalize
+them to the same brightness and saturation.  And then modulate the brightness
+and saturation up as we move away from the origin.  Not sure how well that will
+work with saturation (or maybe chroma?) versus brightness.
+
 ## Waterfall
-
-### geom / stat / position
-
-Some question of whether it should be a geom, or a position, or even a stat.
-Unfortunately the ggplot2 semantics don't really fit fully with any of this.
-Technically it's not really a geom since we're just making bars/rects here.
-We're translating the points though, which maybe is more like a position, except
-we're doing it across x values instead of within a value, so it's not a standard
-position adjustment. It's also not a stat since we're not changing the number of
-rows in the data.
-
-Given stacking doesn't work, maybe we should do this via position:
-waterfall-stack / waterfall-dodge.  Even though it doesn't naturally meet with
-the ggplot2 semantics, the position adjustments appear to have all the data for
-each layer.
 
 ### stacking
 

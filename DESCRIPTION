@@ -4,8 +4,13 @@ Description: Collection of ggplot extensions.
 Version: 0.1.0
 Authors@R: c(
     person("Brodie", "Gaslam", email="brodie.gaslam@yahoo.com",
-    role=c("aut", "cre"))
-    )
+    role=c("aut", "cre")),
+    person("Bob", "Rudis", email = "bob@rud.is", role = "cph",
+           comment = c(
+           "Implemented CIEDE2000 color distance calculation.",
+           ORCID = "0000-0001-5670-2640"
+           )
+    ) )
 Depends:
     R (>= 3.3.0)
 License: GPL (>=2)
