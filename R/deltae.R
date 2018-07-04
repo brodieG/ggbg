@@ -5,7 +5,8 @@
 ##
 ## Only substantive change is to remove the colorspace dependency, directly
 ## accepting Lab matrices instead of the S4 LAB objects from colorspace.
-## CIEDE2000
+##
+## CIEDE2000 implementation as per:
 ##
 ## Gaurav Sharma & Maynard P Baalthazar
 ##
@@ -15,7 +16,7 @@
 deltaE2000_1 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
   lstd <- Labstd[, 1]
   astd <- Labstd[, 2]
-  bstd <- Labstd[, 3] 
+  bstd <- Labstd[, 3]
   Cabstd <- sqrt(astd^2+bstd^2)
   lsample <- Labsample[,1]
   asample <- Labsample[,2]

@@ -1,7 +1,4 @@
-
-# Developer Notes
-
-## Relevant docs
+# Developer Notes ## Relevant docs
 
 * ggplot2 docs `?Geom`, etc.
 * ggplot2 vignette
@@ -81,7 +78,7 @@ once we have the totality of the data.  We can then, knowing the limits, do so
 in `Scale$map`?  Well, one issue is that this only works if we have the entirety
 of the data, so we'll have to modify `Scale$range` to be an object that records
 all of the data, not just the extremes.  So we'll need a new `Range` object with
-that field.  
+that field.
 
 One issue is that those objects are not exported, but maybe we do different
 objects, and calling them something other than `Range`?  We lose the semantics
@@ -93,7 +90,7 @@ What do we need:
 
 * Input colors
 * Anchor points? (these will need to be part of the training set)
-* Should not have to provide values as those should be 
+* Should not have to provide values as those should be
 
 ### Color Palette Generation
 
@@ -224,7 +221,7 @@ named `self`.  This from a traceback of `geom_rect`:
 do.call(self$draw_panel, args)
 
 [[18]]
-(function (...) 
+(function (...)
 f(..., self = self))(data, panel_params, coord)
 
 [[19]]
@@ -237,11 +234,11 @@ the function you define, but a processed version of it that looks like:
 ```
 <ggproto method>
   <Wrapper function>
-    function (...) 
+    function (...)
 f(..., self = self)
 
   <Inner function (f)>
-    function (self, data, panel_params, coord) 
+    function (self, data, panel_params, coord)
 {
 ```
 

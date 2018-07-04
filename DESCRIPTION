@@ -32,11 +32,13 @@ RoxygenNote: 6.0.1.9000
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
 Collate:
+    'deltae.R'
     'geom.car.data.R'
     'ggbg-package.R'
     'geom-null.R'
     'proto.R'
     'geom-car.R'
     'position-waterfall.R'
+    'scale-gradient-fit.R'
     'stat-waterfall.R'
     'load.R'
