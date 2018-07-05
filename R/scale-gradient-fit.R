@@ -119,6 +119,7 @@ if(FALSE) {
   # Need distance from a
   # Need distance from b
   # Difference between the two
+
   # Need function that given 1D value, returns Lab coords
   # For convenience, say 1D value between 0 and 1
 
@@ -127,14 +128,14 @@ if(FALSE) {
     vetr::vetr(matrix(numeric(), ncol=3) && NUM && nrow(.) > 1)
 
     dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
-    dists.euc.c <- c(0, cumsum(jet.lab.dists.euc))
-    dists.euc.c <- dists.euc.c / max(dists.euc.c)
+    dists.euc.c <- c(0, cumsum(dists.euc))
+    dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
 
     function(x) {
       vetr::vetr(NUM && all_bw(., 0, 1))
-      bins <- findInterval(x, dists.euc.c, rightmost.closed=TRUE)
-      offset <- (x - dists.euc.c[bins]) /
-        (dists.euc.c[bins + 1] - dists.euc.c[bins])
+      bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
+      offset <- (x - dists.euc.c.norm[bins]) /
+        (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
 
       coords[bins, , drop=FALSE] + offset * (
         coords[bins + 1, , drop=FALSE] - coords[bins, , drop=FALSE]
@@ -148,7 +149,7 @@ if(FALSE) {
     vetr::vetr(matrix(numeric(), ncol=3) && NUM && nrow(.) > 1)
 
     dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
-    dists.euc.c <- c(0, cumsum(jet.lab.dists.euc))
+    dists.euc.c <- c(0, cumsum(dists.euc))
     dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
 
     function(x) {
@@ -160,8 +161,37 @@ if(FALSE) {
       dists.euc.c[bins] + offset * (dists.euc.c[bins + 1] - dists.euc.c[bins])
     }
   }
+  # Get the position in [0, 1] of our three coordinates.  Since every coordinate
+  # except first and last could have been shifted along, we need to reference
+  # back to the original coordinates.  Find which of the sequential pairs in the
+  # inital coordinates we're in
+
+  make_get_pos <- function(coords) {
+    vetr::vetr(matrix(numeric(), ncol=3) && nrow(.) > 1)
+    dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
+    dists.euc.c <- c(0, cumsum(dists.euc))
+    dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
+
+    function(x) {
+      vetr::vetr(matrix(numeric(), nrow=1, ncol=3))
+      pos.min <- which.min(
+        sqrt(colSums((t(head(coords, -1)) - c(x)) ^ 2)) +
+        sqrt(colSums((t(tail(coords, -1)) - c(x)) ^ 2))
+      )
+      # in theory offset should be the same across the three dimensions, but we
+      # just average here just in case not exactly so
+
+      offset <- mean(
+        (x - coords[pos.min, , drop=FALSE]) /
+        (coords[pos.min + 1, , drop=FALSE] - coords[pos.min, , drop=FALSE])
+      )
+      dists.euc.c.norm[pos.min] +
+        offset * (dists.euc.c.norm[pos.min + 1] - dists.euc.c.norm[pos.min])
+    }
+  }
   get_coords <- make_get_coords(jet.lab)
   get_dist <- make_get_dist(jet.lab)
+  get_pos <- make_get_pos(jet.lab)
 
   jet.lab.interp <- get_coords((0:n)/n)
   jet.lab.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
@@ -185,6 +215,33 @@ if(FALSE) {
     geom_line(aes(x=x, y=y)) +
     geom_point(aes(x=x, y=y), size=3, shape=24, fill=dat2$color) +
     geom_hline(yintercept=get_dist((0:n)/n), linetype=2)
+
+  # Given values A, x, and B, figure out where x needs to be to be in middle,
+  # this is substantially complicated by the need to compute
+
+  make_center_fun <- function(A, B) {
+    a.b.coords <- get_coords(c(A, B))
+
+    function(x) {
+      vetr::vetr(NUM.1 && all_bw(., A, B))
+      x.coords <- get_coords(x)
+      diff(ggbg:::deltaE2000_1(rbind(x.coords, x.coords), a.b.coords)) ^ 2
+    }
+  }
+  # Look at the differences between
+
+  jli <- jet.lab.interp
+
+  jli.d <- ggbg:::deltaE2000_1(head(jli, -1), tail(jli, -1))
+  A <- which.max(abs(diff(jli.d)))
+  B <- A + 2
+
+
+
+  center_fun <- make_center_fun(A, B)
+  optim((A + B) / 2, center_fun, lower=A, upper=B, method='Brent')
+
+
 
 
 }
