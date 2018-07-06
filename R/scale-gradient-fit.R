@@ -228,19 +228,25 @@ if(FALSE) {
       diff(ggbg:::deltaE2000_1(rbind(x.coords, x.coords), a.b.coords)) ^ 2
     }
   }
-  # Look at the differences between
+  # Look at the differences between A && B
 
   jli <- jet.lab.interp
 
   jli.d <- ggbg:::deltaE2000_1(head(jli, -1), tail(jli, -1))
-  A <- which.max(abs(diff(jli.d)))
-  B <- A + 2
+  jli.max.diff <- which.max(abs(diff(jli.d)))
+  A <- jli[jli.max.diff, , drop=FALSE]
+  x <- jli[jli.max.diff + 1, , drop=FALSE]
+  B <- jli[jli.max.diff + 2, , drop=FALSE]
 
+  A.pos <- get_pos(A)
+  B.pos <- get_pos(B)
+  x.pos <- get_pos(x)
 
+  center_fun <- make_center_fun(A.pos, B.pos)
+  x.pos.new <-
+    optim(x.pos, center_fun, lower=A.pos, upper=B.pos, method='Brent')$par
 
-  center_fun <- make_center_fun(A, B)
-  optim((A + B) / 2, center_fun, lower=A, upper=B, method='Brent')
-
+  x.new <- get_coords(x.pos.new)
 
 
 
