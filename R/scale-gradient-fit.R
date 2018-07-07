@@ -124,43 +124,6 @@ if(FALSE) {
   # For convenience, say 1D value between 0 and 1
 
   library(vetr)
-  make_get_coords <- function(coords) {
-    vetr::vetr(matrix(numeric(), ncol=3) && NUM && nrow(.) > 1)
-
-    dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
-    dists.euc.c <- c(0, cumsum(dists.euc))
-    dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
-
-    function(x) {
-      vetr::vetr(NUM && all_bw(., 0, 1))
-      bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
-      offset <- (x - dists.euc.c.norm[bins]) /
-        (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
-
-      coords[bins, , drop=FALSE] + offset * (
-        coords[bins + 1, , drop=FALSE] - coords[bins, , drop=FALSE]
-      )
-    }
-  }
-  # Figures out the distance from the origin coordinate following the path of
-  # the intermediate coordinates
-
-  make_get_dist <- function(coords) {
-    vetr::vetr(matrix(numeric(), ncol=3) && NUM && nrow(.) > 1)
-
-    dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
-    dists.euc.c <- c(0, cumsum(dists.euc))
-    dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
-
-    function(x) {
-      vetr::vetr(NUM && all_bw(., 0, 1))
-      bins <- findInterval(x, dists.euc.c, rightmost.closed=TRUE)
-      offset <- (x - dists.euc.c.norm[bins]) /
-        (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
-
-      dists.euc.c[bins] + offset * (dists.euc.c[bins + 1] - dists.euc.c[bins])
-    }
-  }
   # Get the position in [0, 1] of our three coordinates.  Since every coordinate
   # except first and last could have been shifted along, we need to reference
   # back to the original coordinates.  Find which of the sequential pairs in the
@@ -177,50 +140,82 @@ if(FALSE) {
     dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
     t.c <- t(coords)
 
-    function(x) {
-      vetr::vetr(matrix(numeric(), nrow=1, ncol=3))
-      c.x <- c(x)
+    list(
+      # Given Lab coords, return the position in the [0,1] color ramp range
 
-      # Need to find which set of coords we're between; 
+      coords_to_pos = function(x) {
+        vetr::vetr(matrix(numeric(), nrow=1, ncol=3))
+        c.x <- c(x)
 
-      if(length(coord.m <- which(round(colSums(t.c - c.x), 2) == 0))) {
-        # start by checking whether we're at exactly one of the existing coords
-        if(length(coord.m) > 1)
-          stop("Internal Error: matching more than one exact coord.")
+        # Need to find which set of coords we're between;
 
-        dists.euc.c.norm[coord.m]
-      } else {
-        # find which pair we're in between
+        if(length(coord.m <- which(round(colSums(t.c - c.x), 2) == 0))) {
+          # start by checking whether we're at exactly one of the existing coords
+          if(length(coord.m) > 1)
+            stop("Internal Error: matching more than one exact coord.")
 
-        a.diff <- t.c[, -1, drop=FALSE] - c.x
-        b.diff <- c.x - t.c[, seq(ncol(t.c))[-1], drop=FALSE]
+          dists.euc.c.norm[coord.m]
+        } else {
+          # find which pair we're in between
 
-        a.diff.n <- t(t(a.diff) / sqrt(colSums(a.diff ^ 2)))
-        b.diff.n <- t(t(b.diff) / sqrt(colSums(b.diff ^ 2)))
+          a.diff <- t.c[, -ncol(t.c), drop=FALSE] - c.x
+          b.diff <- c.x - t.c[, -1L, drop=FALSE]
 
-        # or approximately in between, anyway
+          a.diff.n <- t(t(a.diff) / sqrt(colSums(a.diff ^ 2)))
+          b.diff.n <- t(t(b.diff) / sqrt(colSums(b.diff ^ 2)))
 
-        coord.id <- which.min(colSums((a.diff.n - b.diff.n) ^ 2))
+          # or approximately in between, anyway
 
-        dists.euc.c.norm[coord.id] +
-          (dists.euc.c.norm[coord.id + 1] - dists.euc.c.norm[coord.id]) *
-          (
-            sum((c.x - t.c[coord.id, drop=FALSE]) ^ 2) /
-            sum((t.c[coord.id, drop=FALSE] - t.c[coord.id + 1, drop=FALSE]) ^ 2)
-          )
+          coord.id <- which.min(colSums((a.diff.n - b.diff.n) ^ 2))
+
+          dists.euc.c.norm[coord.id] +
+            (dists.euc.c.norm[coord.id + 1] - dists.euc.c.norm[coord.id]) *
+            (
+              sqrt(sum((c.x - t.c[coord.id, drop=FALSE]) ^ 2)) /
+              sqrt(
+                sum(
+                  (
+                    t.c[coord.id + 1, , drop=FALSE] -
+                    t.c[coord.id, , drop=FALSE]
+                  ) ^ 2
+              ) )
+            )
+        }
+      },
+      # Given the position in the [0, 1] color ramp range, return the Lab coords
+
+      pos_to_coords = function(x) {
+        vetr::vetr(NUM && all_bw(., 0, 1))
+        bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
+        offset <- (x - dists.euc.c.norm[bins]) /
+          (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
+
+        coords[bins, , drop=FALSE] + offset * (
+          coords[bins + 1, , drop=FALSE] - coords[bins, , drop=FALSE]
+        )
+      },
+      # Given the position in the [0, 1] color ramp range, return cumulative Lab
+      # distance through the color ramp
+
+      pos_to_dist = function(x) {
+        vetr::vetr(NUM && all_bw(., 0, 1))
+        bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
+        offset <- (x - dists.euc.c.norm[bins]) /
+          (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
+
+        dists.euc.c[bins] + offset * (dists.euc.c[bins + 1] - dists.euc.c[bins])
       }
-    }
+    )
   }
 
-  make_get_pos <- function(coords) {
+  n <- 16
+  f <- make_coord_funs(jet.lab)
+  jet.lab.interp <- f$pos_to_coords((0:n)/n)
 
-    function(x) {
-  }
   get_coords <- make_get_coords(jet.lab)
   get_dist <- make_get_dist(jet.lab)
   get_pos <- make_get_pos(jet.lab)
 
-  jet.lab.interp <- get_coords((0:n)/n)
   jet.lab.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
   jet.lab.rgb <- rgb(jet.lab.rgb.num)
 
