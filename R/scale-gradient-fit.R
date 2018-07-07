@@ -166,28 +166,55 @@ if(FALSE) {
   # back to the original coordinates.  Find which of the sequential pairs in the
   # inital coordinates we're in
 
-  make_get_pos <- function(coords) {
-    vetr::vetr(matrix(numeric(), ncol=3) && nrow(.) > 1)
+  # NOTE: shoudl check whether we have identical or close enough to coords
+
+  make_coord_funs <- function(coords) {
+    vetr::vetr(
+      matrix(numeric(), ncol=3) && nrow(.) > 1 && !anyDuplicated(round(., 2))
+    )
     dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
     dists.euc.c <- c(0, cumsum(dists.euc))
     dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
+    t.c <- t(coords)
 
     function(x) {
       vetr::vetr(matrix(numeric(), nrow=1, ncol=3))
-      pos.min <- which.min(
-        sqrt(colSums((t(head(coords, -1)) - c(x)) ^ 2)) +
-        sqrt(colSums((t(tail(coords, -1)) - c(x)) ^ 2))
-      )
-      # in theory offset should be the same across the three dimensions, but we
-      # just average here just in case not exactly so
+      c.x <- c(x)
 
-      offset <- mean(
-        (x - coords[pos.min, , drop=FALSE]) /
-        (coords[pos.min + 1, , drop=FALSE] - coords[pos.min, , drop=FALSE])
-      )
-      dists.euc.c.norm[pos.min] +
-        offset * (dists.euc.c.norm[pos.min + 1] - dists.euc.c.norm[pos.min])
+      # Need to find which set of coords we're between; 
+
+      if(length(coord.m <- which(round(colSums(t.c - c.x), 2) == 0))) {
+        # start by checking whether we're at exactly one of the existing coords
+        if(length(coord.m) > 1)
+          stop("Internal Error: matching more than one exact coord.")
+
+        dists.euc.c.norm[coord.m]
+      } else {
+        # find which pair we're in between
+
+        a.diff <- t.c[, -1, drop=FALSE] - c.x
+        b.diff <- c.x - t.c[, seq(ncol(t.c))[-1], drop=FALSE]
+
+        a.diff.n <- t(t(a.diff) / sqrt(colSums(a.diff ^ 2)))
+        b.diff.n <- t(t(b.diff) / sqrt(colSums(b.diff ^ 2)))
+
+        # or approximately in between, anyway
+
+        coord.id <- which.min(colSums((a.diff.n - b.diff.n) ^ 2))
+
+        dists.euc.c.norm[coord.id] +
+          (dists.euc.c.norm[coord.id + 1] - dists.euc.c.norm[coord.id]) *
+          (
+            sum((c.x - t.c[coord.id, drop=FALSE]) ^ 2) /
+            sum((t.c[coord.id, drop=FALSE] - t.c[coord.id + 1, drop=FALSE]) ^ 2)
+          )
+      }
     }
+  }
+
+  make_get_pos <- function(coords) {
+
+    function(x) {
   }
   get_coords <- make_get_coords(jet.lab)
   get_dist <- make_get_dist(jet.lab)
