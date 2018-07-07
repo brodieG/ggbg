@@ -144,7 +144,7 @@ if(FALSE) {
       # Given Lab coords, return the position in the [0,1] color ramp range
 
       coords_to_pos = function(x) {
-        vetr::vetr(matrix(numeric(), nrow=1, ncol=3))
+        vetr::vetr(numeric(3L) || matrix(numeric(), nrow=1, ncol=3))
         c.x <- c(x)
 
         # Need to find which set of coords we're between;
@@ -171,12 +171,12 @@ if(FALSE) {
           dists.euc.c.norm[coord.id] +
             (dists.euc.c.norm[coord.id + 1] - dists.euc.c.norm[coord.id]) *
             (
-              sqrt(sum((c.x - t.c[coord.id, drop=FALSE]) ^ 2)) /
+              sqrt(sum((c.x - t.c[, coord.id, drop=FALSE]) ^ 2)) /
               sqrt(
                 sum(
                   (
-                    t.c[coord.id + 1, , drop=FALSE] -
-                    t.c[coord.id, , drop=FALSE]
+                    t.c[, coord.id + 1, drop=FALSE] -
+                    t.c[, coord.id, drop=FALSE]
                   ) ^ 2
               ) )
             )
@@ -210,22 +210,25 @@ if(FALSE) {
 
   n <- 16
   f <- make_coord_funs(jet.lab)
-  jet.lab.interp <- f$pos_to_coords((0:n)/n)
+  pos <- (0:n) / n
+  jet.lab.interp <- f$pos_to_coords(pos)
 
-  get_coords <- make_get_coords(jet.lab)
-  get_dist <- make_get_dist(jet.lab)
-  get_pos <- make_get_pos(jet.lab)
+  # Check we can recover the positions from the coordiantes
 
-  jet.lab.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
-  jet.lab.rgb <- rgb(jet.lab.rgb.num)
+  pos.recover <- apply(jet.lab.interp, 1, f$coords_to_pos)
+  stopifnot(all.equal(pos, pos.recover))
+
+  jet.lab.int.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
+  jet.lab.int.rgb <- rgb(jet.lab.int.rgb.num)
 
   col.diff.e2000.2 <-
     ggbg:::deltaE2000_1(head(jet.lab.interp, -1), tail(jet.lab.interp, -1))
   col.diff.lab.2 <-
     sqrt(rowSums((head(jet.lab.interp, -1) - tail(jet.lab.interp, -1)) ^ 2))
-  col.diff.rgb.2 <-
-    sqrt(rowSums((head(jet.lab.rgb.num, -1) - tail(jet.lab.rgb.num, -1)) ^ 2))
-
+  col.diff.rgb.2 <- sqrt(
+    rowSums(
+      (head(jet.lab.int.rgb.num, -1) - tail(jet.lab.int.rgb.num, -1)) ^ 2
+  ) )
   col.diff.orig <- c(
     0, cumsum(sqrt(rowSums((head(jet.lab, -1) - tail(jet.lab, -1)) ^ 2)))
   )
@@ -246,7 +249,7 @@ if(FALSE) {
 
     function(x) {
       vetr::vetr(NUM.1 && all_bw(., A, B))
-      x.coords <- get_coords(x)
+      x.coords <- f$pos_to_coords(x)
       diff(ggbg:::deltaE2000_1(rbind(x.coords, x.coords), a.b.coords)) ^ 2
     }
   }
