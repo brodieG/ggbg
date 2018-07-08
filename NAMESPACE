@@ -2,6 +2,7 @@
 
 export(PositionWaterfall)
 export(StatWaterfall)
+export(deltaE2000_1)
 export(geom_car)
 export(position_waterfall)
 import(ggplot2)

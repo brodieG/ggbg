@@ -1,17 +1,18 @@
 
 
 
-## Adaptation of Bob Rudis's `swatch:::deltaE2000` Function.
-##
-## Only substantive change is to remove the colorspace dependency, directly
-## accepting Lab matrices instead of the S4 LAB objects from colorspace.
-##
-## CIEDE2000 implementation as per:
-##
-## Gaurav Sharma & Maynard P Baalthazar
-##
-## @param Labstd numeric[, 1:3] with L, a, b coordinates
-## @param Labsample numeric[, 1:3] with L, a, b coordinates
+#' Adaptation of Bob Rudis's `swatch:::deltaE2000` Function.
+#'
+#' Only substantive change is to remove the colorspace dependency, directly
+#' accepting Lab matrices instead of the S4 LAB objects from colorspace.
+#'
+#' CIEDE2000 implementation as per:
+#'
+#' Gaurav Sharma & Maynard P Baalthazar
+#'
+#' @export
+#' @param Labstd numeric[, 1:3] with L, a, b coordinates
+#' @param Labsample numeric[, 1:3] with L, a, b coordinates
 
 deltaE2000_1 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
   lstd <- Labstd[, 1]
