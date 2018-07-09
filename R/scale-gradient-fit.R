@@ -242,31 +242,6 @@ if(FALSE) {
 
   jet.rgb.num.as.lab <- convertColor(jet.rgb.num, "sRGB", "Lab")
 
-  col.diff.e2000 <- ggbg:::deltaE2000_1(
-    head(jet.rgb.num.as.lab, -1), tail(jet.rgb.num.as.lab, -1))
-  col.diff.lab <- sqrt(
-    rowSums(
-      (head(jet.rgb.num.as.lab, -1) - tail(jet.rgb.num.as.lab, -1)) ^ 2
-    )
-  )
-  col.diff.rgb <-
-    sqrt(rowSums((head(jet.rgb.num, -1) - tail(jet.rgb.num, -1)) ^ 2))
-
-  col.diff.e2000.2 <- ggbg:::deltaE2000_1(head(jli, -1), tail(jli, -1))
-  col.diff.lab.2 <-
-    sqrt(rowSums((head(jli, -1) - tail(jli, -1)) ^ 2))
-  col.diff.rgb.2 <-
-    sqrt(rowSums((head(jli.rgb.num, -1) - tail(jli.rgb.num, -1)) ^ 2))
-
-  col.diff.e2000.3 <- ggbg:::deltaE2000_1(
-    head(jli.e.lab, -1), tail(jli.e.lab, -1)
-  )
-  col.diff.lab.3 <-
-    sqrt(rowSums((head(jli.e.lab, -1) - tail(jli.e.lab, -1)) ^ 2))
-  col.diff.rgb.3 <- sqrt(
-    rowSums((head(jli.e.lab.rgb, -1) - tail(jli.e.lab.rgb, -1)) ^ 2)
-  )
-
   # Plot Colors Against Distance Metrics
   #
   # Colors should be in Lab 3 column matrix.
