@@ -155,7 +155,7 @@ if(FALSE) {
       # distance through the color ramp
 
       pos_to_dist = function(x) {
-        vetr::vetr(NUM && all_bw(., 0, 1))
+        # vetr::vetr(NUM && all_bw(., 0, 1))
         bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
         offset <- (x - dists.euc.c.norm[bins]) /
           (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
@@ -164,22 +164,22 @@ if(FALSE) {
       }
     )
   }
-
-  f <- make_coord_funs(jet.lab)
+  f_lab <- make_coord_funs(jet.lab)
+  f_rgb <- make_coord_funs(ggbg:::jet)
   pos <- (0:n) / n
-  jet.lab.interp <- f$pos_to_coords(pos)
+  jet.lab.interp <- f_lab$pos_to_coords(pos)
   jet.lab.interp.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
 
   # Check we can recover the positions from the coordiantes
 
-  pos.recover <- apply(jet.lab.interp, 1, f$coords_to_pos)
+  pos.recover <- apply(jet.lab.interp, 1, f_lab$coords_to_pos)
   stopifnot(all.equal(pos, pos.recover))
 
   # Given values A, x, and B, figure out where x needs to be to be in middle,
   # this is substantially complicated by the need to compute
 
-  make_center_fun <- function(A, B, diff_fun) {
-    fun <- f$pos_to_coords
+  make_center_fun <- function(A, B, diff_fun, coord_funs) {
+    fun <- coord_funs$pos_to_coords
     a.b.coords <- fun(c(A, B))
 
     function(x) {
@@ -194,7 +194,7 @@ if(FALSE) {
   jli <- jli.prev <- jet.lab.interp
   jli.d.init <- ggbg:::deltaE2000_1(head(jli, -1), tail(jli, -1))
 
-  equalize_dists <- function(coords, diff_fun, iters=1e4) {
+  equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
     coords.prev.prev <- coords.prev <- coords
     coords.rows <- nrow(coords)
     for(i in seq(iters)) {
@@ -215,24 +215,26 @@ if(FALSE) {
       x <- coords[coords.max.diff + 1, , drop=FALSE]
       B <- coords[coords.max.diff + 2, , drop=FALSE]
 
-      A.pos <- f$coords_to_pos(A)
-      B.pos <- f$coords_to_pos(B)
-      x.pos <- f$coords_to_pos(x)
+      A.pos <- coord_funs$coords_to_pos(A)
+      B.pos <- coord_funs$coords_to_pos(B)
+      x.pos <- coord_funs$coords_to_pos(x)
 
-      center_fun <- make_center_fun(A.pos, B.pos, diff_fun)
+      center_fun <- make_center_fun(A.pos, B.pos, diff_fun, coord_funs)
       x.pos.new <-
         optim(x.pos, center_fun, lower=A.pos, upper=B.pos, method='Brent')$par
 
-      x.new <- f$pos_to_coords(x.pos.new)
+      x.new <- coord_funs$pos_to_coords(x.pos.new)
       coords.prev.prev <- coords.prev
       coords.prev <- coords
       coords[coords.max.diff + 1, ] <- x.new
     }
     coords
   }
-  jli.e.2000 <- equalize_dists(jli, deltaE2000_1, iters=1e5)
-  jli.e.lab <- equalize_dists(
-    jet.lab.interp, function(x, y) sqrt(rowSums((x - y) ^ 2)), iters=1e5
+  euc_dist <- function(x, y) sqrt(rowSums((x - y) ^ 2))
+  jli.e.2000 <- equalize_dists(jli, deltaE2000_1, f_lab, iters=1e5)
+  jli.e.lab <- equalize_dists(jet.lab.interp, euc_dist, f_lab, iters=1e5)
+  rgb.e.rgb <- equalize_dists(
+    f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5
   )
   # plot and compare
 
@@ -240,7 +242,7 @@ if(FALSE) {
   jli.rgb <- rgb(jli.rgb.num)
   jli.e.lab.rgb <- convertColor(jli.e.lab, "Lab", "sRGB")
 
-  jet.rgb.num.as.lab <- convertColor(jet.rgb.num, "sRGB", "Lab")
+  rgb.e.rgb.lab <- convertColor(rgb.e.rgb, "sRGB", "Lab")
 
   # Plot Colors Against Distance Metrics
   #
@@ -285,10 +287,10 @@ if(FALSE) {
 
     ggplot2::ggplot(data=dat.fg, aes(x=x, y=y)) +
       geom_col(data=dat.bg, fill=dat.bg$fill, width=1) +
-      geom_point(aes(fill=NA, colour=dist.fun), size=1, shape=23) +
+      # geom_point(aes(fill=NA, colour=dist.fun), size=1, shape=23) +
       facet_grid(type ~.) +
-      scale_fill_manual(values=scale.man.vals, name='Distance Metric') +
-      scale_color_grey(start=0, end=1) +
+      # scale_fill_manual(values=scale.man.vals, name='Distance Metric') +
+      # scale_color_grey(start=0, end=1) +
       coord_cartesian(expand=FALSE) +
       ggtitle('JET Color Ramp w/ Distances b/w Colors') +
       ylab('Distance (Normalized)') +
@@ -299,7 +301,9 @@ if(FALSE) {
       NULL
   }
   comp_color_dists(
-    list(CIEDE=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab),
+    list(
+      CIEDE=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab, RGB=rgb.e.rgb.lab
+    ),
     list(
       deltaE=deltaE2000_1,
       Lab=function(x, y) sqrt(rowSums((x - y) ^ 2)),
