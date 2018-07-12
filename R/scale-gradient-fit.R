@@ -192,7 +192,7 @@ if(FALSE) {
   # Look at the differences between A && B
 
   jli <- jli.prev <- jet.lab.interp
-  jli.d.init <- ggbg:::deltaE2000_1(head(jli, -1), tail(jli, -1))
+  jli.d.init <- deltaE2000_1(head(jli, -1), tail(jli, -1))
 
   equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
     coords.prev.prev <- coords.prev <- coords
@@ -287,10 +287,10 @@ if(FALSE) {
 
     ggplot2::ggplot(data=dat.fg, aes(x=x, y=y)) +
       geom_col(data=dat.bg, fill=dat.bg$fill, width=1) +
-      # geom_point(aes(fill=NA, colour=dist.fun), size=1, shape=23) +
+      geom_point(aes(colour=dist.fun), size=1, shape=23) +
       facet_grid(type ~.) +
       # scale_fill_manual(values=scale.man.vals, name='Distance Metric') +
-      # scale_color_grey(start=0, end=1) +
+      scale_color_grey(start=0, end=1) +
       coord_cartesian(expand=FALSE) +
       ggtitle('JET Color Ramp w/ Distances b/w Colors') +
       ylab('Distance (Normalized)') +
@@ -302,10 +302,11 @@ if(FALSE) {
   }
   comp_color_dists(
     list(
-      CIEDE=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab, RGB=rgb.e.rgb.lab
+      CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
+      RGB=rgb.e.rgb.lab
     ),
     list(
-      deltaE=deltaE2000_1,
+      CIEDE2000=deltaE2000_1,
       Lab=function(x, y) sqrt(rowSums((x - y) ^ 2)),
       RGB=function(x, y) {
         x.rgb <- convertColor(x, "Lab", "sRGB")
