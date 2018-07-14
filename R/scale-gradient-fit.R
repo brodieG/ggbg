@@ -34,6 +34,9 @@ jet <- t(
 if(FALSE) {
   library(scales)
   library(ggplot2)
+  library(viridisLite)
+  library(ggbg)
+
   # colour_ramp does a linear interpolation between the two nearest defined
   # colors.  It picks the nearest color simply by counting how many colors we
   # selected, and assuming the distance between colors is the same.
@@ -230,12 +233,32 @@ if(FALSE) {
     }
     coords
   }
+  viridis.lab <- convertColor(t(col2rgb(viridis(n + 1))) / 255, "sRGB", "Lab")
+  cividis.lab <- convertColor(t(col2rgb(cividis(n + 1))) / 255, "sRGB", "Lab")
   euc_dist <- function(x, y) sqrt(rowSums((x - y) ^ 2))
-  jli.e.2000 <- equalize_dists(jli, deltaE2000_1, f_lab, iters=1e5)
-  jli.e.lab <- equalize_dists(jet.lab.interp, euc_dist, f_lab, iters=1e5)
-  rgb.e.rgb <- equalize_dists(
-    f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5
-  )
+  f_vir_lab <- make_coord_funs(viridis.lab)
+  vir.raw.lab <- subset(viridisLite::viridis.map[])
+
+  # very slow running code
+
+  if(FALSE) {
+    jli.e.2000 <- equalize_dists(jli, deltaE2000_1, f_lab, iters=1e5)
+    jli.e.lab <- equalize_dists(jet.lab.interp, euc_dist, f_lab, iters=1e5)
+    rgb.e.rgb <- equalize_dists(
+      f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5
+    )
+    vir.e.lab <- equalize_dists(viridis.lab, deltaE2000_1, f_vir_lab, iters=1e5)
+
+    saveRDS(jli.e.2000, 'extra/ramps/jet-65-ceide-lab.RDS')
+    saveRDS(jli.e.lab, 'extra/ramps/jet-65-lab-lab.RDS')
+    saveRDS(rgb.e.rgb, 'extra/ramps/jet-65-rgb-rgb.RDS')
+    saveRDS(vir.e.lab, 'extra/ramps/viridis-65-ceide-lab.RDS')
+  } else {
+    jli.e.2000 <- readRDS('extra/ramps/jet-65-ceide-lab.RDS')
+    jli.e.lab <- readRDS('extra/ramps/jet-65-lab-lab.RDS')
+    rgb.e.rgb <- readRDS('extra/ramps/jet-65-rgb-rgb.RDS')
+    vir.e.lab <- readRDS('extra/ramps/viridis-65-ceide.lab.RDS')
+  }
   # plot and compare
 
   jli.rgb.num <- convertColor(jli.e.2000, "Lab", "sRGB")
@@ -259,7 +282,7 @@ if(FALSE) {
       names(colors), function(x) {
         data.frame(
           x=seq(n) - 1, y=rep(1.05, n), fill=colors.rgb[[x]],
-          type=rep(x, n)
+          type=rep(x, n), stringsAsFactors=FALSE
     ) } )
     dat.bg <- do.call(rbind, dat.bg.list)
 
@@ -285,6 +308,8 @@ if(FALSE) {
     )
     dat.fg <- do.call(rbind, dat.fg.list)
 
+    dat.bg <- dat.bg[order(dat.bg$type),]
+
     ggplot2::ggplot(data=dat.fg, aes(x=x, y=y)) +
       geom_col(data=dat.bg, fill=dat.bg$fill, width=1) +
       geom_point(aes(colour=dist.fun), size=1, shape=23) +
@@ -302,8 +327,9 @@ if(FALSE) {
   }
   comp_color_dists(
     list(
-      CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
-      RGB=rgb.e.rgb.lab
+      # CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
+      # RGB=rgb.e.rgb.lab, 
+      viridis=viridis.lab, vir.e=vir.e.lab #, civ=cividis.lab
     ),
     list(
       CIEDE2000=deltaE2000_1,

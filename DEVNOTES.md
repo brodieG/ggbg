@@ -1,8 +1,30 @@
-# Developer Notes ## Relevant docs
+# Developer Notes
+
+## Relevant docs
 
 * ggplot2 docs `?Geom`, etc.
 * ggplot2 vignette
 * [B. Rudis in-progress Book](https://rud.is/books/creating-ggplot2-extensions/)
+* [Matplotlib colormap](https://bids.github.io/colormap/)
+* [CIECAM02](https://en.wikipedia.org/wiki/CIECAM02), the perceptual color
+  space(?) function used to make things equal?
+* [Source code for CIECAM02 transformations](http://scanline.ca/ciecam02/) and
+  very interesting notes on the background effect.
+
+## CIEDE vs CIECAM02
+
+From [RIT FAQ](https://www.rit.edu/cos/colorscience/rc_faq_faq2.php#363):
+
+> Would CIECAM02 or CIEDE2000 be better at predicting spot color differences?
+> (363) Most of the research on predicting color differences has been aimed at
+> optimizing equations in the CIELAB color space (such as the DE94 and DE2000
+> equations). Similar work is being done within the CIECAM02 color space, but
+> there is not yet a recommended technique for performing the computations.
+> There is certainly reason to believe that one will be developed in the future.
+> For now, and for the application you mention, the CIEDE2000 equations would be
+> the recommended technique. For a simpler equation, that is likely to perform
+> just about as well, you might want to consider the CIE DE94 equations. (Back
+> to top)
 
 ## Scale
 
@@ -17,6 +39,13 @@ identical(
   as(colorspace::hex2RGB(rainbow(5), gamma=TRUE), "LAB")
 )
 ```
+
+### Litterature
+
+* Pals package has lots of useful tools and in the overview vignette details of
+  goodness and badness of color scales?
+* Colin Fay [viridis
+  post](https://rtask.thinkr.fr/blog/ggplot2-welcome-viridis/)
 
 ### Re-use?
 
