@@ -58,7 +58,8 @@ if(FALSE) {
   # we'll preserve the total distance.  Maybe we can
 
   n <- 64
-  jet.rgb.num <- colorRamp(rgb(ggbg:::jet), space="Lab")((0:n)/n) / 255
+  jet.rgb.num <-
+    colorRamp(rgb(ggbg:::jet), space="Lab")((0:(n - 1))/(n - 1)) / 255
   jet.rgb.lab <- convertColor(jet.rgb.num, "sRGB", "Lab")
   jet.rgb <- rgb(jet.rgb.num)
   jet.lab <- convertColor(ggbg:::jet, "sRGB", "Lab")
@@ -169,7 +170,7 @@ if(FALSE) {
   }
   f_lab <- make_coord_funs(jet.lab)
   f_rgb <- make_coord_funs(ggbg:::jet)
-  pos <- (0:n) / n
+  pos <- (0:(n - 1)) / (n - 1)
   jet.lab.interp <- f_lab$pos_to_coords(pos)
   jet.lab.interp.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
 
@@ -233,11 +234,32 @@ if(FALSE) {
     }
     coords
   }
-  viridis.lab <- convertColor(t(col2rgb(viridis(n + 1))) / 255, "sRGB", "Lab")
-  cividis.lab <- convertColor(t(col2rgb(cividis(n + 1))) / 255, "sRGB", "Lab")
+  # we do `n + 1` and then drop last so we can match up better to the raw color
+  # map
+
+  viridis.lab <-
+    head(convertColor(t(col2rgb(viridis(n + 1))) / 255, "sRGB", "Lab"), -1)
+  viridis.lab.all <- convertColor(t(col2rgb(viridis(256))) / 255, "sRGB", "Lab")
+  cividis.lab <-
+    head(convertColor(t(col2rgb(cividis(n + 1))) / 255, "sRGB", "Lab"), -1)
   euc_dist <- function(x, y) sqrt(rowSums((x - y) ^ 2))
   f_vir_lab <- make_coord_funs(viridis.lab)
-  vir.raw.lab <- subset(viridisLite::viridis.map[])
+
+  # let's get raw values straight from mapping table
+
+  vir.idx <- (0:63 * 4) + 1
+  vir.raw.lab <- convertColor(
+    subset(viridisLite::viridis.map, opt=="D")[vir.idx, 1:3],
+    'sRGB', 'Lab'
+  )
+  vir.lab.all <- viridis.lab.all[vir.idx, ]
+
+  vir.ramp.dat <- subset(viridisLite::viridis.map, opt=="D")[, 1:3]
+  vir.ramp.dat.hex <- rgb(vir.ramp.dat)
+  vir.lin.lab <- convertColor(
+    colorRamp(vir.ramp.dat.hex, space='Lab')((0:255)/255)/255,
+    'sRGB', 'Lab'
+  )[vir.idx, ]
 
   # very slow running code
 
@@ -317,7 +339,7 @@ if(FALSE) {
       # scale_fill_manual(values=scale.man.vals, name='Distance Metric') +
       scale_color_grey(start=0, end=1) +
       coord_cartesian(expand=FALSE) +
-      ggtitle('JET Color Ramp w/ Distances b/w Colors') +
+      ggtitle('Color Ramp w/ Distances b/w Colors') +
       ylab('Distance (Normalized)') +
       theme(
         plot.background=element_rect(fill='#DDDDDD'),
@@ -328,8 +350,11 @@ if(FALSE) {
   comp_color_dists(
     list(
       # CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
-      # RGB=rgb.e.rgb.lab, 
-      viridis=viridis.lab, vir.e=vir.e.lab #, civ=cividis.lab
+      # RGB=rgb.e.rgb.lab,
+      `viridis()`=vir.lab.all,
+      `viridis CIEDE2000`=vir.e.lab,
+      `viridis.map[opt='D']`=vir.raw.lab
+      #, civ=cividis.lab
     ),
     list(
       CIEDE2000=deltaE2000_1,
@@ -340,4 +365,30 @@ if(FALSE) {
         sqrt(rowSums((x.rgb - y.rgb) ^ 2))
   } ) )
 
+  # Messing with Lab and colorRamp
+
+  mx <- rbind(
+    c(0, 0, 0),
+    c(25, 0, 0),
+    c(100, 50, 50)
+  ) / 255
+  colorRamp(rgb(mx))(c(0, 0.5, 1.0))
+  colorRamp(rgb(mx), space='Lab')(c(0, 0.5, 1.0))
+
+  mx <- rbind(
+    c(0, 0, 0),
+    c(25, 0, 0),
+    c(100, 50, 50)
+  ) / 255
+  colorRamp(rgb(mx))(c(0, 0.5, 1.0))
+  colorRamp(rgb(mx), space='Lab')(c(0, 0.5, 1.0))
+
+  viridis.256 <- t(col2rgb(viridis(256)))/255
+  viridis.map <- as.matrix(subset(viridisLite::viridis.map, opt=='D')[, 1:3])
+
+  plot(sqrt(rowSums((viridis.256 - viridis.map) ^ 2)))
+
+
+
 }
+
