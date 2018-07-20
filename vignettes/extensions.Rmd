@@ -1,5 +1,5 @@
 ---
-title: "Gggplot2 Internals - An Unofficial Reference"
+title: "Ggplot2 Internals - An Unofficial Reference"
 author: "Brodie Gaslam"
 output:
     rmarkdown::html_vignette:
