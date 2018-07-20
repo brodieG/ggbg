@@ -1,6 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^DEVNOTES\.md$
+^DEVNOTES
 ^CONTRIBUTING\.md$
 ^CRAN\.md$
 ^\.travis\.yml$
