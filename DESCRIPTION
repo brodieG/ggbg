@@ -40,5 +40,6 @@ Collate:
     'geom-car.R'
     'position-waterfall.R'
     'scale-gradient-fit.R'
+    'scale-utils.R'
     'stat-waterfall.R'
     'load.R'

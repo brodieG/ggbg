@@ -86,90 +86,6 @@ if(FALSE) {
 
   # NOTE: shoudl check whether we have identical or close enough to coords
 
-  make_coord_funs <- function(coords) {
-    vetr::vetr(
-      matrix(numeric(), ncol=3) && nrow(.) > 1 && !anyDuplicated(round(., 2))
-    )
-    dists.euc <- sqrt(rowSums((head(coords, -1) - tail(coords, -1))^2))
-    dists.euc.c <- c(0, cumsum(dists.euc))
-    dists.euc.c.norm <- dists.euc.c / max(dists.euc.c)
-    t.c <- t(coords)
-
-    list(
-      # Given Lab coords, return the position in the [0,1] color ramp range
-
-      coords_to_pos = function(x) {
-        # vetr::vetr(numeric(3L) || matrix(numeric(), nrow=1, ncol=3))
-        c.x <- c(x)
-
-        # Need to find which set of coords we're between;
-
-        if(
-          length(
-            coord.m <- which(round(sqrt(colSums((t.c - c.x) ^ 2)), 4) == 0)
-          )
-        ) {
-          # start by checking whether we're at exactly one of the existing coords
-          if(length(coord.m) > 1)
-            stop("Internal Error: matching more than one exact coord.")
-
-          dists.euc.c.norm[coord.m]
-        } else {
-          # find which pair we're in between
-
-          a.diff <- t.c[, -ncol(t.c), drop=FALSE] - c.x
-          b.diff <- c.x - t.c[, -1L, drop=FALSE]
-
-          a.diff.n <- t(t(a.diff) / sqrt(colSums(a.diff ^ 2)))
-          b.diff.n <- t(t(b.diff) / sqrt(colSums(b.diff ^ 2)))
-
-          # or approximately in between, anyway
-
-          coord.id <- which.min(colSums((a.diff.n - b.diff.n) ^ 2))
-
-          dists.euc.c.norm[coord.id] +
-            (dists.euc.c.norm[coord.id + 1] - dists.euc.c.norm[coord.id]) *
-            (
-              sqrt(sum((c.x - t.c[, coord.id, drop=FALSE]) ^ 2)) /
-              sqrt(
-                sum(
-                  (
-                    t.c[, coord.id + 1, drop=FALSE] -
-                    t.c[, coord.id, drop=FALSE]
-                  ) ^ 2
-              ) )
-            )
-        }
-      },
-      # Given the position in the [0, 1] color ramp range, return the Lab coords
-      # There is no guarantee that the coords will be equidistant in 3D if they
-      # are equidistant in 1D.
-
-      pos_to_coords = function(x) {
-        # vetr::vetr(NUM && all_bw(., 0, 1))
-        bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
-        offset <- (x - dists.euc.c.norm[bins]) /
-          (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
-
-        coords[bins, , drop=FALSE] + offset * (
-          coords[bins + 1, , drop=FALSE] - coords[bins, , drop=FALSE]
-        )
-      },
-      # Given the position in the [0, 1] color ramp range, return cumulative Lab
-      # distance through the color ramp
-
-      pos_to_dist = function(x) {
-        # vetr::vetr(NUM && all_bw(., 0, 1))
-        bins <- findInterval(x, dists.euc.c.norm, rightmost.closed=TRUE)
-        offset <- (x - dists.euc.c.norm[bins]) /
-          (dists.euc.c.norm[bins + 1] - dists.euc.c.norm[bins])
-
-        dists.euc.c[bins] + offset * (dists.euc.c[bins + 1] - dists.euc.c[bins])
-      }
-    )
-  }
-  f_lab <- make_coord_funs(jet.lab)
-  f_rgb <- make_coord_funs(ggbg:::jet)
   pos <- (0:(n - 1)) / (n - 1)
   jet.lab.interp <- f_lab$pos_to_coords(pos)
   jet.lab.interp.rgb.num <- convertColor(jet.lab.interp, "Lab", "sRGB")
@@ -349,11 +265,11 @@ if(FALSE) {
   }
   comp_color_dists(
     list(
-      # CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
-      # RGB=rgb.e.rgb.lab,
-      `viridis()`=vir.lab.all,
-      `viridis CIEDE2000`=vir.e.lab,
-      `viridis.map[opt='D']`=vir.raw.lab
+      CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
+      RGB=rgb.e.rgb.lab
+      # `viridis()`=vir.lab.all,
+      # `viridis CIEDE2000`=vir.e.lab,
+      # `viridis.map[opt='D']`=vir.raw.lab
       #, civ=cividis.lab
     ),
     list(
