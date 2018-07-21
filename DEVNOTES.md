@@ -1,6 +1,6 @@
 # Developer Notes
 
-## Thoughts so far
+## Brightness / Saturation
 
 It seems clear that monotonic brightness, and possibly monotonic saturation
 changes are fairly desirable, mostly because at least I do seem to have an

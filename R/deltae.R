@@ -13,8 +13,12 @@
 #' @export
 #' @param Labstd numeric[, 1:3] with L, a, b coordinates
 #' @param Labsample numeric[, 1:3] with L, a, b coordinates
+#' @param Lab numeric[, 1:3] with L, a, b coordinates
+#' @return for `deltaE2000`, the CIEDE Delta E for corresponding rows in `Labstd`
+#'   and `Labsample`.  For `deltaE2000_adj`, the CIEDE Delta E between adjacent
+#'   rows of `Lab`.
 
-deltaE2000_1 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
+deltaE2000 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
   lstd <- Labstd[, 1]
   astd <- Labstd[, 2]
   bstd <- Labstd[, 3]
@@ -67,5 +71,10 @@ deltaE2000_1 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
 
   return(as.numeric(de00))
 }
+#' @export
+#' @rdname deltaE2000
+
+deltaE2000_adj <- function(Lab, kl=1, kc=1, kh=1)
+  deltaE2000(head(Lab, -1), tail(Lab, -1), kl=kl, kc=kc, kh=kh)
 
 
