@@ -151,7 +151,6 @@ equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
   }
   coords
 }
-
 ## Plot of Color Differences
 ##
 ## @param colors a list of numeric Lab color matrices (n x 3)
@@ -214,3 +213,24 @@ comp_color_dists <- function(colors, dist_funs) {
     ) +
     NULL
 }
+
+#' Convert Colors to L*a*b* and Back
+#'
+#' Colors are either standard R colors or sRGB colors encoded in hex notation
+#' such as "#FF00E3".  These are simple wrappers around `grDevices` functions to
+#' simplify translation from and to Lab space.
+#'
+#' @export
+#' @importFrom grDevices convertColor col2rgb
+#' @param character vector or sRGB hex color codes or standard R colors that can
+#'   be interpreted by [col2rgb].
+
+color_to_lab <- function(colors)
+  grDevices::convertColor(t(col2rgb(colors) / 255), "sRGB", "Lab")
+
+#' @export
+#' @rdname color_to_lab
+
+lab_to_color <- function(lab)
+  rgb(grDevices::convertColor(lab, "Lab", "sRGB"))
+
