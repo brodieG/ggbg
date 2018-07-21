@@ -52,14 +52,20 @@ stopifnot(all.equal(pos, pos.recover))
 # we do `n + 1` and then drop last so we can match up better to the raw color
 # map
 
-viridis.lab <-
-  head(convertColor(t(col2rgb(viridis(n + 1))) / 255, "sRGB", "Lab"), -1)
-viridis.lab.all <- convertColor(t(col2rgb(viridis(256))) / 255, "sRGB", "Lab")
-cividis.lab <-
-  head(convertColor(t(col2rgb(cividis(n + 1))) / 255, "sRGB", "Lab"), -1)
+viridis.lab <- head(color_to_lab(viridis(n)), -1)
+viridis.lab.all <- color_to_lab(viridis(256))
+cividis.lab <- head(color_to_lab(cividis(n)), -1)
 euc_dist <- function(x, y) sqrt(rowSums((x - y) ^ 2))
 
 f_vir_lab <- ggbg:::make_coord_funs(viridis.lab)
+
+kov.lab <- color_to_lab(pals::kovesi.rainbow(n))
+tol.lab <- color_to_lab(pals::tol.rainbow(n))
+par.lab <- color_to_lab(pals::parula(n))
+
+f_kov_lab <- ggbg:::make_coord_funs(kov.lab)
+f_tol_lab <- ggbg:::make_coord_funs(tol.lab)
+f_par_lab <- ggbg:::make_coord_funs(par.lab)
 
 # let's get raw values straight from mapping table
 
@@ -68,46 +74,44 @@ vir.raw.lab <- convertColor(
   subset(viridisLite::viridis.map, opt=="D")[vir.idx, 1:3],
   'sRGB', 'Lab'
 )
-vir.lab.all <- viridis.lab.all[vir.idx, ]
-
-vir.ramp.dat <- subset(viridisLite::viridis.map, opt=="D")[, 1:3]
-vir.ramp.dat.hex <- rgb(vir.ramp.dat)
-vir.lin.lab <- convertColor(
-  colorRamp(vir.ramp.dat.hex, space='Lab')((0:255)/255)/255,
-  'sRGB', 'Lab'
-)[vir.idx, ]
-
 # very slow running code
 
 stop()
 
 if(FALSE) {
-  jli.e.2000 <-
-    ggbg:::equalize_dists(jet.lab.interp, deltaE2000_1, f_lab, iters=1e5)
-  jli.e.lab <-
+  jet.e.ceide.lab <-
+    ggbg:::equalize_dists(jet.lab.interp, deltaE2000, f_lab, iters=1e5)
+  jet.e.lab.lab <-
     ggbg:::equalize_dists(jet.lab.interp, euc_dist, f_lab, iters=1e5)
-  rgb.e.rgb <-
-    ggbg:::equalize_dists(
-    f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5
-  )
-  vir.e.lab <-
-    ggbg:::equalize_dists(viridis.lab, deltaE2000_1, f_vir_lab, iters=1e5)
+  jet.e.rgb.rgb <-
+    ggbg:::equalize_dists(f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5)
+  vir.e.ceide.lab <-
+    ggbg:::equalize_dists(viridis.lab, deltaE2000, f_vir_lab, iters=1e5)
+  kov.e.ceide.lab <-
+    ggbg:::equalize_dists(kov.lab, deltaE2000, f_kov_lab, iters=1e5)
+  tol.e.ceide.lab <-
+    ggbg:::equalize_dists(tol.lab, deltaE2000, f_tol_lab, iters=1e5)
+  par.e.ceide.lab <-
+    ggbg:::equalize_dists(par.lab, deltaE2000, f_par_lab, iters=1e5)
 
-  saveRDS(jli.e.2000, 'extra/ramps/jet-65-ceide-lab.RDS')
-  saveRDS(jli.e.lab, 'extra/ramps/jet-65-lab-lab.RDS')
-  saveRDS(rgb.e.rgb, 'extra/ramps/jet-65-rgb-rgb.RDS')
-  saveRDS(vir.e.lab, 'extra/ramps/viridis-65-ceide-lab.RDS')
+  saveRDS(jet.e.ciede.lab, 'extra/ramps/jet-64-ciede-lab.RDS')
+  saveRDS(jet.e.lab.lab, 'extra/ramps/jet-64-lab-lab.RDS')
+  saveRDS(rgb.e.rgb, 'extra/ramps/jet-64-rgb-rgb.RDS')
+  saveRDS(vir.e.ciede.lab, 'extra/ramps/vir-64-ciede-lab.RDS')
+  saveRDS(kov.e.ciede.lab, 'extra/ramps/kov-64-ciede-lab.RDS')
+  saveRDS(tol.e.ciede.lab, 'extra/ramps/tol-64-ciede-lab.RDS')
+  saveRDS(par.e.ciede.lab, 'extra/ramps/par-64-ciede-lab.RDS')
 } else {
-  jli.e.2000 <- readRDS('extra/ramps/jet-65-ceide-lab.RDS')
-  jli.e.lab <- readRDS('extra/ramps/jet-65-lab-lab.RDS')
-  rgb.e.rgb <- readRDS('extra/ramps/jet-65-rgb-rgb.RDS')
-  vir.e.lab <- readRDS('extra/ramps/viridis-65-ceide.lab.RDS')
+  jet.e.ciede.lab <- readRDS('extra/ramps/jet-64-ciede-lab.RDS')
+  jet.e.lab.lab <- readRDS('extra/ramps/jet-64-lab-lab.RDS')
+  rgb.e.rgb <- readRDS('extra/ramps/jet-64-rgb-rgb.RDS')
+  vir.e.ciede.lab <- readRDS('extra/ramps/vir-64-ciede-lab.RDS')
+  kov.e.ciede.lab <- readRDS('extra/ramps/kov-64-ciede-lab.RDS')
+  tol.e.ciede.lab <- readRDS('extra/ramps/tol-64-ciede-lab.RDS')
+  par.e.ciede.lab <- readRDS('extra/ramps/par-64-ciede-lab.RDS')
 }
 # plot and compare
 
-jli.rgb.num <- convertColor(jli.e.2000, "Lab", "sRGB")
-jli.rgb <- rgb(jli.rgb.num)
-jli.e.lab.rgb <- convertColor(jli.e.lab, "Lab", "sRGB")
 rgb.e.rgb.lab <- convertColor(rgb.e.rgb, "sRGB", "Lab")
 
 # Plot Colors Against Distance Metrics
@@ -116,15 +120,19 @@ rgb.e.rgb.lab <- convertColor(rgb.e.rgb, "sRGB", "Lab")
 
 ggbg:::comp_color_dists(
   list(
-    CIEDE2000=jli.e.2000, Lab=jli.e.lab, colorRamp=jet.rgb.lab,
-    RGB=rgb.e.rgb.lab
+    Tol.e=tol.e.ciede.lab, Tol=color_to_lab(pals::tol.rainbow(n)),
+    Kov.e=kov.e.ciede.lab, Kov=color_to_lab(pals::kovesi.rainbow(n)),
+    Par.e=par.e.ceide.lab, Par=color_to_lab(pals::parula(n))
+    # CIEDE2000=jli.e.2000, 
+    # Kovesi=kov.e.lab, Parula=par.e.lab,
+    # Tol=tol.e.lab, Viridis=vir.e.lab
     # `viridis()`=vir.lab.all,
     # `viridis CIEDE2000`=vir.e.lab,
     # `viridis.map[opt='D']`=vir.raw.lab
     #, civ=cividis.lab
   ),
   list(
-    CIEDE2000=deltaE2000_1,
+    CIEDE2000=deltaE2000,
     Lab=function(x, y) sqrt(rowSums((x - y) ^ 2)),
     RGB=function(x, y) {
       x.rgb <- convertColor(x, "Lab", "sRGB")
