@@ -127,7 +127,7 @@ equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
     if(!i %% 100)
       cat(
         sprintf(
-          "\r%d: %.02f-%.02f at %d",
+          "\r%d: %.02f-%.02f at %d       ",
           i, min(coords.d), max(coords.d), coords.max.diff
         )
       )
