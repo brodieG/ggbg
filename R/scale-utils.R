@@ -213,6 +213,26 @@ comp_color_dists <- function(colors, dist_funs) {
     ) +
     NULL
 }
+## Plot Color Difference Magnitude
+##
+## Stack barplot showing the colors and the average CIEDE ∆E 2000 difference
+## between the colors and a boxplot showing the actual ∆E values.
+##
+## @param colors a list of Lab numeric 3 column matrices
+
+color_dists <- function(colors.lab, dist_fun) {
+  diffs <- lapply(colors.lab, function(x) cumsum(c(0, dist_fun(x))))
+
+  colors <- lapply(colors.lab, lab_to_color)
+  colors.stack <- stack(colors)
+  colors.stack[['y']] <- stack(diffs)[['values']]
+
+  ggplot(colors.stack, aes(x=ind)) +
+    geom_point(
+      aes(y=y), fill=colors.stack$values, shape=23, size=4,
+      colour=rep("#FFFFFF00", nrow(colors.stack))
+    )
+}
 
 #' Convert Colors to L*a*b* and Back
 #'
