@@ -175,11 +175,11 @@ library(gridExtra)
 volcano.df <- reshape2::melt(volcano)
 thm <- list(
   theme(
-    text=element_text(size=8), plot.margin=unit(c(0,0,0,0), "mm"),
+    text=element_text(size=8), plot.margin=unit(c(0,-2,0,0), "pt"),
     axis.text=element_blank(),
     axis.ticks=element_blank(),
     panel.grid=element_blank(),
-    plot.background=element_rect(fill='#DDDDDD'),
+    plot.background=element_rect(fill='#DDDDDD', color='#DDDDDD'),
     panel.background=element_rect(fill='#DDDDDD'),
     legend.background=element_rect(fill='#DDDDDD'),
     legend.margin=margin(.5,2,.5,-6),
@@ -196,15 +196,7 @@ pl <- list(
   plot.base + scale_fill_gradientn(colors=tol.rainbow(256)),
   plot.base + scale_fill_gradientn(colors=kovesi.rainbow(256))
 )
-pl.g <- lapply(pl, function(x) ggplot_gtable(ggplot_build(x)))
-pl.g.m <- lapply(
-  pl.g,
-  function(x) {
-    x[['grobs']][[1]][['gp']][['col']] <- "#DDDDDD"
-    x
-  }
-)
-grid.arrange(arrangeGrob(grobs=pl.g.m, nrow=2, ncol=2, padding=unit(0, "line")))
+grid.arrange(arrangeGrob(grobs=pl, nrow=2, ncol=2, padding=unit(0, "line")))
 
 gl <- lapply(seq(4), grid.rect, gp=gpar(fill="#DDDDDD", col=0))
 gl <- list(
