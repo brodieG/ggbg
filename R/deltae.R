@@ -77,4 +77,29 @@ deltaE2000 <- function(Labstd, Labsample, kl=1, kc=1, kh=1) {
 deltaE2000_adj <- function(Lab, kl=1, kc=1, kh=1)
   deltaE2000(head(Lab, -1), tail(Lab, -1), kl=kl, kc=kc, kh=kh)
 
+#' Compute Euclidian Distance B/w 3 Column Matrices
+#'
+#' Probably should be internal fun.
+#'
+#' @export
+
+euclidian <- function(x, y) {
+  vetr::vetr(
+    x=matrix(numeric(), ncol=3),
+    y=matrix(numeric(), ncol=3) && nrow(.) == nrow(x)
+  )
+  sqrt(rowSums((x - y) ^ 2))
+}
+
+#' @export
+#' @rdname euclidian
+
+euclidian_adj <- function(colors) {
+  vetr::vetr(matrix(numeric(), ncol=3) && nrow(.) > 1)
+
+  x <- head(colors, -1)
+  y <- tail(colors, -1)
+
+  euclidian(x, y)
+}
 
