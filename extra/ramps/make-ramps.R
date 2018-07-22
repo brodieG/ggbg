@@ -55,7 +55,6 @@ stopifnot(all.equal(pos, pos.recover))
 viridis.lab <- head(color_to_lab(viridis(n)), -1)
 viridis.lab.all <- color_to_lab(viridis(256))
 cividis.lab <- head(color_to_lab(cividis(n)), -1)
-euc_dist <- function(x, y) sqrt(rowSums((x - y) ^ 2))
 
 f_vir_lab <- ggbg:::make_coord_funs(viridis.lab)
 
@@ -79,24 +78,24 @@ vir.raw.lab <- convertColor(
 stop()
 
 if(FALSE) {
-  jet.e.ceide.lab <-
+  jet.e.ciede.lab <-
     ggbg:::equalize_dists(jet.lab.interp, deltaE2000, f_lab, iters=1e5)
   jet.e.lab.lab <-
-    ggbg:::equalize_dists(jet.lab.interp, euc_dist, f_lab, iters=1e5)
+    ggbg:::equalize_dists(jet.lab.interp, euclidian, f_lab, iters=1e5)
   jet.e.rgb.rgb <-
-    ggbg:::equalize_dists(f_rgb$pos_to_coords(pos), euc_dist, f_rgb, iters=1e5)
-  vir.e.ceide.lab <-
+    ggbg:::equalize_dists(f_rgb$pos_to_coords(pos), euclidian, f_rgb, iters=1e5)
+  vir.e.ciede.lab <-
     ggbg:::equalize_dists(viridis.lab, deltaE2000, f_vir_lab, iters=1e5)
-  kov.e.ceide.lab <-
+  kov.e.ciede.lab <-
     ggbg:::equalize_dists(kov.lab, deltaE2000, f_kov_lab, iters=1e5)
-  tol.e.ceide.lab <-
+  tol.e.ciede.lab <-
     ggbg:::equalize_dists(tol.lab, deltaE2000, f_tol_lab, iters=1e5)
-  par.e.ceide.lab <-
+  par.e.ciede.lab <-
     ggbg:::equalize_dists(par.lab, deltaE2000, f_par_lab, iters=1e5)
 
   saveRDS(jet.e.ciede.lab, 'extra/ramps/jet-64-ciede-lab.RDS')
   saveRDS(jet.e.lab.lab, 'extra/ramps/jet-64-lab-lab.RDS')
-  saveRDS(rgb.e.rgb, 'extra/ramps/jet-64-rgb-rgb.RDS')
+  saveRDS(jet.e.rgb.rgb, 'extra/ramps/jet-64-rgb-rgb.RDS')
   saveRDS(vir.e.ciede.lab, 'extra/ramps/vir-64-ciede-lab.RDS')
   saveRDS(kov.e.ciede.lab, 'extra/ramps/kov-64-ciede-lab.RDS')
   saveRDS(tol.e.ciede.lab, 'extra/ramps/tol-64-ciede-lab.RDS')
@@ -104,7 +103,7 @@ if(FALSE) {
 } else {
   jet.e.ciede.lab <- readRDS('extra/ramps/jet-64-ciede-lab.RDS')
   jet.e.lab.lab <- readRDS('extra/ramps/jet-64-lab-lab.RDS')
-  rgb.e.rgb <- readRDS('extra/ramps/jet-64-rgb-rgb.RDS')
+  jet.e.rgb.rgb <- readRDS('extra/ramps/jet-64-rgb-rgb.RDS')
   vir.e.ciede.lab <- readRDS('extra/ramps/vir-64-ciede-lab.RDS')
   kov.e.ciede.lab <- readRDS('extra/ramps/kov-64-ciede-lab.RDS')
   tol.e.ciede.lab <- readRDS('extra/ramps/tol-64-ciede-lab.RDS')
@@ -112,31 +111,57 @@ if(FALSE) {
 }
 # plot and compare
 
-rgb.e.rgb.lab <- convertColor(rgb.e.rgb, "sRGB", "Lab")
+rgb.e.rgb.lab <- convertColor(jet.e.rgb.rgb, "sRGB", "Lab")
 
 # Plot Colors Against Distance Metrics
 #
 # Colors should be in Lab 3 column matrix.
 
-ggbg:::comp_color_dists(
-  list(
-    Tol.e=tol.e.ciede.lab, Tol=color_to_lab(pals::tol.rainbow(n)),
-    Kov.e=kov.e.ciede.lab, Kov=color_to_lab(pals::kovesi.rainbow(n)),
-    Par.e=par.e.ceide.lab, Par=color_to_lab(pals::parula(n))
-    # CIEDE2000=jli.e.2000, 
-    # Kovesi=kov.e.lab, Parula=par.e.lab,
-    # Tol=tol.e.lab, Viridis=vir.e.lab
-    # `viridis()`=vir.lab.all,
-    # `viridis CIEDE2000`=vir.e.lab,
-    # `viridis.map[opt='D']`=vir.raw.lab
-    #, civ=cividis.lab
-  ),
-  list(
-    CIEDE2000=deltaE2000,
-    Lab=function(x, y) sqrt(rowSums((x - y) ^ 2)),
-    RGB=function(x, y) {
+delta_funs <- list(
+    `CIE ∆E 2000`=deltaE2000,
+    `Lab Euc.`=function(x, y) sqrt(rowSums((x - y) ^ 2)),
+    `sRGB Euc.`=function(x, y) {
       x.rgb <- convertColor(x, "Lab", "sRGB")
       y.rgb <- convertColor(y, "Lab", "sRGB")
       sqrt(rowSums((x.rgb - y.rgb) ^ 2))
-} ) )
+} )
+
+ggbg:::comp_color_dists(
+  list(
+    `Tol ∆E 2000`=tol.e.ciede.lab,
+    `Tol`=color_to_lab(pals::tol.rainbow(n)),
+    `Kov ∆E 2000`=kov.e.ciede.lab,
+    Kov=color_to_lab(pals::kovesi.rainbow(n))
+  ),
+  delta_funs
+ )
+
+# Try A 10 color version of tol.rainbow and kov.rainbow
+
+n2 <- 10
+
+tol.lab.n2 <- color_to_lab(pals::tol.rainbow(n2))
+f_tol_n2 <- ggbg:::make_coord_funs(tol.lab.n2)
+tol.e.lab.n2 <-
+  ggbg:::equalize_dists(tol.lab.n2, deltaE2000, f_tol_n2, iters=2e3)
+
+kov.lab.n2 <- color_to_lab(pals::kovesi.rainbow(n2))
+f_kov_n2 <- ggbg:::make_coord_funs(kov.lab.n2)
+kov.e.lab.n2 <-
+  ggbg:::equalize_dists(kov.lab.n2, deltaE2000, f_kov_n2, iters=2e3)
+
+jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/n2)
+jet.e.lab.n2 <-
+  ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=2e3)
+
+ggbg:::comp_color_dists(tol.kov.n2, delta_funs)
+
+# Make plots showing the deltas
+
+pal.list <- list(
+  tol=tol.lab.10, kov=kov.lab.10, par=color_to_lab(pals::parula(n2)),
+  vir=color_to_lab(viridisLite::viridis(n2)), jet.e=jet.e.lab.n2,
+  jet=jet.lab.n2, jet2=color_to_lab(pals::jet(10))
+)
+ggbg:::color_dists(pal.list, dist_fun=euclidian_adj)
 
