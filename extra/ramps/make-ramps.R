@@ -134,7 +134,7 @@ ggbg:::comp_color_dists(
     Kov=color_to_lab(pals::kovesi.rainbow(n))
   ),
   delta_funs
- )
+)
 
 # Try A 10 color version of tol.rainbow and kov.rainbow
 
@@ -150,11 +150,9 @@ f_kov_n2 <- ggbg:::make_coord_funs(kov.lab.n2)
 kov.e.lab.n2 <-
   ggbg:::equalize_dists(kov.lab.n2, deltaE2000, f_kov_n2, iters=2e3)
 
-jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/n2)
+jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/(n2 - 1))
 jet.e.lab.n2 <-
   ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=2e3)
-
-ggbg:::comp_color_dists(tol.kov.n2, delta_funs)
 
 # Make plots showing the deltas
 
@@ -163,5 +161,56 @@ pal.list <- list(
   vir=color_to_lab(viridisLite::viridis(n2)), jet.e=jet.e.lab.n2,
   jet=jet.lab.n2, jet2=color_to_lab(pals::jet(10))
 )
-ggbg:::color_dists(pal.list, dist_fun=euclidian_adj)
+ggbg:::color_dists(pal.list, dist_fun=deltaE2000_adj)
 
+# Some volano action
+
+library(ggbg)
+library(ggplot2)
+library(patchwork)
+library(viridisLite)
+library(pals)
+library(gridExtra)
+
+volcano.df <- reshape2::melt(volcano)
+thm <- list(
+  theme(
+    text=element_text(size=8), plot.margin=unit(c(0,0,0,0), "mm"),
+    axis.text=element_blank(),
+    axis.ticks=element_blank(),
+    panel.grid=element_blank(),
+    plot.background=element_rect(fill='#DDDDDD'),
+    panel.background=element_rect(fill='#DDDDDD'),
+    legend.background=element_rect(fill='#DDDDDD'),
+    legend.margin=margin(.5,2,.5,-6),
+    legend.box.margin=margin(.5,2,.5,-6)
+  ),
+  xlab(NULL), ylab(NULL)
+)
+plot.base  <- ggplot(volcano.df, aes(Var1, Var2, fill=value)) +
+    geom_raster() + thm
+
+pl <- list(
+  plot.base + scale_fill_gradientn(colors=lab_to_color(jet.e.lab.lab)),
+  plot.base + scale_fill_gradientn(colors=viridis(256)),
+  plot.base + scale_fill_gradientn(colors=tol.rainbow(256)),
+  plot.base + scale_fill_gradientn(colors=kovesi.rainbow(256))
+)
+pl.g <- lapply(pl, function(x) ggplot_gtable(ggplot_build(x)))
+pl.g.m <- lapply(
+  pl.g,
+  function(x) {
+    x[['grobs']][[1]][['gp']][['col']] <- "#DDDDDD"
+    x
+  }
+)
+grid.arrange(arrangeGrob(grobs=pl.g.m, nrow=2, ncol=2, padding=unit(0, "line")))
+
+gl <- lapply(seq(4), grid.rect, gp=gpar(fill="#DDDDDD", col=0))
+gl <- list(
+  grid.rect(gp=gpar(fill="#DDDDDD", col=0)),
+  grid.rect(gp=gpar(fill="#DDDDDD", col=0)),
+  grid.rect(gp=gpar(fill="#DDDDDD", col=0)),
+  grid.rect(gp=gpar(fill="#DDDDDD", col=0))
+)
+grid.arrange(arrangeGrob(grobs=gl, nrow=2, ncol=2, padding=unit(0, "line")))
