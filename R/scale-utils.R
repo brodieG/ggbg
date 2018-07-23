@@ -254,3 +254,47 @@ color_to_lab <- function(colors)
 lab_to_color <- function(lab)
   rgb(grDevices::convertColor(lab, "Lab", "sRGB"))
 
+#' Display a Palette in a Table
+#'
+#' Inspired by pals::pal.zcurve.
+#'
+#' @importFrom grid grid.rect gTree gpar unit
+
+show_palette <- function(colors) {
+  vetr::vetr(CHR && log(length(.), base=2) %% 2 == 0)
+  len <- length(colors)
+  len.s <- sqrt(len)
+
+  base <- matrix(1:4, 2, byrow=TRUE)
+
+  for(i in seq(log(len, base=2) / 2 - 1)) {
+    base <- cbind(base, base)
+    base <- rbind(base, base)
+  }
+  base <- base + (((col(base) + 1) %/% 2) - 1) * 4
+  base <- base + (((row(base) + 1) %/% 2) - 1) * (2 * sqrt(len))
+
+  colors.mx <- matrix(colors[base], nrow=len.s)
+  grob.list <- vector("list", length(colors))
+
+  for(x in seq(len.s)) {
+    for(y in seq(len.s)) {
+      grob.list[[x + (y - 1) * len.s]] <- rectGrob(
+        x=unit((x - 1) / (len.s), "npc"),
+        y=unit((y - 1) / (len.s), "npc"),
+        hjust=0, vjust=0,
+        gp=gpar(fill=colors.mx[x, y], col=0, lty=0),
+        width=unit(1 / len.s, "npc"),
+        height=unit(1 / len.s, "npc"),
+      )
+    }
+  }
+  do.call(gList, grob.list)
+}
+
+
+
+
+
+
+
