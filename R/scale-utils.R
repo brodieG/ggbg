@@ -261,16 +261,18 @@ lab_to_color <- function(lab)
 #' @importFrom grid grid.rect gTree gpar unit
 
 show_palette <- function(colors) {
-  vetr::vetr(CHR && log(length(.), base=2) %% 2 == 0)
+  vetr::vetr(
+    CHR && (
+      log(length(.), base=2) %% 2 == 0 ||
+      log(length(.) * 2, base=2) %% 2 == 0
+  ) )
   len <- length(colors)
-  len.s <- sqrt(len)
-
 
   split_n_bind <- function(x) {
     len.x <- length(x)
-    if(len.x <= 2) {
-      length(x) <- 2
-      t(x)
+    if(len.x <= 4L) {
+      length(x) <- 4L
+      matrix(x, nrow=2L, byrow=TRUE)
     } else {
       ## not being very careful about checking for evenness, but should be fine
 
@@ -287,18 +289,22 @@ show_palette <- function(colors) {
     }
   }
   colors.mx <- split_n_bind(colors)
+  if(!diff(dim(colors.mx))) colors.mx <- t(colors.mx)
 
   grob.list <- vector("list", length(colors))
 
-  for(x in seq(ncol(colors.mx))) {
-    for(y in seq(nrow(colors.mx))) {
-      grob.list[[x + (y - 1) * len.s]] <- rectGrob(
-        x=unit((x - 1) / (len.s), "npc"),
-        y=unit((y - 1) / (len.s), "npc"),
+  len.x <- nrow(colors.mx)
+  len.y <- ncol(colors.mx)
+
+  for(x in seq(len.x)) {
+    for(y in rev(seq(len.y))) {
+      grob.list[[x + (y - 1) * len.y]] <- rectGrob(
+        x=unit((x - 1) / (len.x), "npc"),
+        y=unit((len.y - y) / (len.y), "npc"),
         hjust=0, vjust=0,
         gp=gpar(fill=colors.mx[x, y], col=0, lty=0),
-        width=unit(1 / len.s, "npc"),
-        height=unit(1 / len.s, "npc"),
+        width=unit(1 / len.x, "npc"),
+        height=unit(1 / len.y, "npc"),
       )
     }
   }

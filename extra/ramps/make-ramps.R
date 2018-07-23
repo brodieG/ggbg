@@ -93,7 +93,15 @@ if(FALSE) {
   par.e.ciede.lab <-
     ggbg:::equalize_dists(par.lab, deltaE2000, f_par_lab, iters=1e5)
 
+  jet.e.ciede.lab.256 <- ggbg:::equalize_dists(
+    f_lab$pos_to_coords((0:255)/255), deltaE2000, f_lab, iters=5e5
+  )
+  jet.e.ciede.lab.256 <- ggbg:::equalize_dists(
+    jet.e.ciede.lab.256, deltaE2000, f_lab, iters=2e6
+  )
+
   saveRDS(jet.e.ciede.lab, 'extra/ramps/jet-64-ciede-lab.RDS')
+  saveRDS(jet.e.ciede.lab.256, 'extra/ramps/jet-256-ciede-lab.RDS')
   saveRDS(jet.e.lab.lab, 'extra/ramps/jet-64-lab-lab.RDS')
   saveRDS(jet.e.rgb.rgb, 'extra/ramps/jet-64-rgb-rgb.RDS')
   saveRDS(vir.e.ciede.lab, 'extra/ramps/vir-64-ciede-lab.RDS')
@@ -102,6 +110,7 @@ if(FALSE) {
   saveRDS(par.e.ciede.lab, 'extra/ramps/par-64-ciede-lab.RDS')
 } else {
   jet.e.ciede.lab <- readRDS('extra/ramps/jet-64-ciede-lab.RDS')
+  jet.e.ciede.lab.256 <- readRDS('extra/ramps/jet-256-ciede-lab.RDS')
   jet.e.lab.lab <- readRDS('extra/ramps/jet-64-lab-lab.RDS')
   jet.e.rgb.rgb <- readRDS('extra/ramps/jet-64-rgb-rgb.RDS')
   vir.e.ciede.lab <- readRDS('extra/ramps/vir-64-ciede-lab.RDS')
@@ -171,6 +180,7 @@ library(patchwork)
 library(viridisLite)
 library(pals)
 library(gridExtra)
+library(grid)
 
 volcano.df <- reshape2::melt(volcano)
 thm <- list(
@@ -192,11 +202,13 @@ plot.base  <- ggplot(volcano.df, aes(Var1, Var2, fill=value)) +
 
 pl <- list(
   plot.base + scale_fill_gradientn(colors=lab_to_color(jet.e.lab.lab)),
-  plot.base + scale_fill_gradientn(colors=viridis(256)),
   plot.base + scale_fill_gradientn(colors=tol.rainbow(256)),
-  plot.base + scale_fill_gradientn(colors=kovesi.rainbow(256))
+  plot.base + scale_fill_gradientn(colors=kovesi.rainbow(256)),
+  plot.base + scale_fill_gradientn(colors=viridis(256)),
+  plot.base + scale_fill_gradientn(colors=parula(256)),
+  plot.base + scale_fill_grey(start=0, end=1)
 )
-grid.arrange(arrangeGrob(grobs=pl, nrow=2, ncol=2, padding=unit(0, "line")))
+grid.arrange(arrangeGrob(grobs=pl, nrow=2, padding=unit(0, "line")))
 
 gl <- lapply(seq(4), grid.rect, gp=gpar(fill="#DDDDDD", col=0))
 gl <- list(
@@ -206,3 +218,13 @@ gl <- list(
   grid.rect(gp=gpar(fill="#DDDDDD", col=0))
 )
 grid.arrange(arrangeGrob(grobs=gl, nrow=2, ncol=2, padding=unit(0, "line")))
+
+# Z rects
+
+f_jlie <- ggbg:::make_coord_funs(jet.e.ciede.lab)
+jlie.256 <- f_jlie$pos_to_coords((0:255)/255)
+
+ggbg:::show_palette(lab_to_color(jet.e.ciede.lab.256))
+
+grid.newpage(); grid.draw(ggbg:::show_palette(viridis(8)))
+
