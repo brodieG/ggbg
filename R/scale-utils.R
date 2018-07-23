@@ -265,20 +265,33 @@ show_palette <- function(colors) {
   len <- length(colors)
   len.s <- sqrt(len)
 
-  base <- matrix(1:4, 2, byrow=TRUE)
 
-  for(i in seq(log(len, base=2) / 2 - 1)) {
-    base <- cbind(base, base)
-    base <- rbind(base, base)
+  split_n_bind <- function(x) {
+    len.x <- length(x)
+    if(len.x <= 2) {
+      length(x) <- 2
+      t(x)
+    } else {
+      ## not being very careful about checking for evenness, but should be fine
+
+      x.a <- split_n_bind(head(x, len.x/2))
+      x.b <- split_n_bind(tail(x, len.x/2))
+
+      if(!identical(dim(x.a), dim(x.b)))
+        stop("Internal Error: unexpected sub-matrix dimensions.")
+      if(diff(dim(x.a)) > 0) {
+        rbind(x.a, x.b)
+      } else {
+        cbind(x.a, x.b)
+      }
+    }
   }
-  base <- base + (((col(base) + 1) %/% 2) - 1) * 4
-  base <- base + (((row(base) + 1) %/% 2) - 1) * (2 * sqrt(len))
+  colors.mx <- split_n_bind(colors)
 
-  colors.mx <- matrix(colors[base], nrow=len.s)
   grob.list <- vector("list", length(colors))
 
-  for(x in seq(len.s)) {
-    for(y in seq(len.s)) {
+  for(x in seq(ncol(colors.mx))) {
+    for(y in seq(nrow(colors.mx))) {
       grob.list[[x + (y - 1) * len.s]] <- rectGrob(
         x=unit((x - 1) / (len.s), "npc"),
         y=unit((y - 1) / (len.s), "npc"),
