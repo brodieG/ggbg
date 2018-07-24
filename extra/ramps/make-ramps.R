@@ -2,7 +2,11 @@ library(scales)
 library(ggplot2)
 library(viridisLite)
 library(ggbg)
+library(grid)
+library(gtable)
+library(gridExtra)
 library(vetr)
+library(pals)
 
 # colour_ramp does a linear interpolation between the two nearest defined
 # colors.  It picks the nearest color simply by counting how many colors we
@@ -75,8 +79,6 @@ vir.raw.lab <- convertColor(
 )
 # very slow running code
 
-stop()
-
 if(FALSE) {
   jet.e.ciede.lab <-
     ggbg:::equalize_dists(jet.lab.interp, deltaE2000, f_lab, iters=1e5)
@@ -121,6 +123,7 @@ if(FALSE) {
 # plot and compare
 
 rgb.e.rgb.lab <- convertColor(jet.e.rgb.rgb, "sRGB", "Lab")
+stop()
 
 # Plot Colors Against Distance Metrics
 #
@@ -221,10 +224,31 @@ grid.arrange(arrangeGrob(grobs=gl, nrow=2, ncol=2, padding=unit(0, "line")))
 
 # Z rects
 
-f_jlie <- ggbg:::make_coord_funs(jet.e.ciede.lab)
+f_jlie <- ggbg:::make_coord_funs(jet.e.ciede.lab.256)
 jlie.256 <- f_jlie$pos_to_coords((0:255)/255)
+jlie.128 <- f_jlie$pos_to_coords((0:127)/127)
+jlie.16 <- f_jlie$pos_to_coords((0:15)/15)
 
-ggbg:::show_palette(lab_to_color(jet.e.ciede.lab.256))
+pal.list <- list(
+  ggbg:::grob_palette(lab_to_color(jet.e.ciede.lab.256)),
+  ggbg:::grob_palette(tol.rainbow(256)),
+  ggbg:::grob_palette(kovesi.rainbow(256)),
+  ggbg:::grob_palette(parula(256)),
+  ggbg:::grob_palette(viridis(256)),
+  ggbg:::grob_palette(cividis(256))
+)
+g.rows <- 2
+g.cols <- ceiling(length(pal.list) / g.rows)
 
-grid.newpage(); grid.draw(ggbg:::show_palette(viridis(8)))
+g.t <- gtable(
+  widths=unit(rep(1 / g.cols, g.cols), "npc"),
+  heights=unit(rep(1 / g.rows, g.rows), "npc")
+)
+for(i in seq_along(pal.list)) {
+  g.t <- gtable_add_grob(
+    g.t, pal.list[[i]], ((i - 1) %/% g.cols) + 1, ((i - 1) %% g.cols) + 1
+  )
+}
+grid.draw(g.t)
+
 

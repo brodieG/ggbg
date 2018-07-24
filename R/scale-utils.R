@@ -256,11 +256,13 @@ lab_to_color <- function(lab)
 
 #' Display a Palette in a Table
 #'
-#' Inspired by pals::pal.zcurve.
+#' Inspired by pals::pal.zcurve, although able to do rectangular (half square)
+#' tables as well.
 #'
 #' @importFrom grid grid.rect gTree gpar unit
+#' @importFrom gtable gtable
 
-show_palette <- function(colors) {
+grob_palette <- function(colors, name=deparse(substitute(colors)[[1]])) {
   vetr::vetr(
     CHR && (
       log(length(.), base=2) %% 2 == 0 ||
@@ -274,8 +276,6 @@ show_palette <- function(colors) {
       length(x) <- 4L
       matrix(x, nrow=2L, byrow=TRUE)
     } else {
-      ## not being very careful about checking for evenness, but should be fine
-
       x.a <- split_n_bind(head(x, len.x/2))
       x.b <- split_n_bind(tail(x, len.x/2))
 
@@ -308,8 +308,31 @@ show_palette <- function(colors) {
       )
     }
   }
-  do.call(gList, grob.list)
+  res <- do.call(gList, grob.list)
+  res.tree <- gTree(children=res)
+
+  # padding and the rest
+
+  res.g <- gtable(
+    widths=unit(c(.1, .8, .1), 'npc'),heights=unit(c(.15, .8, .05), 'npc')
+  )
+  res.g <- gtable_add_grob(
+    res.g, rectGrob(gp=gpar(fill='#DDDDDD', col=0)),
+    1, 1, 3, 3
+  )
+  res.g <- gtable_add_grob(res.g, res.tree, 2, 2)
+  res.g <- gtable_add_grob(res.g, textGrob(name), 1, 2)
+  class(res.g) <- c("grobPalette", class(res.g))
+  res.g
 }
+#' @export
+
+print.grobPalette <- function(x, ...) {
+  grid.newpage()
+  grid.draw(x)
+  invisible(x)
+}
+
 
 
 
