@@ -1,5 +1,14 @@
 # Developer Notes
 
+## Next Steps
+
+1. Improved version of JET or other that maximizes dynamic range with monotonic
+   brightness / saturation?
+2. Discussion of benefits of monotonic brightness / saturation?
+3. Limitations of brightness based color maps, particularly their susceptibility
+   to neighboring brightness issues (i.e. I find I cannot actually use the
+   legends in any meaningful way with e.g. viridis in volcano)
+
 ## Brightness / Saturation
 
 It seems clear that monotonic brightness, and possibly monotonic saturation
