@@ -219,19 +219,52 @@ comp_color_dists <- function(colors, dist_funs) {
 ## between the colors and a boxplot showing the actual ∆E values.
 ##
 ## @param colors a list of Lab numeric 3 column matrices
+## @param dist.funs a list of functions that compute distances on 3 column Lab
+##   matrices
 
-color_dists <- function(colors.lab, dist_fun) {
-  diffs <- lapply(colors.lab, function(x) cumsum(c(0, dist_fun(x))))
-
-  colors <- lapply(colors.lab, lab_to_color)
-  colors.stack <- stack(colors)
-  colors.stack[['y']] <- stack(diffs)[['values']]
-
-  ggplot(colors.stack, aes(x=ind)) +
-    geom_point(
-      aes(y=y), fill=colors.stack$values, shape=23, size=4,
-      colour=rep("#FFFFFF00", nrow(colors.stack))
+color_dists <- function(colors.lab, dist.funs) {
+  vetr::vetr(
+    list() &&
+    all(vapply(., is.matrix, TRUE)) &&
+    all(vapply(., function(x) ncol(x) == 3 && is.numeric(x), TRUE)),
+    structure(list(), names=character()) && !anyDuplicated(names(.)) &&
+    all(vapply(., is.function, TRUE))
+  )
+  dists <- sapply(
+    names(dist.funs),
+    function(f)
+      do.call(
+        rbind, lapply(
+          names(colors.lab),
+          function(x) {
+            data.frame(
+              palette=x,
+              dist.fun=f,
+              val=cumsum(c(0, dist.funs[[f]](colors.lab[[x]]))),
+              fill=lab_to_color(colors.lab[[x]])
+    ) } ) ),
+    simplify=FALSE
+  )
+  plot.list <- lapply(
+    names(dists),
+    function(x) {
+      ggplot(dists[[x]], aes(x=palette, y=val)) +
+        geom_point(
+          fill=dists[[x]][['fill']], shape=23, size=4, colour='#FFFFFF00'
+        ) +
+        ylab(sprintf("Cum. Distance (%s)", x))
+    }
+  )
+  widths <- unit(rep(1, length(plot.list)) / length(plot.list), 'npc')
+  heights <- unit(1, 'npc')
+  g.tab <- gtable(widths, heights)
+  for(i in seq_along(plot.list))
+    g.tab <- gtable_add_grob(
+      g.tab, ggplot_gtable(ggplot_build(plot.list[[i]])), 1, i
     )
+
+  grid.draw(g.tab)
+  invisible(g.tab)
 }
 
 #' Convert Colors to L*a*b* and Back

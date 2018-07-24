@@ -123,7 +123,6 @@ if(FALSE) {
 # plot and compare
 
 rgb.e.rgb.lab <- convertColor(jet.e.rgb.rgb, "sRGB", "Lab")
-stop()
 
 # Plot Colors Against Distance Metrics
 #
@@ -154,26 +153,33 @@ n2 <- 10
 
 tol.lab.n2 <- color_to_lab(pals::tol.rainbow(n2))
 f_tol_n2 <- ggbg:::make_coord_funs(tol.lab.n2)
-tol.e.lab.n2 <-
-  ggbg:::equalize_dists(tol.lab.n2, deltaE2000, f_tol_n2, iters=2e3)
+# tol.e.lab.n2 <-
+#   ggbg:::equalize_dists(tol.lab.n2, deltaE2000, f_tol_n2, iters=1e3)
 
 kov.lab.n2 <- color_to_lab(pals::kovesi.rainbow(n2))
 f_kov_n2 <- ggbg:::make_coord_funs(kov.lab.n2)
-kov.e.lab.n2 <-
-  ggbg:::equalize_dists(kov.lab.n2, deltaE2000, f_kov_n2, iters=2e3)
+# kov.e.lab.n2 <-
+#   ggbg:::equalize_dists(kov.lab.n2, deltaE2000, f_kov_n2, iters=1e3)
 
 jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/(n2 - 1))
 jet.e.lab.n2 <-
-  ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=2e3)
+  ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=1e3)
 
 # Make plots showing the deltas
 
 pal.list <- list(
-  tol=tol.lab.10, kov=kov.lab.10, par=color_to_lab(pals::parula(n2)),
-  vir=color_to_lab(viridisLite::viridis(n2)), jet.e=jet.e.lab.n2,
-  jet=jet.lab.n2, jet2=color_to_lab(pals::jet(10))
+  `Jet\nCIE∆E2000`=jet.e.lab.n2,
+  `tol\nrainbow`=tol.lab.n2,
+  `kovesi\nrainbow`=kov.lab.n2,
+  parula=color_to_lab(pals::parula(n2)),
+  viridis=color_to_lab(viridisLite::viridis(n2)),
+  cividis=color_to_lab(viridisLite::cividis(n2)),
+  `kovesi\ngray`=color_to_lab(kovesi.linear_grey_0_100_c0(n2))
 )
-ggbg:::color_dists(pal.list, dist_fun=deltaE2000_adj)
+ggbg:::color_dists(
+  pal.list,
+  dist.funs=list(`CIE∆E 2000`=deltaE2000_adj, `Lab Euclidian`=euclidian_adj)
+)
 
 # Some volano action
 
@@ -230,7 +236,9 @@ jlie.128 <- f_jlie$pos_to_coords((0:127)/127)
 jlie.16 <- f_jlie$pos_to_coords((0:15)/15)
 
 pal.list <- list(
-  ggbg:::grob_palette(lab_to_color(jet.e.ciede.lab.256)),
+  ggbg:::grob_palette(
+    lab_to_color(jet.e.ciede.lab.256), name='Jet CIE∆E 2000'
+  ),
   ggbg:::grob_palette(tol.rainbow(256)),
   ggbg:::grob_palette(kovesi.rainbow(256)),
   ggbg:::grob_palette(parula(256)),
@@ -249,6 +257,29 @@ for(i in seq_along(pal.list)) {
     g.t, pal.list[[i]], ((i - 1) %/% g.cols) + 1, ((i - 1) %% g.cols) + 1
   )
 }
-grid.draw(g.t)
+# dev.new(width=6, height=4)
+grid.newpage(); grid.draw(g.t)
+
+pal.list <- list(
+  ggbg:::grob_palette(
+    lab_to_color(jet.e.ciede.lab.256), name='Jet CIE∆E 2000'
+  ),
+  ggbg:::grob_palette(jet(256))
+)
+g.rows <- 1
+g.cols <- ceiling(length(pal.list) / g.rows)
+
+g.t <- gtable(
+  widths=unit(rep(1 / g.cols, g.cols), "npc"),
+  heights=unit(rep(1 / g.rows, g.rows), "npc")
+)
+for(i in seq_along(pal.list)) {
+  cat(sprintf("row %d col %d\n", ((i - 1) %/% g.cols) + 1, ((i - 1) %% g.cols) + 1))
+  g.t <- gtable_add_grob(
+    g.t, pal.list[[i]], ((i - 1) %/% g.cols) + 1, ((i - 1) %% g.cols) + 1
+  )
+}
+dev.new(width=6, height=3)
+grid.newpage(); grid.draw(g.t)
 
 
