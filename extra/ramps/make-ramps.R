@@ -178,18 +178,12 @@ pal.list <- list(
 )
 ggbg:::color_dists(
   pal.list,
-  dist.funs=list(`CIE∆E 2000`=deltaE2000_adj, `Lab Euclidian`=euclidian_adj)
+  dist.funs=list(
+    `CIE∆E 2000`=deltaE2000_adj#, `Lab Euclidian`=euclidian_adj
+  )
 )
 
 # Some volano action
-
-library(ggbg)
-library(ggplot2)
-library(patchwork)
-library(viridisLite)
-library(pals)
-library(gridExtra)
-library(grid)
 
 volcano.df <- reshape2::melt(volcano)
 thm <- list(
