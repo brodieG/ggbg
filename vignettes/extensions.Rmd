@@ -520,7 +520,8 @@ displayed, the transformation will be applied in the inverse direction on them.
 
 ### Layout$map_position
 
-For each layer, [map](#map-scale) data with [position scales](#position-scale).
+For each layer, [map](#map-scale) data with [position
+scales](#ggproto-scale-position).
 
 For continuous variables this in theory would rescale the continuous position
 aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.) into the display range (i.e.
