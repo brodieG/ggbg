@@ -169,6 +169,7 @@ jet.e.lab.n2 <-
 
 pal.list <- list(
   `Jet\nCIE∆E2000`=jet.e.lab.n2,
+  `jet`=color_to_lab(pals::jet(10)),
   `tol\nrainbow`=tol.lab.n2,
   `kovesi\nrainbow`=kov.lab.n2,
   parula=color_to_lab(pals::parula(n2)),
