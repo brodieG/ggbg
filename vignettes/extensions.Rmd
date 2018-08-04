@@ -528,7 +528,8 @@ aesthetics (e.g. `x`, `xmin`, `xmax`, `y`, etc.) into the display range (i.e.
 0-1), but because this is handled at the [coordinate
 transformation](#coordtransform) step for [position
 aesthetics](#position-aesthetic) the only thing does is handle NAs and convert
-integer aesthetics to numeric.
+integer aesthetics to numeric.  To see the difference to normal mapping
+compare `ScaleContinuousPosition$map` to `ScaleContinuous$map`.
 
 Discrete variables are mapped onto integers for each value.  This only happens
 once even though the build process calls `Layout$map_position` twice.  The
