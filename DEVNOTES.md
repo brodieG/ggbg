@@ -61,7 +61,7 @@ identical(
 )
 ```
 
-### Litterature
+### Literature
 
 * Pals package has lots of useful tools and in the overview vignette details of
   goodness and badness of color scales?
@@ -120,7 +120,16 @@ the `gradient_n_pal` function with the correct values scaled in the same way the
 rescaler does here?
 
 Are there problems with `self$get_limits`?  The underlying value is populated by
-the training process, but can be overridden if a user sets limits.
+the training process and retrieved with `self$range$range`, but if the user
+specifies explicit limits that will be overridden.
+
+So if we want to use a different type of `range` that contains all of the
+training data, and not just the min max, we have to override `self$map`
+completely, and also `self$train`, and then we can record data in something
+other than `range`.  We can also populate `range` the normal way to avoid
+potential issues in case any other methods actually use `range`.
+
+Older notes:
 
 So one gut-feel issue is that normal course of business is to  generate our
 'palette' function at spec time, but really we need to generate it at map time
