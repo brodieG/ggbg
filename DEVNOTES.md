@@ -2,6 +2,7 @@
 
 ## Next Steps
 
+0. The ggplot hue palette made equidistant?
 1. Improved version of JET or other that maximizes dynamic range with monotonic
    brightness / saturation?
 2. Discussion of benefits of monotonic brightness / saturation?

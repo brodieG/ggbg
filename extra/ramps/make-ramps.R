@@ -161,20 +161,32 @@ f_kov_n2 <- ggbg:::make_coord_funs(kov.lab.n2)
 # kov.e.lab.n2 <-
 #   ggbg:::equalize_dists(kov.lab.n2, deltaE2000, f_kov_n2, iters=1e3)
 
+gg_hue <- scales::hue_pal(
+  h = c(0, 360) + 15, c = 100, l = 65, h.start = 0, direction = 1
+)
+gg.lab.n2 <- color_to_lab(gg_hue(10))
+f_gg_n2 <- ggbg:::make_coord_funs(gg.lab.n2)
+gg.e.lab.n2 <-
+  ggbg:::equalize_dists(gg.lab.n2, deltaE2000, f_gg_n2, iters=1e3)
+
 jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/(n2 - 1))
 jet.e.lab.n2 <-
   ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=1e3)
+
+stop('done with auto-run portion')
 
 # Make plots showing the deltas
 
 pal.list <- list(
   `Jet\nCIE∆E2000`=jet.e.lab.n2,
-  `jet`=color_to_lab(pals::jet(10)),
+  `jet`=color_to_lab(pals::jet(n2)),
   `tol\nrainbow`=tol.lab.n2,
   `kovesi\nrainbow`=kov.lab.n2,
   parula=color_to_lab(pals::parula(n2)),
   viridis=color_to_lab(viridisLite::viridis(n2)),
   cividis=color_to_lab(viridisLite::cividis(n2)),
+  gg_hue=gg.lab.n2,
+  `gg_hue\nCIE∆E2000`=gg.e.lab.n2,
   `kovesi\ngray`=color_to_lab(kovesi.linear_grey_0_100_c0(n2))
 )
 ggbg:::color_dists(
