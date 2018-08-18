@@ -68,6 +68,20 @@ identical(
 * Colin Fay [viridis
   post](https://rtask.thinkr.fr/blog/ggplot2-welcome-viridis/)
 
+### Interaction with Other Features
+
+#### Transform?
+
+We probably don't need to do anything, but should add tests to confirm.
+
+A fair question also whether this should be implemented as a transform rather
+than at the map step.  Probably not, with a transform the actual values are
+transformed into new values, whereas what we are proposing to do is a new
+mapping.  I don't think there is anything that requires a mapping to be
+"linear".  In some cases a transform may cause the data to be more "linear" or
+better distributed for a "linear" map, but I don't think there are any
+constraints necessarily on the map.
+
 ### Re-use?
 
 One question is whether this should be built on top of `scale_fill_gradientn` or
