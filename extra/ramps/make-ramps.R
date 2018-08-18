@@ -149,7 +149,7 @@ ggbg:::comp_color_dists(
 
 # Try A 10 color version of tol.rainbow and kov.rainbow
 
-n2 <- 10
+n2 <- 12
 
 tol.lab.n2 <- color_to_lab(pals::tol.rainbow(n2))
 f_tol_n2 <- ggbg:::make_coord_funs(tol.lab.n2)
@@ -164,7 +164,7 @@ f_kov_n2 <- ggbg:::make_coord_funs(kov.lab.n2)
 gg_hue <- scales::hue_pal(
   h = c(0, 360) + 15, c = 100, l = 65, h.start = 0, direction = 1
 )
-gg.lab.n2 <- color_to_lab(gg_hue(10))
+gg.lab.n2 <- color_to_lab(gg_hue(n2))
 f_gg_n2 <- ggbg:::make_coord_funs(gg.lab.n2)
 gg.e.lab.n2 <-
   ggbg:::equalize_dists(gg.lab.n2, deltaE2000, f_gg_n2, iters=1e3)
@@ -195,6 +195,31 @@ ggbg:::color_dists(
     `CIE∆E 2000`=deltaE2000_adj#, `Lab Euclidian`=euclidian_adj
   )
 )
+ggbg:::comp_color_dists(
+  list(
+    gg_hue=rbind(gg.lab.n2, head(gg.lab.n2, 1)),
+    `gg_hue\nCIE∆E2000`=rbind(gg.e.lab.n2, head(gg.e.lab.n2, 1))
+  ),
+  delta_funs
+)
+# Some random walk plots
+
+set.seed(1)
+DF <- as.data.frame(
+  setNames(
+    replicate(n2,  pmax(rnorm(10, 1), 0.2), simplify=FALSE),
+    paste0("V", seq_len(n2))
+  )
+)
+DF[['x']] <- seq_len(nrow(DF))
+
+g.base <- ggplot(reshape2::melt(DF, id.vars='x')) +
+  geom_col(aes(x=x, y=value, fill=variable))
+
+g1 <- g.base + ggtitle("Default Palette")
+g2 <- g.base + ggtitle("CIE∆E 2000 Palette") +
+  scale_fill_manual(values=lab_to_color(gg.e.lab.n2))
+grid.arrange(arrangeGrob(grobs=list(g1, g2), ncol=2))
 
 # Some volano action
 
