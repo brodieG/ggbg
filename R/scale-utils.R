@@ -28,7 +28,8 @@ make_coord_funs <- function(coords) {
   t.c <- t(coords)
 
   list(
-    # Given Lab coords, return the position in the [0,1] color ramp range
+    # Given Lab coords, return the position in the [0,1] color ramp range,
+    # currently only works for one set of coords at a time
 
     coords_to_pos = function(x) {
       # vetr::vetr(numeric(3L) || matrix(numeric(), nrow=1, ncol=3))
@@ -101,8 +102,7 @@ make_coord_funs <- function(coords) {
   )
 }
 
-# Given values A, x, and B, figure out where x needs to be to be in middle,
-# this is substantially complicated by the need to compute
+# Given values A, x, and B, figure out where x needs to be to be in middle
 
 make_center_fun <- function(A, B, diff_fun, coord_funs) {
   fun <- coord_funs$pos_to_coords
@@ -148,6 +148,30 @@ equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
     coords.prev.prev <- coords.prev
     coords.prev <- coords
     coords[coords.max.diff + 1, ] <- x.new
+  }
+  coords
+}
+equalize_dists2 <- function(coords, diff_fun, coord_funs, iters=5) {
+  coords.prev.prev <- coords.prev <- coords
+  coords.rows <- nrow(coords)
+  pos <- apply(coords, 1, coord_funs$coords_to_pos)
+  browser()
+
+  for(i in seq(iters)) {
+    pos.d <- diff(pos)
+    coords.d <- diff_fun(
+      coords[-coords.rows, ,drop=FALSE], coords[-1, , drop=FALSE]
+    )
+    cat(
+      sprintf(
+        "\r%d: %.02f-%.02f (%f)       ",
+        i, min(coords.d), max(coords.d), sum(diff(coords.d) ^2)
+      )
+    )
+    pos.d.a.tmp <- mean(coords.d) / coords.d * pos.d
+    pos.d.a <- pos.d.a.tmp / sum(pos.d.a.tmp)
+    pos <- c(0, cumsum(pos.d.a))
+    coords <- coord_funs$pos_to_coords(pos)
   }
   coords
 }

@@ -172,6 +172,8 @@ gg.e.lab.n2 <-
 jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/(n2 - 1))
 jet.e.lab.n2 <-
   ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=1e3)
+jet.e.lab.n2 <-
+  ggbg:::equalize_dists2(jet.lab.n2, deltaE2000, f_lab)
 
 stop('done with auto-run portion')
 
