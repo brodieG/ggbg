@@ -151,28 +151,53 @@ equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
   }
   coords
 }
-equalize_dists2 <- function(coords, diff_fun, coord_funs, iters=5) {
+## A much faster version of `equalize_dists`, although it is non-obvious whether
+## this is guaranteed to converge monotonically, whereas `equalize_dists` will
+## almost certainly do so.
+##
+## @param tol numeric(1L), between 0 and 1,  maximum allowable difference in
+##   distances between adjacent colors and the mean distance between adjacent
+##   colors, as a fraction of the mean distance between adjacent colors.
+
+equalize_dists2 <- function(
+  coords, diff_fun, coord_funs, tol=.001, iters=100, quiet=FALSE
+) {
   coords.prev.prev <- coords.prev <- coords
   coords.rows <- nrow(coords)
   pos <- apply(coords, 1, coord_funs$coords_to_pos)
-  browser()
+  report.int <- 100
+  prev.dist <- Inf
+  coord.n <- nrow(coords)
+  coord.d.n <- coord.n - 1
 
   for(i in seq(iters)) {
     pos.d <- diff(pos)
     coords.d <- diff_fun(
       coords[-coords.rows, ,drop=FALSE], coords[-1, , drop=FALSE]
     )
-    cat(
-      sprintf(
-        "\r%d: %.02f-%.02f (%f)       ",
-        i, min(coords.d), max(coords.d), sum(diff(coords.d) ^2)
+    coords.d.d <- diff(coords.d)
+    dist <- sum(coords.d.d ^ 2)
+    if(dist > prev.dist) {
+      warning(
+        "Distance equalization algorithm worsened distance disparity at ",
+        "iteration ", i, "; quitting with prior iteration values."
       )
-    )
+      break
+    }
+    if(!quiet && !(i %% report.int))
+      cat(
+        sprintf(
+          "\r%d: %.02f-%.02f (%.03f)       ",
+          i, min(coords.d), max(coords.d), dist
+      ) )
     pos.d.a.tmp <- mean(coords.d) / coords.d * pos.d
     pos.d.a <- pos.d.a.tmp / sum(pos.d.a.tmp)
     pos <- c(0, cumsum(pos.d.a))
     coords <- coord_funs$pos_to_coords(pos)
+    coords.d.d.a <- abs(coords.d.d)
+    if(all((coords.d.d.a / (sum(coords.d) / coord.d.n)) < tol)) break
   }
+  if(!quiet && i >= report.int) cat("\n")
   coords
 }
 ## Plot of Color Differences
