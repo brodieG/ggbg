@@ -98,6 +98,9 @@ if(FALSE) {
   jet.e.ciede.lab.256 <- ggbg:::equalize_dists(
     f_lab$pos_to_coords((0:255)/255), deltaE2000, f_lab, iters=5e5
   )
+  jet.e.ciede.lab.256.2 <- ggbg:::equalize_dists2(
+    f_lab$pos_to_coords((0:255)/255), deltaE2000, f_lab, iters=1e4
+  )
   jet.e.ciede.lab.256 <- ggbg:::equalize_dists(
     jet.e.ciede.lab.256, deltaE2000, f_lab, iters=2e6
   )
@@ -172,8 +175,7 @@ gg.e.lab.n2 <-
 jet.lab.n2 <- f_lab$pos_to_coords((0:(n2 - 1))/(n2 - 1))
 jet.e.lab.n2 <-
   ggbg:::equalize_dists(jet.lab.n2, deltaE2000, f_lab, iters=1e3)
-jet.e.lab.n2 <-
-  ggbg:::equalize_dists2(jet.lab.n2, deltaE2000, f_lab)
+jet.e.lab.n2 <- ggbg:::equalize_dists2(jet.lab.n2, deltaE2000, f_lab, iters=100)
 
 stop('done with auto-run portion')
 
