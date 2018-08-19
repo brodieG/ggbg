@@ -27,6 +27,16 @@ explicit association of value to those properties.
 * [Source code for CIECAM02 transformations](http://scanline.ca/ciecam02/) and
   very interesting notes on the background effect.
 
+## Distance Equalization
+
+After the naive iterative approach, we tried an optimization, but it really did
+not work well at all, presumably because under an optimization approach each of
+the n parameters needs to be moved with some difficultly in figuring out which
+parameter has the most leverage since the gradient function is non trivial.
+
+Typically what we would run into is that the function would think it had
+converged, when in reality it had not.  See `extra/constrOptim`.
+
 ## CIEDE vs CIECAM02
 
 From [RIT FAQ](https://www.rit.edu/cos/colorscience/rc_faq_faq2.php#363):
@@ -163,7 +173,32 @@ What do we need:
 
 * Input colors
 * Anchor points? (these will need to be part of the training set)
-* Should not have to provide values as those should be
+* Limits - perhaps auto-generated, or with some mechanism to specify a
+  percentile limit.
+* Should not have to provide values as those should be inferred from the data
+  itself.
+
+### Palette Fun and Rescaling
+
+We need to be able to rescale our data into the [0,1] range, and similarly our
+anchors.  How many anchors do we allow?  More than one?  Preferably...  The way
+`scale_fill_gradientn` and co handle this is by using `approx_fun` to remap the
+values into [0,1].  One issue with `approx_fun` approach is that the values
+given are interpreted to dictate a linear relationship to distance.
+
+Anchors should be a named numeric vector where the names are
+the colors (what about sizes; do we care about maintaining that generality?).
+Alternative is to use the `colors` / `values` vector, but allow NAs in `values`
+to mean 'non-specified'.
+
+Two step process for color value mapping:
+
+0. Remap everything from 0-1 NAing oob values, this will include the anchors?
+1. Break up by the anchors (by default extremes on either side are anchors).
+2. Within each anchor segment generate equidistant colors per whatever metric,
+   with some precision number (e.g. up to 32 colors, or some such); main  issue
+   here is that we could end up with many segments trying to do 32 colors for,
+   perhaps we warn and suggest `gradientn` if there are many segments.
 
 ### Color Palette Generation
 
