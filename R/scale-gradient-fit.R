@@ -63,9 +63,28 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
   ## want to allow independent spec.  Argument for is that is more consistent.
   palette = NULL
 )
-#' Create a Palette Function with Equidistant Values
+#' Create a Palette Function with Equally Spaced Colors
 #'
+#' @colours character a vector of colours to base the palette on, must have at
+#'   least two colours, and the colours should be in a format understood by
+#'   [`grDevices::col2rgb`].
+#' @values numeric vector of the same length as `colours`, with strictly
+#'   increasing values between 0 and 1 where each element corresponds to the
+#'   rescaled value associated with the colour in the same spot in the `colours`
+#'   vector.  The default is a vector of `NA_real_` values, which frees the
+#'   palette to choose the most evenly spaced out colors across the range.  You
+#'   can add constraints by specifying values, which will break up the color
+#'   range into `n + 1` pieces, where `n` is the number of values you specify.
+#'
+#' @seealso [`ggplot2::scale_fill_gradientn`], [`grDevices::col2rgb`]
+#' @param dist.fun a function that computes distances between colors in the
+#'   L*a*b* color space.  The function should have two parameters, which will
+#'   be 3 column matrices containing the L, a, and b coordinates or the colours.
 
-equidist_palette <- function(colors, values, ) {
+equidist_palette <- function(colours, values, na.value, dist.fun=deltaE2000) {
+
 }
+colors <- c("blue", "yellow", "red", "orange")
+values <- c(0, rep(NA_real_, length(colours) - 1), 1)
 
+values[match('white', colors)] <- 0

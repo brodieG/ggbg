@@ -203,6 +203,21 @@ Two step process for color value mapping:
    computation this may not be too big a deal.  We can try targeting half of
    just noticeable difference or something like it.
 
+One potentially problematic issue is that we need our rescaler and palette fun
+anchors to correspond.  Maybe not such a big deal, for instance in the typical
+diverging palette we're used to, set the "anchor" for the palette fun to be
+white/grey == 0.5, and have a rescaler that maps 0 to 0.5 no matter what.
+
+I guess we only provide the one rescaler.  One potential issue is where the user
+wants stuff to be color equidistant on either side of the "0" point.  I guess
+the rescaler can compute which of the two ends is further from the anchor point
+and use that to rescale the values on both sides.  Still doesn't deal with the
+potential issue of different distances on either side, but that's probably okay.
+
+Any concerns about unequal distances on either side of an anchor?  I guess by
+definition no?
+
+
 ### Color Palette Generation
 
 Need to do some research on what the right way to generate a semi-reasonable
