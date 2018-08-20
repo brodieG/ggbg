@@ -59,6 +59,13 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 
     ifelse(!is.na(scaled), scaled, self$na.value)
   },
+  ## Seems like `palette` is not really used outside of `map`, so TBD whether we
+  ## want to allow independent spec.  Argument for is that is more consistent.
   palette = NULL
 )
+#' Create a Palette Function with Equidistant Values
+#'
+
+equidist_palette <- function(colors, values, ) {
+}
 
