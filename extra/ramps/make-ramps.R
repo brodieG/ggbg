@@ -101,6 +101,9 @@ if(FALSE) {
   jet.e.ciede.lab.256.2 <- ggbg:::equalize_dists2(
     f_lab$pos_to_coords((0:255)/255), deltaE2000, f_lab, iters=1e4
   )
+  jet.e.ciede.lab.256.3 <- ggbg:::equalize_dists2(
+    f_lab$pos_to_coords((0:511)/511), deltaE2000, f_lab, iters=1e4
+  )
   jet.e.ciede.lab.256 <- ggbg:::equalize_dists(
     jet.e.ciede.lab.256, deltaE2000, f_lab, iters=2e6
   )
@@ -270,6 +273,8 @@ f_jlie <- ggbg:::make_coord_funs(jet.e.ciede.lab.256)
 jlie.256 <- f_jlie$pos_to_coords((0:255)/255)
 jlie.128 <- f_jlie$pos_to_coords((0:127)/127)
 jlie.16 <- f_jlie$pos_to_coords((0:15)/15)
+
+ggbg:::grob_palette(lab_to_color(jet.e.ciede.lab.256.3))
 
 pal.list <- list(
   ggbg:::grob_palette(
