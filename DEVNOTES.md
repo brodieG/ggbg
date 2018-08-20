@@ -189,7 +189,8 @@ given are interpreted to dictate a linear relationship to distance.
 Anchors should be a named numeric vector where the names are
 the colors (what about sizes; do we care about maintaining that generality?).
 Alternative is to use the `colors` / `values` vector, but allow NAs in `values`
-to mean 'non-specified'.
+to mean 'non-specified'.  But if we do this, we need an easy way of specifying a
+single anchor, otherwise it's going to be pretty annoying to use.
 
 Two step process for color value mapping:
 
@@ -198,7 +199,9 @@ Two step process for color value mapping:
 2. Within each anchor segment generate equidistant colors per whatever metric,
    with some precision number (e.g. up to 32 colors, or some such); main  issue
    here is that we could end up with many segments trying to do 32 colors for,
-   perhaps we warn and suggest `gradientn` if there are many segments.
+   perhaps we warn and suggest `gradientn` if there are many segments.  With new
+   computation this may not be too big a deal.  We can try targeting half of
+   just noticeable difference or something like it.
 
 ### Color Palette Generation
 
