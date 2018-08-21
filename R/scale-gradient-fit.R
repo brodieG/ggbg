@@ -66,25 +66,53 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 )
 #' Create a Palette Function with Equally Spaced Colors
 #'
-#' @colours character a vector of colours to base the palette on, must have at
-#'   least two colours, and the colours should be in a format understood by
-#'   [`grDevices::col2rgb`].
-#' @values numeric vector of the same length as `colours`, with strictly
-#'   increasing values between 0 and 1 where each element corresponds to the
-#'   rescaled value associated with the colour in the same spot in the `colours`
-#'   vector.  The default is a vector of `NA_real_` values, which frees the
-#'   palette to choose the most evenly spaced out colors across the range.  You
-#'   can add constraints by specifying values, which will break up the color
-#'   range into `n + 1` pieces, where `n` is the number of values you specify.
+#' The resulting `palette` function will convert values between 0 and 1 into the
+#' colour that corresponds to the location along the colour path that is that
+#' fraction of the full length of the colour path as measured by the cumulative
+#' sum of the distances between adjacent colours.
+#' attempt to approximate the colour that
+#' corresponds to 
 #'
+#' A number of colours is interpolated along the shortest Euclidean path in
+#' L*a*b* space that passes through all the colours specified in `colours`, in
+#' the order they are specified.  The number will be such that it is more than
+#' `min.colors` and large enough that the distance measured with `dist.fun`
+#' between any two adjacent colours is less than `min.dist`.  This allows us to
+#' easily compute cumulative distances as per `dist.fun` along the colour path.
+#' If we need to compute a cumulative distance that lies between two of the
+#' computed colours, we interpolate that partial distance using the full
+#' distance as per `dist.fun` between the two nearest known colours multiplied
+#' by the ratio of the partial Euclidean distance to the full Euclidean distance
+#' measured *along* the colour path (i.e., not in 3D space).
+#'
+#' The palette function can then be given a value between `from` and `to` and
+#' the colour that is approximately at the same point along the colour path as
+#' measured by `dist.fun` will be returned.
+#'
+#' @param colours character a vector of colours to base the palette on, must
+#'   have at least two colours, and the colours should be in a format understood
+#'   by [`grDevices::col2rgb`].
+#' @param mid integer(1L) in `seq_along(colours)`, indicates which element in
+#'   `colours` is to be treated as the midpoint colour.
 #' @seealso [`ggplot2::scale_fill_gradientn`], [`grDevices::col2rgb`]
 #' @param dist.fun a function that computes distances between colors in the
 #'   L*a*b* color space.  The function should have two parameters, which will
 #'   be 3 column matrices containing the L, a, and b coordinates or the colours.
 
-equidist_palette <- function(colours, values, na.value, dist.fun=deltaE2000) {
+palette_equi_div <- function(colours, mid, na.value, dist.fun=deltaE2000) {
+}
+palette_equi <- function(
+  colours, na.value, from=0, to=1, dist.ctl
+) {
+  col.lab <- color_to_lab(colours)
+  f_lab <- make_coord_funs(col.lab)
+
+  # We want some number of distinct colors to do our look
+
+  col.lab.e <- do.call(equalize_dists2, c(list(col.lab, f_lab), dist.ctl))
 
 }
+
 colors <- c("blue", "yellow", "red", "orange")
 values <- c(0, rep(NA_real_, length(colours) - 1), 1)
 
@@ -105,7 +133,10 @@ continuous_scale_fit <- function(
 
 }
 
-scale_gradientx <- function() {
+scale_gradientx <- function(
+  aesthetics, mid=NULL, midpoint=NULL, colours, dist_fun=deltaE2000, ...
+) {
+
 }
 scale_fill_gradientx <- function(..., aesthetics='fill') {
 }
