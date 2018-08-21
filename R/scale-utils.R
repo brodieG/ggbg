@@ -155,6 +155,11 @@ equalize_dists <- function(coords, diff_fun, coord_funs, iters=1e4) {
 ## this is guaranteed to converge monotonically, whereas `equalize_dists` will
 ## almost certainly do so.
 ##
+## The restriction here might be that if you move along the shortest L*a*b*
+## space path towards another color, the color difference must decrease.
+## Doesn't have to do so linearly, or continuously, so long as it decreases.
+## Definitely not sure this is TRUE.
+##
 ## @param tol numeric(1L), between 0 and 1,  maximum allowable difference in
 ##   distances between adjacent colors and the mean distance between adjacent
 ##   colors, as a fraction of the mean distance between adjacent colors.

@@ -35,6 +35,7 @@ jet <- t(
 ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
   map_data = numeric(),
   map = function() NULL,
+  limits_quantile = NULL,
 
   ## We need to collect the totality of the data so that we can do shaped
   ## mappings, this is why we add the `data` field
@@ -88,3 +89,28 @@ colors <- c("blue", "yellow", "red", "orange")
 values <- c(0, rep(NA_real_, length(colours) - 1), 1)
 
 values[match('white', colors)] <- 0
+
+## Somewhere we need to check that limit and limit_quantile are not both
+## specified.
+
+continuous_scale_fit <- function(
+  aesthetics, scale_name, palette, name = waiver(),
+  breaks = waiver(), minor_breaks = waiver(), labels = waiver(), limits = NULL,
+  limits_quantile = NULL, rescaler = rescale, oob = censor, expand = waiver(),
+  na.value = NA_real_, trans = "identity", guide = "legend", position = "left",
+  super = ScaleContinuousFit
+) {
+  if(!is.null(limits) && !is.null(limts_quantile))
+    stop("Scale may only specify one of `limits` and `limits_quantile`.")
+
+}
+
+scale_gradientx <- function() {
+}
+scale_fill_gradientx <- function(..., aesthetics='fill') {
+}
+scale_colour_gradientx <- function(..., aesthetics='colour') {
+}
+scale_color_gradientx <- scale_colour_gradientx
+
+

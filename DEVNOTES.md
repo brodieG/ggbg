@@ -206,13 +206,28 @@ Two step process for color value mapping:
 One potentially problematic issue is that we need our rescaler and palette fun
 anchors to correspond.  Maybe not such a big deal, for instance in the typical
 diverging palette we're used to, set the "anchor" for the palette fun to be
-white/grey == 0.5, and have a rescaler that maps 0 to 0.5 no matter what.
+white/grey == 0.5, and have a rescaler that maps 0 to 0.5 no matter what. On
+further thought probably better to use `mid`/`midpoint`.
 
 I guess we only provide the one rescaler.  One potential issue is where the user
 wants stuff to be color equidistant on either side of the "0" point.  I guess
 the rescaler can compute which of the two ends is further from the anchor point
 and use that to rescale the values on both sides.  Still doesn't deal with the
 potential issue of different distances on either side, but that's probably okay.
+
+The bigger challenge is whether we can express this via the existing interface
+in `scale_*_gradientn` where we can provide a `rescaler` and `oob` fun, along
+with `limit` values.  In our case, if we want to implement quantile mapping,
+the two functions must be able to access the collected trained data, and we need
+to be able to  tell `$map` to either interpret `limit` differently (or perhaps
+this is just handled by `oob` directly).  Or maybe we overload `$get_limit` to
+use the data if `limit_quantile` or some such is specified?
+
+Seems like best bet is to model stuff on `mid_rescaler` and such, but provide an
+extra `data` argument that `$map` can check for and provide as needed.
+
+`limits` remain a question; Is `Scale$limit` used anyplace else?  Can we change
+its semantics?  Probably too dangerous to do so.
 
 Any concerns about unequal distances on either side of an anchor?  I guess by
 definition no?
