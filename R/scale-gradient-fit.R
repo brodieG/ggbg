@@ -64,7 +64,27 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
   ## want to allow independent spec.  Argument for is that is more consistent.
   palette = NULL
 )
-#' Create a Palette Function with Equally Spaced Colors
+#' Create a Palette Function That Produces Uniform Colours
+#'
+#' The resulting palette function converts values between 0 and 1 into colours
+#' along the piecewise path through `colours` in the L*a*b* space.  Pairs of
+#' points that are equidistant in the input domain should be approximately
+#' equidistant along the `colour` path as per `dist.fun`.
+#'
+#' Distance along the path is measured as the cumulative sum of the
+#' `dist.fun` distance between small segments of the path.
+#'
+#' TEST WHETHER WE GET SAME DISTANCE WITH dist.fun IF WE MEASURE SUM OF PIECES.
+#' This seems to be true for deltaE2000.
+#'
+#' To the extent the
+#' `colour` path used to build the palette function is not straight, it is
+#' possible for shortest distance between two points to be 
+#'
+#' that are equal between input points should be approximately equal 
+#'
+#' Uniformity is measured as approximately as per `dist.fun` along the piecewise
+#' path through the `colours` vector in L*a*b* space.
 #'
 #' The resulting `palette` function will convert values between 0 and 1 into the
 #' colour that corresponds to the location along the colour path that is that
@@ -139,8 +159,10 @@ scale_gradientx <- function(
 
 }
 scale_fill_gradientx <- function(..., aesthetics='fill') {
+  scale_gradientx(..., aesthetics=aesthetics)
 }
 scale_colour_gradientx <- function(..., aesthetics='colour') {
+  scale_gradientx(..., aesthetics=aesthetics)
 }
 scale_color_gradientx <- scale_colour_gradientx
 
