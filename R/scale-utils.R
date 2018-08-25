@@ -28,8 +28,8 @@ make_coord_funs <- function(coords) {
   t.c <- t(coords)
 
   list(
-    # Given Lab coords, return the position in the [0,1] color ramp range,
-    # currently only works for one set of coords at a time
+    # Given coords in 3D space, return the position in the [0,1] color ramp
+    # range, currently only works for one set of coords at a time
 
     coords_to_pos = function(x) {
       # vetr::vetr(numeric(3L) || matrix(numeric(), nrow=1, ncol=3))
@@ -74,9 +74,9 @@ make_coord_funs <- function(coords) {
           )
       }
     },
-    # Given the position in the [0, 1] color ramp range, return the Lab coords
-    # There is no guarantee that the coords will be equidistant in 3D if they
-    # are equidistant in 1D.
+    # Given the position in the [0, 1] color ramp range, return the 3D space
+    # coords There is no guarantee that the coords will be equidistant in 3D if
+    # they are equidistant in 1D.
 
     pos_to_coords = function(x) {
       # vetr::vetr(NUM && all_bw(., 0, 1))
@@ -88,8 +88,8 @@ make_coord_funs <- function(coords) {
         coords[bins + 1, , drop=FALSE] - coords[bins, , drop=FALSE]
       )
     },
-    # Given the position in the [0, 1] color ramp range, return cumulative Lab
-    # distance through the color ramp
+    # Given the position in the [0, 1] color ramp range, return cumulative
+    # Euclidean distance through the color ramp
 
     pos_to_dist = function(x) {
       # vetr::vetr(NUM && all_bw(., 0, 1))

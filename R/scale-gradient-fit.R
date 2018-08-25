@@ -79,9 +79,9 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #'
 #' To the extent the
 #' `colour` path used to build the palette function is not straight, it is
-#' possible for shortest distance between two points to be 
+#' possible for shortest distance between two points to be
 #'
-#' that are equal between input points should be approximately equal 
+#' that are equal between input points should be approximately equal
 #'
 #' Uniformity is measured as approximately as per `dist.fun` along the piecewise
 #' path through the `colours` vector in L*a*b* space.
@@ -91,7 +91,7 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #' fraction of the full length of the colour path as measured by the cumulative
 #' sum of the distances between adjacent colours.
 #' attempt to approximate the colour that
-#' corresponds to 
+#' corresponds to
 #'
 #' A number of colours is interpolated along the shortest Euclidean path in
 #' L*a*b* space that passes through all the colours specified in `colours`, in
@@ -122,10 +122,76 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 palette_equi_div <- function(colours, mid, na.value, dist.fun=deltaE2000) {
 }
 palette_equi <- function(
-  colours, na.value, from=0, to=1, dist.ctl
+  colours, na.value, from=0, to=1, dist.ctl,
 ) {
-  col.lab <- color_to_lab(colours)
-  f_lab <- make_coord_funs(col.lab)
+  vetr(colours=character() && length(.) > 1)
+  col.spc <- color_to_space(colours)
+
+  # For each input segment, compute the total distance, determine how many
+  # segments we need, interpolate them, and equalize them.  This may not be the
+  # most efficient since we wrote `make_coord_funs` to deal with the entire
+  # path, not each segment, so there should be much simpler calculations we
+  # could use.
+
+  equal_sub_seg <- function(i) {
+    seg.dist <- try(dist_fun(col.spc[i,], col.spc[i + 1L,], ...))
+    dist.err.warn <- FALSE
+    if(inherits(seg.dist, "try-error")) {
+      stop(
+        "Argument `dist_fun` produced an error when computing the distance ",
+        "between '", colours[i],"' and '", colours[i + 1L], "'.  See previous ",
+        "error."
+      )
+    }
+    if(seg.dist > min_dist) {
+      f_spc <- make_coord_funs(col.spc[i + 0:1, ])
+      sub.segs <- ceil(seg.dist / min_dist)
+      nc <- sub.segs + 1
+      sub.pos <- seq(0, 1, length.out=nc)
+      seg.coords <- f_spc$pos_to_coords(sub.pos, ...)
+      seg.coords.e <- equalize_dists2(seg.coords, dist_fun, f_spc, ...)
+
+      dist.tot <-
+        dist_fun(seg.coords.e[1L, , drop=FALSE], seg.coords.e[nc, , drop=FALSE])
+      dist.pieces <- sum(
+        dist_fun(
+          seg.coords.e[-nc, , drop=FALSE], seg.coords.e[-1L, , drop=FALSE]
+      ) )
+      if(
+        !dist.err.warn &&
+        abs(dist.tot - dist.pieces) >
+        dist_ctl[['warn.if.sub.dist.mismatch.tol']]
+      ) {
+        dist.err.warn <- TRUE
+        warning(
+          "Argument `dist_fun` produces different lengths when computing ",
+          "the length for a segment vs the sum of the lengths of subsegments ",
+          "it comprises.  This will cause distance calculations along the ",
+          "palette to be suspect."
+        )
+      }
+    } else {
+      col.spc[i + 0:1, ]
+    }
+  }
+  sub.segs <-
+    lapply(seq(from=1L, to=length(colours) - 1L, by=1L), equal_sub_seg)
+
+  col.spc.fin <- do.call(rbind, sub.segs)
+  nr.fin <- nrow(col.spc.fin)
+
+
+  #
+
+    !=
+    sum(
+    )
+
+      if(
+        sum(
+          dist.fun(seg.coords.e[-1L, ], seg.coords[-nrow(seg.coords.e), ])
+        ) != seg.dist
+      )
 
   # We want some number of distinct colors to do our look
 
