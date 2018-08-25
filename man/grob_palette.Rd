@@ -4,7 +4,7 @@
 \alias{grob_palette}
 \title{Display a Palette in a Table}
 \usage{
-grob_palette(colors)
+grob_palette(colors, name = deparse(substitute(colors)[[1]]))
 }
 \description{
 Inspired by pals::pal.zcurve, although able to do rectangular (half square)
