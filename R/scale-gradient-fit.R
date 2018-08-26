@@ -71,18 +71,9 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #' space, L*a*b* by default.  Pairs of points that are equidistant in the input
 #' domain should be approximately equidistant along the `colours` path as per
 #' `dist_fun`, although if the path is not straight they are unlikely to be
-#' equidistant in the colour space itself.
-#'
-#' Distance along the path is measured as the cumulative sum of the
-#' `dist_fun` distance between small segments of the path.  In order to get
-#' the expected outcomes `dist_fun` should return the same distance for any
-#' straight line segment whether it is computed as the distance from one end to
-#' the other, or as the sum of the lengths of sub-segments that end to end
-#' correspond to the same segment (i.e., the "Whole is Equal to the Sum Of Its
-#' Parts").  Additionally as we move from one point to the other along the
-#' shortest Euclidean path in the three dimensional colour space, the value
-#' `dist_fun` returns should decrease, though it need not do so in proportion
-#' to the Euclidean distance traveled.
+#' equidistant in the colour space itself.  How distance is computed is
+#' specified by the `dist_fun` function.  The default [`deltaE2000`] is a
+#' non-Euclidian distance measure.
 #'
 #' Upon creation of the function, each segment in `colours` is subdivided into
 #' enough pieces such that the distance spanned by each piece is less than the
@@ -91,6 +82,10 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #' `dist_fun` distance as a fraction of the total cumulative `dist_fun` distance
 #' of the path to exceed the value.  The actual colour is then interpolated
 #' linearly in that segment in the provided colour space.
+#'
+#' To the extent `dist_fun` returns different results when computing distance of
+#' a full segment and the sum of the distance of the segments that it is
+#' composed of, the sub-segments may end up longer than `jnd`.
 #'
 #' The complexity of this function and the resulting colour ramp function is
 #' designed to accommodate the CIEDE2000 colour distance function, implemented
@@ -106,15 +101,23 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #' @param mid integer(1L) in `seq_along(colours)`, indicates which element in
 #'   `colours` is to be treated as the midpoint colour.
 #' @param dist_fun a function that computes distances between colors in a three
-#'   dimensional colour space.  The function should have two parameters, which
-#'   will be 3 column matrices containing the coordinates of the colours to
-#'   compute the distances between.  The function should compute the distances
-#'   between matching rows across the two matrices.
+#'   dimensional colour space.  The function will be provided with two
+#'   three-column matrices representing coordinates in the three dimensional
+#'   colour space.  The function should compute the distances between matching
+#'   rows across the two matrices.  It is expected that the function will
+#'   produce monotonically decreasing values as we move along the shortest
+#'   Euclidean path between two points in the three dimensional colour space.
+#'   The function may accept additional arguments (see `...`).
 #' @param na.value character(1L) a colour in a format understood by
 #'   [`grDevices::col2rgb`] to use to represent NA values, named to be
 #'   consistent with `ggplot2` conventions.
 #' @param jnd numeric(1L) strictly positive, indicates the `dist_fun` distance
-#'   that is considered a "Just-noticeable Difference".
+#'   that is considered a "Just-noticeable Difference".  The path along
+#'   `colours` is broken up into sub-segments intended to be shorter than `jnd`.
+#'   If `dist_fun` is not guaranteed to return the same length for a segment
+#'   whether it is computed in one pass or as the sum of component
+#'   sub-segments, then it is not guaranteed that the sub-segments are not
+#'   guaranteed to be all shorter than `jnd`.
 #' @param ... arguments to pass on to `dist_fun`.
 #' @param col_to_space a function that converts colors of the type accepted by
 #'   [`col2rgb`] into a 3 column matrix representing coordinates of the same
@@ -126,21 +129,15 @@ ScaleContinuousFit <- ggproto("ScaleContinuousFit", ggplot2::ScaleContinuous,
 #'   we create interpolate out of the `colours` path equi-distance.  You may
 #'   only pass `tol`, `iters`, and `quiet` as the other arguments are derived
 #'   from arguments to this function.
-#' @param wesoip_tol numeric(1L) how closely the "Whole Equal to Sum Of Its
-#'   Parts" must hold to suppress warnings about this condition not being met
-#'   when we breakdown segments of the `colours` path into sub-segments.  Set to
-#'   `Inf` to suppress warnings.  Tolerance is measured against the absolute
-#'   difference of the sum of the parts and the whole divided by the whole.
 #' @return a function that accepts a numeric parameter as an input, and for the
 #'   values between `from` and `to` returns a corresponding colour along the
 #'   `colours` path.
 
 colour_ramp_equi <- function(
-  colours, na.value, dist_fun=deltaE2000, ..., jnd=1,
+  colours, na.value, dist_fun=deltaE2000, ..., jnd=0.75,
   col_to_space=color_to_lab,
   space_to_col=lab_to_color, from=0, to=1,
-  eq_ctl=list(tol=1e-3, iters=1e4, quiet=TRUE),
-  wesoip_tol=sqrt(.Machine$double.eps)
+  eq_ctl=list(tol=1e-3, iters=1e4, quiet=TRUE)
 ) {
   vetr(
     colours=character() && length(.) > 1, na.value=CHR.1,
@@ -151,8 +148,7 @@ colour_ramp_equi <- function(
       tol=numeric(1L), iters=numeric(1L), quiet=logical(1L)
     ),
     from=NUM.1 && all_bw(., 0, 1),
-    to=NUM.1 && all_bw(., 0, 1) && . > from,
-    wesoip_tol=numeric(1L) && . >= 0
+    to=NUM.1 && all_bw(., 0, 1) && . > from
   )
   col.spc <- col_to_space(colours)
 
@@ -165,7 +161,7 @@ colour_ramp_equi <- function(
   sub.segs <- lapply(
     seq(from=1L, to=length(colours) - 1L, by=1L),
     equalize_segments, colours=colours, col.spc=col.spc, dist_fun=dist_fun,
-    eq_ctl=eq_ctl, jnd=jnd, wesoip_tol, ...
+    eq_ctl=eq_ctl, jnd=jnd, ...
   )
   col.spc.fin <- do.call(rbind, sub.segs)
 
@@ -220,7 +216,7 @@ ramp_equi_div <- function(colours, mid, na.value, dist_fun=deltaE2000) {
 ## Breaks down segments into equal-length sub-segments
 
 equalize_segments <- function(
-  i, colours, col.spc, jnd, dist_fun, eq_ctl, wesoip_tol, ...
+  i, colours, col.spc, jnd, dist_fun, eq_ctl, ...
 ) {
   seg.dist <- try(
     dist_fun(col.spc[i, , drop=FALSE], col.spc[i + 1L, , drop=FALSE], ...)
@@ -246,18 +242,6 @@ equalize_segments <- function(
       dist_fun(
         seg.coords.e[-nc, , drop=FALSE], seg.coords.e[-1L, , drop=FALSE]
     ) )
-    if(
-      abs(dist.tot - dist.pieces) >
-      wesoip_tol
-    ) {
-      browser()
-      warning(
-        "Argument `dist_fun` produces different lengths when computing ",
-        "the length for a segment vs the sum of the lengths of subsegments ",
-        "it comprises.  This will cause distance calculations along the ",
-        "ramp to be suspect."
-      )
-    }
     seg.coords.e
   } else {
     col.spc[i + 0:1, ]
