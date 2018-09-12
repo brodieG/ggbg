@@ -57,8 +57,11 @@ make.rgb <-
     } else stop("'gamma' must be a scalar or 'sRGB'")
 
     toXYZ <- function(rgb,...) { dogamma(rgb) %*% M }
-    toRGB <- function(xyz,...) { ungamma(xyz %*% solve(M)) }
-
+    toRGB <- function(xyz,...) {
+      res <- ungamma(xyz %*% solve(M))
+      # for backward compatibily, return vector if input is vector
+      if(!is.vector(xyz)) res else matrix(res, ncol=ncol(M), byrow=TRUE)
+    }
     if (is.null(name)) name <- deparse(sys.call())[1L]
     rval <- list(toXYZ = toXYZ, fromXYZ = toRGB, gamma = gamma,
                  reference.white = white, name = name)
@@ -129,32 +132,46 @@ colorspaces <-
 
          "Lab" =
          colorConverter(fromXYZ = function(XYZ, white) {
-             stopifnot(length(XYZ) == 3L)
+             stopifnot(length(XYZ) == 3 | ncol(XYZ) == 3L)
+             white <- rep(white, length.out=3L)
+             if (is.null(nrow(XYZ)))
+               XYZ <- matrix(XYZ, nrow = 1L)
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             xyzr <- XYZ/white
+             # faster than t(t(XYZ) / white) on large XYZ
+             white.mx <- matrix(numeric(9L), 3L)
+             diag(white.mx) <- 1 / white
+             xyzr <- XYZ %*% white.mx
+
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
-             c(L = 116*fxyz[2L]-16,
-               a = 500*(fxyz[1L]-fxyz[2L]),
-               b = 200*(fxyz[2L]-fxyz[3L]))
+             res <- rbind(L = 116*fxyz[, 2L]-16,
+               a = 500*(fxyz[, 1L]-fxyz[, 2L]),
+               b = 200*(fxyz[, 2L]-fxyz[, 3L]))
+             if(ncol(res) == 1L) c(res) else res
          },
          toXYZ = function(Lab, white) {
-             stopifnot(length(Lab) == 3L)
+             stopifnot(ncol(Lab) == 3L | length(Lab)==3)
+             white <- rep(white, length.out=3L)
+             if (is.null(nrow(Lab)))
+               Lab <- matrix(Lab, nrow = 1L)
 
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             yr <- if(Lab[1L] < kappa*epsilon) Lab[1L]/kappa else ((Lab[1L]+16)/116)^3
-             fy <- ((if(yr <= epsilon) kappa*yr else Lab[1L]) + 16)/116
-             fx <- Lab[2L]/500+fy
-             fz <- fy-Lab[3L]/200
+             yr <- ifelse(
+               Lab[,1L] < kappa*epsilon, Lab[,1L]/kappa, ((Lab[,1L]+16)/116)^3
+             )
+             fy <- (ifelse(yr <= epsilon, kappa*yr, Lab[,1L]) + 16)/116
+             fx <- Lab[,2L]/500+fy
+             fz <- fy-Lab[,3L]/200
 
-             zr <- if(fz^3 <= epsilon) (116*fz-16)/kappa else fz^3
-             xr <- if(fx^3 <= epsilon) (116*fx-16)/kappa else fx^3
+             zr <- ifelse(fz^3 <= epsilon, (116*fz-16)/kappa, fz^3)
+             xr <- ifelse(fx^3 <= epsilon, (116*fx-16)/kappa, fx^3)
 
-             c(X = xr, Y = yr, Z = zr)*white
+             res <- rbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
+             if(ncol(res) == 1L) c(res) else res
 
          }, name = "Lab", white = NULL),
 
@@ -262,7 +279,7 @@ convertColor <-
       rgb
   }
 
-  xyz <- apply(color, 1L, from$toXYZ, from.ref.white)
+  xyz <- from$toXYZ(color, from.ref.white)
 
   if (is.null(nrow(xyz)))
     xyz <- matrix(xyz, nrow = 1L)
@@ -274,7 +291,7 @@ convertColor <-
       xyz <- chromaticAdaptation(xyz, from.ref.white, to.ref.white)
   }
 
-  rval <- apply(xyz, 2L, to$fromXYZ, to.ref.white)
+  rval <- to$fromXYZ(t(xyz), to.ref.white)
 
   if (inherits(to,"RGBcolorConverter"))
       rval <- trim(rval)

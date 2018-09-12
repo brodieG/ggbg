@@ -5,9 +5,9 @@
 \title{Create a Colour Ramp Function That Produces Uniform Colours}
 \usage{
 colour_ramp_equi(colours, na.value, dist_fun = deltaE2000, ...,
-  jnd = 1, col_to_space = color_to_lab, space_to_col = lab_to_color,
-  from = 0, to = 1, eq_ctl = list(tol = 0.001, iters = 10000, quiet =
-  TRUE), wesoip.tol = sqrt(.Machine$double.eps))
+  jnd = 0.75, col_to_space = color_to_lab,
+  space_to_col = lab_to_color, from = 0, to = 1, eq_ctl = list(tol
+  = 0.001, iters = 10000, quiet = TRUE))
 }
 \arguments{
 \item{colours}{character a vector of colours to base the ramp on, must
@@ -19,15 +19,23 @@ by \code{\link[grDevices:col2rgb]{grDevices::col2rgb}}.}
 consistent with \code{ggplot2} conventions.}
 
 \item{dist_fun}{a function that computes distances between colors in a three
-dimensional color space.  The function should have two parameters, which
-will be 3 column matrices containing the coordinates of the colours to
-compute the distances between.  The function should compute the distances
-between matching rows across the two matrices.}
+dimensional colour space.  The function will be provided with two
+three-column matrices representing coordinates in the three dimensional
+colour space.  The function should compute the distances between matching
+rows across the two matrices.  It is expected that the function will
+produce monotonically decreasing values as we move along the shortest
+Euclidean path between two points in the three dimensional colour space.
+The function may accept additional arguments (see \code{...}).}
 
 \item{...}{arguments to pass on to \code{dist_fun}.}
 
 \item{jnd}{numeric(1L) strictly positive, indicates the \code{dist_fun} distance
-that is considered a "Just-noticeable Difference".}
+that is considered a "Just-noticeable Difference".  The path along
+\code{colours} is broken up into sub-segments intended to be shorter than \code{jnd}.
+If \code{dist_fun} is not guaranteed to return the same length for a segment
+whether it is computed in one pass or as the sum of component
+sub-segments, then it is not guaranteed that the sub-segments are not
+guaranteed to be all shorter than \code{jnd}.}
 
 \item{col_to_space}{a function that converts colors of the type accepted by
 \code{\link{col2rgb}} into a 3 column matrix representing coordinates of the same
@@ -41,12 +49,6 @@ that \code{col_to_space} transformation.}
 we create interpolate out of the \code{colours} path equi-distance.  You may
 only pass \code{tol}, \code{iters}, and \code{quiet} as the other arguments are derived
 from arguments to this function.}
-
-\item{wesoip.tol}{numeric(1L) how closely the "Whole Equal to Sum Of Its
-Parts" must hold to suppress warnings about this condition not being met
-when we breakdown segments of the \code{colours} path into sub-segments.  Set to
-\code{Inf} to suppress warnings.  Tolerance is measured against the absolute
-difference of the sum of the parts and the whole divided by the whole.}
 
 \item{mid}{integer(1L) in \code{seq_along(colours)}, indicates which element in
 \code{colours} is to be treated as the midpoint colour.}
@@ -62,20 +64,11 @@ along the piecewise path through \code{colours} in a three dimensional colour
 space, L\emph{a}b* by default.  Pairs of points that are equidistant in the input
 domain should be approximately equidistant along the \code{colours} path as per
 \code{dist_fun}, although if the path is not straight they are unlikely to be
-equidistant in the colour space itself.
+equidistant in the colour space itself.  How distance is computed is
+specified by the \code{dist_fun} function.  The default \code{\link{deltaE2000}} is a
+non-Euclidian distance measure.
 }
 \details{
-Distance along the path is measured as the cumulative sum of the
-\code{dist_fun} distance between small segments of the path.  In order to get
-the expected outcomes \code{dist_fun} should return the same distance for any
-straight line segment whether it is computed as the distance from one end to
-the other, or as the sum of the lengths of sub-segments that end to end
-correspond to the same segment (i.e., the "Whole is Equal to the Sum Of Its
-Parts").  Additionally as we move from one point to the other along the
-shortest Euclidean path in the three dimensional colour space, the value
-\code{dist_fun} returns should decrease, though it need not do so in proportion
-to the Euclidean distance traveled.
-
 Upon creation of the function, each segment in \code{colours} is subdivided into
 enough pieces such that the distance spanned by each piece is less than the
 \code{jnd}, or the "Just-Noticeable Difference".  The value-to-colour map is then
@@ -84,10 +77,14 @@ carried out by finding the segment that causes the cumulative accrued
 of the path to exceed the value.  The actual colour is then interpolated
 linearly in that segment in the provided colour space.
 
+To the extent \code{dist_fun} returns different results when computing distance of
+a full segment and the sum of the distance of the segments that it is
+composed of, the sub-segments may end up longer than \code{jnd}.
+
 The complexity of this function and the resulting colour ramp function is
 designed to accommodate the CIEDE2000 colour distance function, implemented
 in this package as \code{\link{deltaE2000}}, while also allowing users to specify
-custom color spaces and distance functions.
+custom colour spaces and distance functions.
 }
 \seealso{
 \code{\link[ggplot2:scale_fill_gradientn]{ggplot2::scale_fill_gradientn}}, \code{\link[grDevices:col2rgb]{grDevices::col2rgb}},
