@@ -32,6 +32,8 @@ RoxygenNote: 6.1.0
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
 Collate:
+    'colors.R'
+    'convertColor.R'
     'deltae.R'
     'geom.car.data.R'
     'ggbg-package.R'

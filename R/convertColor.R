@@ -242,8 +242,8 @@ convertColor <-
   if (is.null(from.ref.white))
       from.ref.white <- to.ref.white
 
-  from.ref.white <- c2to3(white.points[, from.ref.white])
-  to.ref.white   <- c2to3(white.points[, to.ref.white])
+  from.ref.white.3 <- c2to3(white.points[, from.ref.white])
+  to.ref.white.3   <- c2to3(white.points[, to.ref.white])
 
   if (is.null(nrow(color)))
     color <- matrix(color, nrow = 1L)
@@ -262,19 +262,19 @@ convertColor <-
       rgb
   }
 
-  xyz <- apply(color, 1L, from$toXYZ, from.ref.white)
+  xyz <- apply(color, 1L, from$toXYZ, from.ref.white.3)
 
   if (is.null(nrow(xyz)))
     xyz <- matrix(xyz, nrow = 1L)
 
-  if (!isTRUE(all.equal(from.ref.white, to.ref.white))) {
+  if (!isTRUE(all.equal(from.ref.white.3, to.ref.white.3))) {
       mc <- match.call()
       if (is.null(mc$from.ref.white) || is.null(mc$to.ref.white))
           warning("color spaces use different reference whites")
-      xyz <- chromaticAdaptation(xyz, from.ref.white, to.ref.white)
+      xyz <- t(chromaticAdaptation(t(xyz), from.ref.white, to.ref.white))
   }
 
-  rval <- apply(xyz, 2L, to$fromXYZ, to.ref.white)
+  rval <- apply(xyz, 2L, to$fromXYZ, to.ref.white.3)
 
   if (inherits(to,"RGBcolorConverter"))
       rval <- trim(rval)
