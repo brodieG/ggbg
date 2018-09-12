@@ -323,4 +323,12 @@ for(i in seq_along(pal.list)) {
 dev.new(width=6, height=3)
 grid.newpage(); grid.draw(g.t)
 
+# test out color mapping
 
+n <- 1024
+jet1k <- colorRamp(rgb(ggbg:::jet), space="Lab")((0:(n - 1))/(n - 1)) / 255
+from.ref.white <- grDevices:::c2to3(grDevices:::white.points[, "D65"])
+microbenchmark::microbenchmark(
+  a <- colorspaces$sRGB$toXYZ(jet1k, from.ref.white),
+  b <- convertColor(jet1k, "sRGB", "XYZ")
+)
