@@ -81,7 +81,7 @@ print.RGBcolorConverter <- function(x,...) {
 }
 
 chromaticAdaptation <- function(xyz, from, to) {
-    ## bradford scaling algorithm
+    ## Von Kries scaling algorithm
     Ma <- matrix(c( 0.40024, -0.22630, 0.,
                     0.70760,  1.16532, 0.,
                    -0.08081,  0.04570, 0.91822), nrow = 3L, byrow = TRUE)

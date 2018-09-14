@@ -1,0 +1,109 @@
+It appears that the chromatic adaptation feature of `grDevices::convertColor`
+is broken, and likely has been for many years.  While a little surprising, it is
+an obscure enough feature that there is some possibility this is actually
+broken, as opposed to user error on my part.  There is of course a non-zero
+probability I'm overlooking something, so if that turns out to be the case I
+apologize in advance for spamming this list.
+
+Consider:
+
+    rgb.in <- c("#CCCCCC", "#EEEEEE")
+    clr <- t(col2rgb(rgb.in)) / 255
+    clr.out <- convertColor(clr, "sRGB", "sRGB")
+    rgb(clr.out)
+    ## [1] "#CCCCCC" "#EEEEEE"
+
+    convertColor(clr, "sRGB", "sRGB", "D65", "D50")
+    ## Error in match.arg(from, nWhite) :
+    ##   'arg' must be NULL or a character vector
+
+This appears to be because `grDevices:::chromaticAdaptation` expects the white
+points to be provided in the character format (e.g. "D65"), but they are already
+converted by `convertColor` into the tristimulus values.  After
+applying the patch at the end of this e-mail, we get:
+
+    clr.out <- convertColor(clr, "sRGB", "sRGB", "D65", "D50")
+    rgb(clr.out)
+    ## [1] "#DACAB0" "#FEECCE"
+
+I do not have a great way of confirming that the conversion is correct with my
+changes, but I did verify that the `M` matrix computed within
+`grDevics:::chromaticAdaptation` for the "D65"->"D50" conversion
+(approximately) matches the corresponding matrix from brucelindbloom.com
+chromatic adaptation page:
+
+http://www.brucelindbloom.com/Eqn_ChromAdapt.html
+
+Additionally visual inspection via 
+
+    scales::show_col(c(rgb.in, rgb(clr.out)))
+
+is consistent with a shift from bluer indirect daylight ("D65") to yellower
+direct daylight ("D50") illuminant.
+
+It is worth noting that the adaption method currently in
+`grDevices:::chromaticAdaptation` appears to be the "Von Kries" method, not the
+"Bradford" method as documented in `?convertColor` and in the comments of the
+sources.  I base this on comparing the cone response domain matrices on the
+aforementioned brucelindbloom.com page to the `Ma` matrix defined in
+`grDevics:::chromaticAdaptation`.
+
+Given that brucelindbloom.com appears to recommend "Bradford", that the
+sources suggest that was the intent, that `chromaticAdaptation` is only used by
+`convertColor` in the R sources, that `chromaticAdapation` is not exported, and
+that that feature appears currently inaccessible via `convertColor`, it may be
+worth using this opportunity to change the adaptation method to "Bradford".
+
+A suggested patch follows.  It is intended to minimize the required changes,
+although doing so requires a double transposition.  The transpositions could
+be easily avoided, but it would require reformulating the calculations in
+`chromaticAdaption`.
+
+Index: src/library/grDevices/R/convertColor.R
+===================================================================
+--- src/library/grDevices/R/convertColor.R	(revision 75298)
++++ src/library/grDevices/R/convertColor.R	(working copy)
+@@ -81,7 +81,7 @@
+ }
+ 
+ chromaticAdaptation <- function(xyz, from, to) {
+-    ## bradford scaling algorithm
++    ## Von Kries scaling algorithm
+     Ma <- matrix(c( 0.40024, -0.22630, 0.,
+                     0.70760,  1.16532, 0.,
+                    -0.08081,  0.04570, 0.91822), nrow = 3L, byrow = TRUE)
+@@ -242,8 +242,8 @@
+   if (is.null(from.ref.white))
+       from.ref.white <- to.ref.white
+ 
+-  from.ref.white <- c2to3(white.points[, from.ref.white])
+-  to.ref.white   <- c2to3(white.points[, to.ref.white])
++  from.ref.white.3 <- c2to3(white.points[, from.ref.white])
++  to.ref.white.3   <- c2to3(white.points[, to.ref.white])
+ 
+   if (is.null(nrow(color)))
+     color <- matrix(color, nrow = 1L)
+@@ -262,19 +262,19 @@
+       rgb
+   }
+ 
+-  xyz <- apply(color, 1L, from$toXYZ, from.ref.white)
++  xyz <- apply(color, 1L, from$toXYZ, from.ref.white.3)
+ 
+   if (is.null(nrow(xyz)))
+     xyz <- matrix(xyz, nrow = 1L)
+ 
+-  if (!isTRUE(all.equal(from.ref.white, to.ref.white))) {
++  if (!isTRUE(all.equal(from.ref.white.3, to.ref.white.3))) {
+       mc <- match.call()
+       if (is.null(mc$from.ref.white) || is.null(mc$to.ref.white))
+           warning("color spaces use different reference whites")
+-      xyz <- chromaticAdaptation(xyz, from.ref.white, to.ref.white)
++      xyz <- t(chromaticAdaptation(t(xyz), from.ref.white, to.ref.white))
+   }
+ 
+-  rval <- apply(xyz, 2L, to$fromXYZ, to.ref.white)
++  rval <- apply(xyz, 2L, to$fromXYZ, to.ref.white.3)
+ 
+   if (inherits(to,"RGBcolorConverter"))
+       rval <- trim(rval)
