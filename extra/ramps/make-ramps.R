@@ -332,3 +332,9 @@ microbenchmark::microbenchmark(
   a <- colorspaces$sRGB$toXYZ(jet1k, from.ref.white),
   b <- convertColor(jet1k, "sRGB", "XYZ")
 )
+
+microbenchmark::microbenchmark(times=10,
+  grDevices::convertColor(jet1k, "sRGB", "Lab"),
+  ggbg:::convertColor(jet1k, "sRGB", "Lab")
+)
+

@@ -147,7 +147,7 @@ colorspaces <-
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
              res <- rbind(L = 116*fxyz[, 2L]-16,
-               a = 500*(fxyz[, 1L]-fxyz[, 2L]),
+               a.x = 500*(fxyz[, 1L]-fxyz[, 2L]),
                b = 200*(fxyz[, 2L]-fxyz[, 3L]))
              if(ncol(res) == 1L) c(res) else res
          },
@@ -180,38 +180,39 @@ colorspaces <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             yr <- XYZ[2L]/white[2L]
+             yr <- XYZ[,2L]/white[2L]
 
-             denom  <- sum(XYZ * c(1,15,3))
+             denom  <- rowSums(XYZ %*% diag(c(1,15,3)))
              wdenom <- sum(white*c(1,15,3))
 
-             u1 <- if(denom == 0) 1 else 4*XYZ[1L]/denom
-             v1 <- if(denom == 0) 1 else 9*XYZ[2L]/denom
+             u1 <- if(denom == 0) 1 else 4*XYZ[,1L]/denom
+             v1 <- if(denom == 0) 1 else 9*XYZ[,2L]/denom
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 
-             L <- if(yr <= epsilon) kappa*yr else 116*(yr^(1/3))-16
-             c(L = L, u = 13*L*(u1-ur), v = 13*L*(v1-vr))
+             L <- ifelse(yr <= epsilon, kappa*yr, 116*(yr^(1/3))-16)
+             res <- cbind(L = L, u = 13*L*(u1-ur), v = 13*L*(v1-vr))
+             if(nrow(res) < 2) c(res) else res
          }, toXYZ = function(Luv,white) {
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             if(Luv[1L] == 0) return(c(0,0,0))
-
              u0 <- 4*white[1L]/(white[1L]+15*white[2L]+3*white[3L])
              v0 <- 9*white[2L]/(white[1L]+15*white[2L]+3*white[3L])
 
-             Y <- if(Luv[1L] <= kappa*epsilon)
-                     Luv[1L]/kappa else ((Luv[1L]+16)/116)^3
-             a <- (52*Luv[1L]/(Luv[2L]+13*Luv[1L]*u0)-1)/3
+             Y <- ifelse(Luv[,1L] <= kappa*epsilon,
+                     Luv[,1L]/kappa, ((Luv[,1L]+16)/116)^3)
+             a <- (52*Luv[,1L]/(Luv[,2L]+13*Luv[,1L]*u0)-1)/3
              b <- -5*Y
              c <- -1/3
-             d <- Y*(39*Luv[1L]/(Luv[3L]+13*Luv[1L]*v0)-5)
+             d <- Y*(39*Luv[,1L]/(Luv[,3L]+13*Luv[,1L]*v0)-5)
 
              X <- (d-b)/(a-c)
              Z <- X*a+b
 
-             c(X = X,Y = Y,Z = Z)
+             res <- cbind(X = X,Y = Y,Z = Z)
+             res[Luv[,1L] == 0L] <- c(0,0,0)
+             if(nrow(res) < 2) c(res) else res
          }, name = "Luv", white = NULL)
 
          ) # colorspaces
@@ -291,7 +292,7 @@ convertColor <-
       xyz <- chromaticAdaptation(xyz, from.ref.white, to.ref.white)
   }
 
-  rval <- to$fromXYZ(t(xyz), to.ref.white)
+  rval <- to$fromXYZ(xyz, to.ref.white)
 
   if (inherits(to,"RGBcolorConverter"))
       rval <- trim(rval)

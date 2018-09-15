@@ -22,7 +22,8 @@ Imports:
     ggplot2 (>= 2.2.1.9000),
     grid,
     vetr,
-    utils
+    utils,
+    grDevices
 Suggests:
     knitr,
     rmarkdown,
