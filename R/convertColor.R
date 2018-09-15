@@ -175,6 +175,7 @@ colorspaces <-
              xr <- ifelse(fx^3 <= epsilon, (116*fx-16)/kappa, fx^3)
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
+
              if(nrow(res) < 2L) c(res) else res
 
          }, name = "Lab", white = NULL),
@@ -189,8 +190,8 @@ colorspaces <-
              denom  <- rowSums(XYZ %*% diag(c(1,15,3)))
              wdenom <- sum(white*c(1,15,3))
 
-             u1 <- if(denom == 0) 1 else 4*XYZ[,1L]/denom
-             v1 <- if(denom == 0) 1 else 9*XYZ[,2L]/denom
+             u1 <- ifelse(denom == 0, 1, 4*XYZ[,1L]/denom)
+             v1 <- ifelse(denom == 0, 1, 9*XYZ[,2L]/denom)
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 
@@ -215,6 +216,7 @@ colorspaces <-
              Z <- X*a+b
 
              res <- cbind(X = X,Y = Y,Z = Z)
+
              res[Luv[,1L] == 0L] <- c(0,0,0)
              if(nrow(res) < 2) c(res) else res
          }, name = "Luv", white = NULL)
