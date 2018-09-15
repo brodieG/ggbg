@@ -60,7 +60,7 @@ make.rgb <-
     toRGB <- function(xyz,...) {
       res <- ungamma(xyz %*% solve(M))
       # for backward compatibily, return vector if input is vector
-      if(!is.vector(xyz)) res else matrix(res, ncol=ncol(M), byrow=TRUE)
+      if(nrow(res) > 2) res else c(res)
     }
     if (is.null(name)) name <- deparse(sys.call())[1L]
     rval <- list(toXYZ = toXYZ, fromXYZ = toRGB, gamma = gamma,
@@ -105,6 +105,10 @@ colorConverter <- function(toXYZ, fromXYZ, name, white = NULL) {
     class(rval) <- "colorConverter"
     rval
 }
+# Each colorspace should define an fromXYZ and a toXYZ function.  Return values
+# should be a 3 long vector or a 3 column vector.  Functions should expect
+# either a thre long vector or a 3 column vector as an input, where each row
+# represents a color in 3D coordinates in the corresponding color space.
 
 colorspaces <-
     list("XYZ" =
@@ -146,10 +150,10 @@ colorspaces <-
 
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
-             res <- rbind(L = 116*fxyz[, 2L]-16,
+             res <- cbind(L = 116*fxyz[, 2L]-16,
                a.x = 500*(fxyz[, 1L]-fxyz[, 2L]),
                b = 200*(fxyz[, 2L]-fxyz[, 3L]))
-             if(ncol(res) == 1L) c(res) else res
+             if(nrow(res) < 2L) c(res) else res
          },
          toXYZ = function(Lab, white) {
              stopifnot(ncol(Lab) == 3L | length(Lab)==3)
@@ -170,8 +174,8 @@ colorspaces <-
              zr <- ifelse(fz^3 <= epsilon, (116*fz-16)/kappa, fz^3)
              xr <- ifelse(fx^3 <= epsilon, (116*fx-16)/kappa, fx^3)
 
-             res <- rbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
-             if(ncol(res) == 1L) c(res) else res
+             res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
+             if(nrow(res) < 2L) c(res) else res
 
          }, name = "Lab", white = NULL),
 
@@ -296,9 +300,6 @@ convertColor <-
 
   if (inherits(to,"RGBcolorConverter"))
       rval <- trim(rval)
-
-  if (is.matrix(rval))
-      rval <- t(rval)
 
   if (is.null(scale.out))
       rval
