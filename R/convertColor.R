@@ -60,7 +60,7 @@ make.rgb <-
     toRGB <- function(xyz,...) {
       res <- ungamma(xyz %*% solve(M))
       # for backward compatibily, return vector if input is vector
-      if(nrow(res) > 2) res else c(res)
+      if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
     }
     if (is.null(name)) name <- deparse(sys.call())[1L]
     rval <- list(toXYZ = toXYZ, fromXYZ = toRGB, gamma = gamma,
@@ -151,9 +151,9 @@ colorspaces <-
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
              res <- cbind(L = 116*fxyz[, 2L]-16,
-               a.x = 500*(fxyz[, 1L]-fxyz[, 2L]),
+               a = 500*(fxyz[, 1L]-fxyz[, 2L]),
                b = 200*(fxyz[, 2L]-fxyz[, 3L]))
-             if(nrow(res) < 2L) c(res) else res
+             if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          },
          toXYZ = function(Lab, white) {
              stopifnot(ncol(Lab) == 3L | length(Lab)==3)
@@ -176,8 +176,7 @@ colorspaces <-
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
 
-             if(nrow(res) < 2L) c(res) else res
-
+             if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, name = "Lab", white = NULL),
 
          "Luv" =
@@ -197,7 +196,7 @@ colorspaces <-
 
              L <- ifelse(yr <= epsilon, kappa*yr, 116*(yr^(1/3))-16)
              res <- cbind(L = L, u = 13*L*(u1-ur), v = 13*L*(v1-vr))
-             if(nrow(res) < 2) c(res) else res
+             if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, toXYZ = function(Luv,white) {
              epsilon <- 216/24389
              kappa <- 24389/27
@@ -218,7 +217,7 @@ colorspaces <-
              res <- cbind(X = X,Y = Y,Z = Z)
 
              res[Luv[,1L] == 0L] <- c(0,0,0)
-             if(nrow(res) < 2) c(res) else res
+             if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, name = "Luv", white = NULL)
 
          ) # colorspaces
@@ -289,7 +288,7 @@ convertColor <-
   xyz <- from$toXYZ(color, from.ref.white)
 
   if (is.null(nrow(xyz)))
-    xyz <- matrix(xyz, nrow = 1L)
+    xyz <- matrix(xyz, nrow = 1L, dimnames=list(NULL, names(xyz)))
 
   if (!isTRUE(all.equal(from.ref.white, to.ref.white))) {
       mc <- match.call()
@@ -302,6 +301,8 @@ convertColor <-
 
   if (inherits(to,"RGBcolorConverter"))
       rval <- trim(rval)
+
+  if(!is.matrix(rval)) rval <- t(rval)
 
   if (is.null(scale.out))
       rval
