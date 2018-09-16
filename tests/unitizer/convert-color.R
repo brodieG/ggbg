@@ -97,17 +97,66 @@ grDevices::convertColor(XYZ, 'XYZ', 'sRGB', clip=NA)
 grDevices::convertColor(XYZ, 'XYZ', 'Luv', clip=NA)
 
 ## Ranges
-## 
+##
 ## sRGB: [0,1]
 ## Lab: [0,100], [-440,440], [-168,173]  common range [-128,127] for ab
 ## Luv: [0,100], [-259,67], [0, 171]     common range +-100 for uv
 
 ranges.raw <- c(
-  0,   1,   0,   1,   0,   1,  # rgb
-  0, 100,-128, 128,-128, 128,  # Lab 
-  0, 100,-100, 100,-100, 100   # Luv
+  0,   1,   0,   1,   0,   1,  # rgb*/xyz
+  0,   1,   0,   1,   0,   1,  # rgb*/xyz
+  0,   1,   0,   1,   0,   1,  # rgb*/xyz
+  0,   1,   0,   1,   0,   1,  # rgb*/xyz
+  0, 100,-128, 128,-128, 128,  # Lab
+  # Luv; supposed to be +- 100, but rgb conv suggests it's wider than that
+  0, 100,-180, 180,-180, 180
 )
-ranges <- array(ranges.raw, dim=c(2, 3, length(ranges.raw) / (2 * 3)))
+ranges <- array(
+  ranges.raw, dim=c(2, 3, length(ranges.raw) / (2 * 3)),
+  dimnames=list(
+    range=c('lo', 'hi'), NULL,
+    space=c('Apple RGB', 'sRGB', 'CIE RGB', 'XYZ', 'Lab', 'Luv')
+  )
+)
+# For each input space, generate permutation of values in range, outside of
+# range, along with NA, NaN, Inf, -Inf cases.
+
+interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
+  stopifnot(
+    identical(head(dim(ranges), 2), c(2L, 3L)), length(dim(ranges)) == 3
+  )
+  res <-lapply(seq_len(dim(ranges)[3]),
+    function(x) {
+      ranges <- split(ranges[,,x], col(ranges[,,x]))
+      ranges.ex <- lapply(
+        ranges,
+        function(y) {
+          c(
+            seq(from=y[1], to=y[1], length.out=steps),
+            min(y) - diff(range(y)) * expand,
+            max(y) + diff(range(y)) * expand,
+            NA, NaN, Inf, -Inf
+          )
+        }
+      )
+      do.call(cbind, as.list(do.call(expand.grid, ranges.ex)))
+    }
+  )
+  names(res) <- dimnames(ranges)[[3]]
+  res
+}
+space.input <- interpolate_space(ranges)
+cc1 <- color_to_color(space.input, fun=ggbg::convertColor)
+
+ggbg::convertColor
+
+
+space.output <- lapply(
+  names(space.input), function(x) {
+    spc.in <- space.input[[x]]
+
+
+  }
 
 
 jet1k <- cr1_lab(v)
