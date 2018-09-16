@@ -216,7 +216,7 @@ colorspaces <-
 
              res <- cbind(X = X,Y = Y,Z = Z)
 
-             res[Luv[,1L] == 0L] <- c(0,0,0)
+             res[!is.na(Luv[,1L]) & Luv[,1L] == 0L] <- c(0,0,0)
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, name = "Luv", white = NULL)
 
