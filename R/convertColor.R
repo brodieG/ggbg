@@ -173,15 +173,29 @@ colorspaces <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             yr <- ifelse(
-               Lab[,1L] < kappa*epsilon, Lab[,1L]/kappa, ((Lab[,1L]+16)/116)^3
-             )
-             fy <- (ifelse(yr <= epsilon, kappa*yr, Lab[,1L]) + 16)/116
+             L <- Lab[, 1L]
+             L.nona <- !is.na(L)
+             yr <- ((L+16)/116)^3
+             yr.except <- L >= kappa*epsilon & L.nona
+             yr[yr.except] <- L[yr.except]/kappa
+
+             fy.pre <- L
+             fy.pre.except <- yr > epsilon & L.nona
+             fy.pre[fy.pre.except] <- kappa*yr[fy.pre.except]
+             fy <- (fy.pre + 16) / 116
              fx <- Lab[,2L]/500+fy
              fz <- fy-Lab[,3L]/200
 
-             zr <- ifelse(fz^3 <= epsilon, (116*fz-16)/kappa, fz^3)
-             xr <- ifelse(fx^3 <= epsilon, (116*fx-16)/kappa, fx^3)
+             fz.3 <- fz^3
+             fx.3 <- fx^3
+
+             zr <- fz.3
+             zr.except <- fz.3 <= epsilon & !is.na(fz.3)
+             zr[zr.except] <- (116*fz[zr.except]-16)
+
+             xr <- fx.3
+             xr.except <- fx.3 <= epsilon & !is.na(fx.3)
+             xr[xr.except] <- (116*fx[xr.except]-16)
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
 
@@ -284,9 +298,11 @@ convertColor <-
       color <- color/scale.in
 
   trim <- function(rgb) {
-      rgb <- round(rgb,5)
-      rgb.lo <- rgb < 0
-      rgb.hi <- rgb > 1
+      ## round is quite slow, since this only makes a difference at the
+      ## boundaries we approximate with < and >
+      # rgb <- round(rgb,5)
+      rgb.lo <- rgb < 0.000005
+      rgb.hi <- rgb > 0.999995
       any.lo <- any(rgb.lo)
       any.hi <- any(rgb.hi)
 

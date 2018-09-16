@@ -78,14 +78,50 @@ cr3_lab <- scales::colour_ramp(rgb(ggbg:::jet))
 
 microbenchmark::microbenchmark(times=10,
   cr1_lab(v),
+  rgb(cr1_lab(v)/255),
   cr2_lab(v),
   cr3_lab(v),
   cr1_rgb(v),
   cr2_rgb(v)
 )
+## Determine full possible range of colors; here we do the
+
+rgb <- as.matrix(do.call(expand.grid, replicate(3, 0:1, simplify=FALSE)))
+grDevices::convertColor(rgb, 'sRGB', 'Lab')
+grDevices::convertColor(rgb, 'sRGB', 'XYZ')
+grDevices::convertColor(rgb, 'sRGB', 'Luv')
+
+XYZ <- as.matrix(do.call(expand.grid, replicate(3, 0:1, simplify=FALSE)))
+grDevices::convertColor(XYZ, 'XYZ', 'Lab', clip=NA)
+grDevices::convertColor(XYZ, 'XYZ', 'sRGB', clip=NA)
+grDevices::convertColor(XYZ, 'XYZ', 'Luv', clip=NA)
+
+## Ranges
+## 
+## sRGB: [0,1]
+## Lab: [0,100], [-440,440], [-168,173]  common range [-128,127] for ab
+## Luv: [0,100], [-259,67], [0, 171]     common range +-100 for uv
+
+ranges.raw <- c(
+  0,   1,   0,   1,   0,   1,  # rgb
+  0, 100,-128, 128,-128, 128,  # Lab 
+  0, 100,-100, 100,-100, 100   # Luv
+)
+ranges <- array(ranges.raw, dim=c(2, 3, length(ranges.raw) / (2 * 3)))
+
+
+jet1k <- cr1_lab(v)
+
+microbenchmark::microbenchmark(
+  cc1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab'),
+  cc2 <- grDevices::convertColor(jet1k, 'sRGB', 'Lab'),
+  cc3 <- farver::convert_colour(jet1k, 'rgb', 'lab')
+)
+
+
 
 system.time(cr1_lab(v))
-system.time(cr2_lab(v))
+treeprof::treeprof(cr1_lab(v))
 
 cc1k <- test_conv(jet1k, grDevices::convertColor)
 cc2k <- test_conv(jet1k, ggbg:::convertColor, time=T)
