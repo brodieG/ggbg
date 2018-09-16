@@ -1,0 +1,7 @@
+
+First, thank you for marking R so full featured.  I'm still blown away daily by
+the things that come built right into it.  Lately, I've been taking advantage of
+the fantastic color management tools built into `grDevices`.
+
+
+
