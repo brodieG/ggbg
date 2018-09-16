@@ -67,6 +67,25 @@ unitizer_sect("compare to grDevices", {
   cc7 <- color_to_color(col.all.0, grDevices::convertColor)
 })
 
+n <- 1000
+v <- (0:n) / n
+cr1_lab <- ggbg:::colorRamp(rgb(ggbg:::jet), space='Lab')
+cr2_lab <- grDevices::colorRamp(rgb(ggbg:::jet), space='Lab')
+cr1_rgb <- ggbg:::colorRamp(rgb(ggbg:::jet), space='rgb')
+cr2_rgb <- grDevices::colorRamp(rgb(ggbg:::jet), space='rgb')
+cr3_lab <- scales::colour_ramp(rgb(ggbg:::jet))
+
+
+microbenchmark::microbenchmark(times=10,
+  cr1_lab(v),
+  cr2_lab(v),
+  cr3_lab(v),
+  cr1_rgb(v),
+  cr2_rgb(v)
+)
+
+system.time(cr1_lab(v))
+system.time(cr2_lab(v))
 
 cc1k <- test_conv(jet1k, grDevices::convertColor)
 cc2k <- test_conv(jet1k, ggbg:::convertColor, time=T)

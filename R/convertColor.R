@@ -48,17 +48,25 @@ make.rgb <-
         dogamma <- function(x) x %^% gamma
         ungamma <- function(x) x %^% (1/gamma)
     } else if (gamma == "sRGB") {
-        dogamma <- function(x) ifelse(x < 0.04045,
-                                      x/12.92,
-                                      ((x+0.055)/1.055)^2.4)
-        ungamma <- function(x) ifelse(x <= 0.0031308,
-                                      12.92*x,
-                                      1.055*x %^% (1/2.4)-0.055)
+        dogamma <- function(x) {
+          except <- !is.na(x) & x < 0.04045
+          res <- ((x+0.055)/1.055)^2.4
+          res[except] <- x[except]/12.92
+          res
+        }
+        ungamma <- function(x) {
+          except <- !is.na(x) & x <= .0031308
+          res <- (1.055 * (sign(x) * abs(x) ^ (1/2.4))) - 0.055
+          res[except] <- 12.92 * x[except]
+          res
+        }
     } else stop("'gamma' must be a scalar or 'sRGB'")
+
+    M.s <- solve(M)
 
     toXYZ <- function(rgb,...) { dogamma(rgb) %*% M }
     toRGB <- function(xyz,...) {
-      res <- ungamma(xyz %*% solve(M))
+      res <- ungamma(xyz %*% M.s)
       # for backward compatibily, return vector if input is vector
       if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
     }
@@ -147,8 +155,9 @@ colorspaces <-
              white.mx <- matrix(numeric(9L), 3L)
              diag(white.mx) <- 1 / white
              xyzr <- XYZ %*% white.mx
-
-             fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
+             xyzr.gt.ep <- xyzr > epsilon & !is.na(xyzr)
+             fxyz <- (kappa*xyzr+16)/116
+             fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
 
              res <- cbind(L = 116*fxyz[, 2L]-16,
                a = 500*(fxyz[, 1L]-fxyz[, 2L]),
@@ -276,11 +285,18 @@ convertColor <-
 
   trim <- function(rgb) {
       rgb <- round(rgb,5)
-      if (is.na(clip))
-          rgb[rgb < 0 | rgb > 1] <- NaN
-      else if(clip) {
-          rgb[rgb < 0] <- 0
-          rgb[rgb > 1] <- 1
+      rgb.lo <- rgb < 0
+      rgb.hi <- rgb > 1
+      any.lo <- any(rgb.lo)
+      any.hi <- any(rgb.hi)
+
+      if(any.lo || any.hi) {
+        if (is.na(clip))
+            rgb[rgb.lo | rgb.hi] <- NaN
+        else if(clip) {
+            if(any.lo) rgb[rgb.lo] <- 0
+            if(any.hi) rgb[rgb.hi] <- 1
+        }
       }
       rgb
   }
