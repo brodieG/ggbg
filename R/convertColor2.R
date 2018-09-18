@@ -31,9 +31,9 @@ make.rgb2 <-
         ungamma <- function(x) x %^% (1/gamma)
     } else if (gamma == "sRGB") {
         dogamma <- function(x) {
-          except <- !is.na(x) & x < 0.04045
-          res <- ((x+0.055)/1.055)^2.4
-          res[except] <- x[except]/12.92
+          except <- !is.na(x) & x >= 0.04045
+          res <- x/12.92
+          res[except] <- ((x[except]+0.055)/1.055)^2.4
           res
         }
         ungamma <- function(x) {
@@ -64,26 +64,26 @@ make.rgb2 <-
 # either a thre long vector or a 3 column vector as an input, where each row
 # represents a color in 3D coordinates in the corresponding color space.
 
-colorspaces.2 <-
+colorspaces2 <-
     list("XYZ" =
          colorConverter(toXYZ = function(x,w) x,
                         fromXYZ = function(x,w) x,
                         white = NULL,name = "XYZ"),
 
          "Apple RGB" =
-         make.rgb(red = c(0.6250,0.3400),
+         make.rgb2(red = c(0.6250,0.3400),
                   green = c(0.2800,0.5950),
                   blue = c(0.1550,0.0700),gamma = 1.8,
                   white = "D65", name = "Apple RGB"),
 
          "sRGB" =
-         make.rgb(red = c(0.6400, 0.3300),
+         make.rgb2(red = c(0.6400, 0.3300),
                   green = c(0.3000,0.6000),
                   blue = c(0.1500,0.0600), gamma = "sRGB",
                   white = "D65", name = "sRGB"),
 
          "CIE RGB" =
-         make.rgb(red = c(0.7350,0.2650),
+         make.rgb2(red = c(0.7350,0.2650),
                   green = c(0.2740,0.7170),
                   blue = c(0.1670,0.0090), gamma = 2.2,
                   white = "E", name = "CIE RGB"),
@@ -122,11 +122,11 @@ colorspaces.2 <-
              L <- Lab[, 1L]
              L.nona <- !is.na(L)
              yr <- ((L+16)/116)^3
-             yr.except <- L >= kappa*epsilon & L.nona
+             yr.except <- L < kappa*epsilon & L.nona
              yr[yr.except] <- L[yr.except]/kappa
 
              fy.pre <- L
-             fy.pre.except <- yr > epsilon & L.nona
+             fy.pre.except <- yr <= epsilon & L.nona
              fy.pre[fy.pre.except] <- kappa*yr[fy.pre.except]
              fy <- (fy.pre + 16) / 116
              fx <- Lab[,2L]/500+fy
@@ -137,11 +137,11 @@ colorspaces.2 <-
 
              zr <- fz.3
              zr.except <- fz.3 <= epsilon & !is.na(fz.3)
-             zr[zr.except] <- (116*fz[zr.except]-16)
+             zr[zr.except] <- (116*fz[zr.except]-16)/kappa
 
              xr <- fx.3
              xr.except <- fx.3 <= epsilon & !is.na(fx.3)
-             xr[xr.except] <- (116*fx[xr.except]-16)
+             xr[xr.except] <- (116*fx[xr.except]-16)/kappa
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
 
@@ -197,11 +197,11 @@ convertColor2 <-
              scale.in = 1, scale.out = 1, clip = TRUE)
 {
   if (is.character(from))
-      from <- colorspaces[[match.arg(from, names(colorspaces))]]
+      from <- colorspaces2[[match.arg(from, names(colorspaces))]]
   if (!inherits(from,"colorConverter"))
       stop("'from' must be a \"colorConverter\" object or a string")
   if (is.character(to))
-      to <- colorspaces[[match.arg(to, names(colorspaces))]]
+      to <- colorspaces2[[match.arg(to, names(colorspaces))]]
   if (!inherits(to,"colorConverter"))
       stop("'to' must be a \"colorConverter\" object or a string")
 
