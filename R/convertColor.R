@@ -16,7 +16,25 @@
 #  A copy of the GNU General Public License is available at
 #  https://www.R-project.org/Licenses/
 
-make.rgb2 <-
+
+## easyRGB scales Y=100 for white
+## brucelindbloom uses XYZ in [0,1], so multiply by 100 to convert
+
+## white points in xyY format (Y=1 omitted)
+white.points <- cbind(A = c(x = 0.44757, y = 0.40745),
+                      B = c(x = 0.34842, y = 0.35161),
+                      C = c(x = 0.31006, y = 0.31616),
+                      D50 = c(x = 0.34574, y = 0.35867),
+                      D55 = c(x = 0.33250, y = 0.34761),
+                      D65 = c(x = 0.3137, y = 0.3291),
+                      E = c(x = 1/3, y = 1/3))
+## converting these:
+c2to3 <- function(col) c(col[1L]/col[2L], 1, (1 - sum(col))/col[2L])
+
+## http://www.brucelindbloom.com/index.html?Equations.html
+
+
+make.rgb <-
     function(red, green, blue, name = NULL, white = "D65", gamma = 2.2)
 {
     whitexyz <- c2to3(white.points[, white])
@@ -30,25 +48,17 @@ make.rgb2 <-
         dogamma <- function(x) x %^% gamma
         ungamma <- function(x) x %^% (1/gamma)
     } else if (gamma == "sRGB") {
-        dogamma <- function(x) {
-          except <- !is.na(x) & x < 0.04045
-          res <- ((x+0.055)/1.055)^2.4
-          res[except] <- x[except]/12.92
-          res
-        }
-        ungamma <- function(x) {
-          except <- !is.na(x) & x <= .0031308
-          res <- (1.055 * (sign(x) * abs(x) ^ (1/2.4))) - 0.055
-          res[except] <- 12.92 * x[except]
-          res
-        }
+        dogamma <- function(x) ifelse(x < 0.04045,
+                                      x/12.92,
+                                      ((x+0.055)/1.055)^2.4)
+        ungamma <- function(x) ifelse(x <= 0.0031308,
+                                      12.92*x,
+                                      1.055*x %^% (1/2.4)-0.055)
     } else stop("'gamma' must be a scalar or 'sRGB'")
-
-    M.s <- solve(M)
 
     toXYZ <- function(rgb,...) { dogamma(rgb) %*% M }
     toRGB <- function(xyz,...) {
-      res <- ungamma(xyz %*% M.s)
+      res <- ungamma(xyz %*% solve(M))
       # for backward compatibily, return vector if input is vector
       if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
     }
@@ -59,12 +69,48 @@ make.rgb2 <-
     rval
 }
 
+print.colorConverter <- function(x,...) {
+    cat(gettextf("Color space converter: %s", x$name), "\n", sep = "")
+    if (!is.null(x$reference.white))
+        cat(gettextf("Reference white: %s", x$reference.white), "\n", sep = "")
+    invisible(x)
+}
+
+print.RGBcolorConverter <- function(x,...) {
+    print.colorConverter(x, ...)
+    if (!is.null(x$gamma))
+        cat(gettextf("display gamma = %s", format(x$gamma)), "\n", sep = "")
+    invisible(x)
+}
+
+chromaticAdaptation <- function(xyz, from, to) {
+    ## bradford scaling algorithm
+    Ma <- matrix(c( 0.40024, -0.22630, 0.,
+                    0.70760,  1.16532, 0.,
+                   -0.08081,  0.04570, 0.91822), nrow = 3L, byrow = TRUE)
+    nWhite <- colnames(white.points)
+    from <- c2to3(white.points[, match.arg(from, nWhite)])
+    to   <- c2to3(white.points[, match.arg(to,   nWhite)])
+    from.cone <- drop(from %*% Ma)
+    to.cone   <- drop(to %*% Ma)
+    ## M <- Ma %*% diag(to.cone/from.cone) %*% solve(Ma)
+    M <- (Ma * rep(to.cone/from.cone, each=3)) %*% solve(Ma)
+    xyz %*% M
+}
+
+
+colorConverter <- function(toXYZ, fromXYZ, name, white = NULL) {
+    rval <- list(toXYZ = toXYZ, fromXYZ = fromXYZ,
+                 name = name, white = white)
+    class(rval) <- "colorConverter"
+    rval
+}
 # Each colorspace should define an fromXYZ and a toXYZ function.  Return values
 # should be a 3 long vector or a 3 column vector.  Functions should expect
 # either a thre long vector or a 3 column vector as an input, where each row
 # represents a color in 3D coordinates in the corresponding color space.
 
-colorspaces.2 <-
+colorspaces <-
     list("XYZ" =
          colorConverter(toXYZ = function(x,w) x,
                         fromXYZ = function(x,w) x,
@@ -101,9 +147,8 @@ colorspaces.2 <-
              white.mx <- matrix(numeric(9L), 3L)
              diag(white.mx) <- 1 / white
              xyzr <- XYZ %*% white.mx
-             xyzr.gt.ep <- xyzr > epsilon & !is.na(xyzr)
-             fxyz <- (kappa*xyzr+16)/116
-             fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
+
+             fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
              res <- cbind(L = 116*fxyz[, 2L]-16,
                a = 500*(fxyz[, 1L]-fxyz[, 2L]),
@@ -119,29 +164,15 @@ colorspaces.2 <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             L <- Lab[, 1L]
-             L.nona <- !is.na(L)
-             yr <- ((L+16)/116)^3
-             yr.except <- L >= kappa*epsilon & L.nona
-             yr[yr.except] <- L[yr.except]/kappa
-
-             fy.pre <- L
-             fy.pre.except <- yr > epsilon & L.nona
-             fy.pre[fy.pre.except] <- kappa*yr[fy.pre.except]
-             fy <- (fy.pre + 16) / 116
+             yr <- ifelse(
+               Lab[,1L] < kappa*epsilon, Lab[,1L]/kappa, ((Lab[,1L]+16)/116)^3
+             )
+             fy <- (ifelse(yr <= epsilon, kappa*yr, Lab[,1L]) + 16)/116
              fx <- Lab[,2L]/500+fy
              fz <- fy-Lab[,3L]/200
 
-             fz.3 <- fz^3
-             fx.3 <- fx^3
-
-             zr <- fz.3
-             zr.except <- fz.3 <= epsilon & !is.na(fz.3)
-             zr[zr.except] <- (116*fz[zr.except]-16)
-
-             xr <- fx.3
-             xr.except <- fx.3 <= epsilon & !is.na(fx.3)
-             xr[xr.except] <- (116*fx[xr.except]-16)
+             zr <- ifelse(fz^3 <= epsilon, (116*fz-16)/kappa, fz^3)
+             xr <- ifelse(fx^3 <= epsilon, (116*fx-16)/kappa, fx^3)
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
 
@@ -191,7 +222,13 @@ colorspaces.2 <-
 
          ) # colorspaces
 
-convertColor2 <-
+
+`%^%` <- function(a,b) {
+  ifelse(a <= 0, -abs(a)^b, a^b)
+}
+
+
+convertColor <-
     function(color, from, to,
              from.ref.white = NULL, to.ref.white = NULL,
              scale.in = 1, scale.out = 1, clip = TRUE)
@@ -239,18 +276,11 @@ convertColor2 <-
 
   trim <- function(rgb) {
       rgb <- round(rgb,5)
-      rgb.lo <- rgb < 0
-      rgb.hi <- rgb > 1
-      any.lo <- any(rgb.lo)
-      any.hi <- any(rgb.hi)
-
-      if(any.lo || any.hi) {
-        if (is.na(clip))
-            rgb[rgb.lo | rgb.hi] <- NaN
-        else if(clip) {
-            if(any.lo) rgb[rgb.lo] <- 0
-            if(any.hi) rgb[rgb.hi] <- 1
-        }
+      if (is.na(clip))
+          rgb[rgb < 0 | rgb > 1] <- NaN
+      else if(clip) {
+          rgb[rgb < 0] <- 0
+          rgb[rgb > 1] <- 1
       }
       rgb
   }
@@ -278,4 +308,29 @@ convertColor2 <-
       rval
   else
       rval*scale.out
+}
+
+##' @title Modify a vector of colors by "screwing" any of (r,g,b,alpha)
+##'   by multification by a factor
+##' @param col vector of colors, in any format that col2rgb() accepts
+##' @param alpha.f factor modifying the opacity alpha; typically in [0,1]
+##' @param red.f   factor modifying "red"ness
+##' @param green.f factor modifying "green"ness
+##' @param blue.f  factor modifying "blue"ness
+##' @return From rgb(), a color vector of the same length as 'col'.
+##' @author Thomas Lumley, Luke Tierney, Martin Maechler, Duncan Murdoch...
+adjustcolor <- function(col, alpha.f = 1, red.f = 1, green.f = 1,
+                        blue.f = 1, offset = c(0,0,0,0),
+                        transform = diag(c(red.f, green.f, blue.f, alpha.f)))
+{
+    stopifnot(exprs = {
+        length(offset) %% 4L == 0L
+        !is.null(d <- dim(transform))
+        d == c(4L, 4L)
+    })
+    x <- col2rgb(col, alpha = TRUE)/255
+    x[] <- pmax(0, pmin(1,
+                        transform %*% x +
+                        matrix(offset, nrow = 4L, ncol = ncol(x))))
+    rgb(x[1L,], x[2L,], x[3L,], x[4L,])
 }
