@@ -298,11 +298,9 @@ convertColor <-
       color <- color/scale.in
 
   trim <- function(rgb) {
-      ## round is quite slow, since this only makes a difference at the
-      ## boundaries we approximate with < and >
-      # rgb <- round(rgb,5)
-      rgb.lo <- rgb < 0.000005
-      rgb.hi <- rgb > 0.999995
+      rgb <- round(rgb,5)
+      rgb.lo <- rgb < 0
+      rgb.hi <- rgb > 1
       any.lo <- any(rgb.lo)
       any.hi <- any(rgb.hi)
 

@@ -132,7 +132,7 @@ interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
         ranges,
         function(y) {
           c(
-            seq(from=y[1], to=y[1], length.out=steps),
+            seq(from=y[1], to=y[2], length.out=steps),
             min(y) - diff(range(y)) * expand,
             max(y) + diff(range(y)) * expand,
             NA, NaN, Inf, -Inf
@@ -146,18 +146,29 @@ interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
   res
 }
 space.input <- interpolate_space(ranges)
-cc1 <- color_to_color(space.input, fun=ggbg::convertColor)
 
-ggbg::convertColor
+# because grDevices::convertColor can't handle NAs for Luv conversion, we need
+# to filter them out
 
+space.input[['Luv']] <- 
+  space.input[['Luv']][!is.na(rowSums(space.input[['Luv']])),,drop=FALSE]
 
-space.output <- lapply(
-  names(space.input), function(x) {
-    spc.in <- space.input[[x]]
+# sapply(space.input, function(x) sum(duplicated(x, MARGIN=1)))
+cc1 <- color_to_color(space.input, fun=ggbg:::convertColor)
+cc2 <- color_to_color(space.input, fun=grDevices::convertColor)
 
+all.equal(cc1, cc2)
 
-  }
+dupes <- lapply(cc1, function(x) sum(duplicated(x, MARGIN=1)))
+attributes(dupes) <- attributes(cc1)
 
+ggbg:::convertColor(space.input$Lab[1,], "Lab", "XYZ")
+grDevices::convertColor(space.input$Lab[1,], "Lab", "XYZ")
+
+ggbg:::convertColor(space.input$Lab[1,], "Lab", "Apple RGB")
+grDevices::convertColor(space.input$Lab[1,], "Lab", "Apple RGB")
+
+space.input$Lab
 
 jet1k <- cr1_lab(v)
 
