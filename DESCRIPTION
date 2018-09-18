@@ -29,13 +29,14 @@ Suggests:
     rmarkdown,
     unitizer,
     diffobj
-RoxygenNote: 6.1.0.9000
+RoxygenNote: 6.1.0.9001
 Roxygen: list(markdown = TRUE)
 Encoding: UTF-8
 Collate:
     'colors.R'
     'colorRamp.R'
     'convertColor.R'
+    'convertColor2.R'
     'deltae.R'
     'geom.car.data.R'
     'ggbg-package.R'
@@ -46,4 +47,5 @@ Collate:
     'scale-gradient-fit.R'
     'scale-utils.R'
     'stat-waterfall.R'
+    'test-utils.R'
     'load.R'

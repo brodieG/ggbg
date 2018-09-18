@@ -1,47 +1,3 @@
-jet.16 <- c("#000080", "#0000B1", "#0000E4", "#414EFF", "#57A8FF", "#00FFFF", "#45FFB0", "#35FF59", "#6CFF00", "#C0FF00", "#FFFF00", "#FFB500", "#FF5F00", "#E40001", "#B10003", "#800000")
-
-# Translate 'colors' to 3D colorspace
-
-color_all <- function(col, target=names(grDevices::colorspaces)) {
-  col.rgb <- t(col2rgb(col) / 255)
-  setNames(
-    lapply(
-      target,
-      grDevices::convertColor, color=col.rgb, from='sRGB'
-    ),
-    target
-  )
-}
-# Run all permutations of colorspace to colorspace translation
-
-color_to_color <- function(
-  col, fun, from=names(col), to=from,
-  strip.names=TRUE, time=FALSE
-) {
-  from.to <- expand.grid(from=from, to=to, stringsAsFactors=FALSE)
-  fun_t <- function(...) {
-    res <- try(if(time) system.time(fun(...))[3] else fun(...), silent=TRUE)
-    if(inherits(res, 'try-error')) res <- 'error'
-    if(strip.names) unname(res) else res
-  }
-  args <- c(
-    list(fun_t, color=col[from.to$from]),
-    from.to
-  )
-  res <- matrix(
-    do.call(Map, args), nrow=length(from), dimnames=list(from, to)
-  )
-  res
-}
-test_conv <- function(
-  col, fun, from=names(grDevices::colorspaces), to=from, strip.names=TRUE,
-  time=FALSE
-) {
-  col.all <- color_all(col, from)
-  color_to_color(col.all, fun, from, to, strip.names, time)
-}
-jet.all <- color_all(jet.16, names(grDevices::colorspaces))
-
 ## Need to make a simplified version
 
 unitizer_sect("compare to grDevices", {
@@ -121,41 +77,19 @@ ranges <- array(
 # For each input space, generate permutation of values in range, outside of
 # range, along with NA, NaN, Inf, -Inf cases.
 
-interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
-  stopifnot(
-    identical(head(dim(ranges), 2), c(2L, 3L)), length(dim(ranges)) == 3
-  )
-  res <-lapply(seq_len(dim(ranges)[3]),
-    function(x) {
-      ranges <- split(ranges[,,x], col(ranges[,,x]))
-      ranges.ex <- lapply(
-        ranges,
-        function(y) {
-          c(
-            seq(from=y[1], to=y[2], length.out=steps),
-            min(y) - diff(range(y)) * expand,
-            max(y) + diff(range(y)) * expand,
-            NA, NaN, Inf, -Inf
-          )
-        }
-      )
-      do.call(cbind, as.list(do.call(expand.grid, ranges.ex)))
-    }
-  )
-  names(res) <- dimnames(ranges)[[3]]
-  res
-}
-space.input <- interpolate_space(ranges)
+space.input <- ggbg:::interpolate_space(ranges)
 
 # because grDevices::convertColor can't handle NAs for Luv conversion, we need
 # to filter them out
 
-space.input[['Luv']] <- 
+space.input[['Luv']] <-
   space.input[['Luv']][!is.na(rowSums(space.input[['Luv']])),,drop=FALSE]
 
 # sapply(space.input, function(x) sum(duplicated(x, MARGIN=1)))
-cc1 <- color_to_color(space.input, fun=ggbg:::convertColor)
-cc2 <- color_to_color(space.input, fun=grDevices::convertColor)
+
+cc1 <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor)
+cc2 <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor2)
+cc3 <- ggbg:::color_to_color(space.input, fun=grDevices::convertColor)
 
 all.equal(cc1, cc2)
 
@@ -163,6 +97,7 @@ dupes <- lapply(cc1, function(x) sum(duplicated(x, MARGIN=1)))
 attributes(dupes) <- attributes(cc1)
 
 ggbg:::convertColor(space.input$Lab[1,], "Lab", "XYZ")
+ggbg:::convertColor2(space.input$Lab[1,], "Lab", "XYZ")
 grDevices::convertColor(space.input$Lab[1,], "Lab", "XYZ")
 
 ggbg:::convertColor(space.input$Lab[1,], "Lab", "Apple RGB")
@@ -173,15 +108,16 @@ space.input$Lab
 jet1k <- cr1_lab(v)
 
 microbenchmark::microbenchmark(
-  cc1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab'),
-  cc2 <- grDevices::convertColor(jet1k, 'sRGB', 'Lab'),
+  cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab'),
+  cc.rgb.lab.2 <- ggbg:::convertColor2(jet1k, 'sRGB', 'Lab'),
+  cc.rgb.lab.3 <- grDevices::convertColor(jet1k, 'sRGB', 'Lab'),
   cc3 <- farver::convert_colour(jet1k, 'rgb', 'lab')
 )
 
 
 
 system.time(cr1_lab(v))
-treeprof::treeprof(cr1_lab(v))
+treeprof::treeprof(ggbg:::convertColor2(jet1k, 'sRGB', 'Lab'))
 
 cc1k <- test_conv(jet1k, grDevices::convertColor)
 cc2k <- test_conv(jet1k, ggbg:::convertColor, time=T)
