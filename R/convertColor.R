@@ -143,11 +143,14 @@ colorspaces <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             # faster than t(t(XYZ) / white) on large XYZ
-             white.mx <- matrix(numeric(9L), 3L)
-             diag(white.mx) <- 1 / white
-             xyzr <- XYZ %*% white.mx
+             ## Matrix multiply with diag(1/white) would be faster
+             ## but produce different results with Inf
 
+             xyzr <- cbind(
+               XYZ[, 1L] / white[1L],
+               XYZ[, 2L] / white[2L],
+               XYZ[, 3L] / white[3L]
+             )
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
              res <- cbind(L = 116*fxyz[, 2L]-16,
@@ -184,13 +187,17 @@ colorspaces <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             yr <- XYZ[,2L]/white[2L]
+             X <- XYZ[, 1L]
+             Y <- XYZ[, 2L]
+             Z <- XYZ[, 3L]
 
-             denom  <- rowSums(XYZ %*% diag(c(1,15,3)))
+             yr <- Y/white[2L]
+
+             denom  <- rowSums(cbind(X, Y * 15, Z * 3))
              wdenom <- sum(white*c(1,15,3))
 
-             u1 <- ifelse(denom == 0, 1, 4*XYZ[,1L]/denom)
-             v1 <- ifelse(denom == 0, 1, 9*XYZ[,2L]/denom)
+             u1 <- ifelse(denom == 0, 1, 4*X/denom)
+             v1 <- ifelse(denom == 0, 1, 9*Y/denom)
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 

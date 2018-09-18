@@ -14,8 +14,10 @@ color_to_color <- function(
     list(fun_t, color=col[from.to$from]),
     from.to
   )
+  res.raw <- do.call(Map, args)
   res <- matrix(
-    do.call(Map, args), nrow=length(from), dimnames=list(from, to)
+    if(time) as.numeric(res.raw) else res.raw,
+    nrow=length(from), dimnames=list(from, to)
   )
   res
 }

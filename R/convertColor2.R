@@ -97,10 +97,14 @@ colorspaces2 <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             # faster than t(t(XYZ) / white) on large XYZ
-             white.mx <- matrix(numeric(9L), 3L)
-             diag(white.mx) <- 1 / white
-             xyzr <- XYZ %*% white.mx
+             ## Matrix multiply with diag(1/white) would be faster
+             ## but produce different results with Inf
+
+             xyzr <- cbind(
+               XYZ[, 1L] / white[1L],
+               XYZ[, 2L] / white[2L],
+               XYZ[, 3L] / white[3L]
+             )
              xyzr.gt.ep <- xyzr > epsilon & !is.na(xyzr)
              fxyz <- (kappa*xyzr+16)/116
              fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
@@ -153,9 +157,13 @@ colorspaces2 <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             yr <- XYZ[,2L]/white[2L]
+             X <- XYZ[, 1L]
+             Y <- XYZ[, 2L]
+             Z <- XYZ[, 3L]
 
-             denom  <- rowSums(XYZ %*% diag(c(1,15,3)))
+             yr <- Y/white[2L]
+
+             denom  <- rowSums(cbind(X, Y * 15, Z * 3))
              wdenom <- sum(white*c(1,15,3))
 
              u1 <- ifelse(denom == 0, 1, 4*XYZ[,1L]/denom)

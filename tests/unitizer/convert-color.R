@@ -92,29 +92,72 @@ cc2 <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor2)
 cc3 <- ggbg:::color_to_color(space.input, fun=grDevices::convertColor)
 
 all.equal(cc1, cc2)
+all.equal(cc1, cc3)
 
-dupes <- lapply(cc1, function(x) sum(duplicated(x, MARGIN=1)))
-attributes(dupes) <- attributes(cc1)
+identical(cc1, cc3)
+identical(cc2, cc3)
 
-ggbg:::convertColor(space.input$Lab[1,], "Lab", "XYZ")
-ggbg:::convertColor2(space.input$Lab[1,], "Lab", "XYZ")
-grDevices::convertColor(space.input$Lab[1,], "Lab", "XYZ")
+cc2a <- cc2
+cc3a <- cc3
+cc2a[] <- lapply(cc2, function(x) {x[is.nan(x)] <- NA; x})
+cc3a[] <- lapply(cc2, function(x) {x[is.nan(x)] <- NA; x})
 
-ggbg:::convertColor(space.input$Lab[1,], "Lab", "Apple RGB")
-grDevices::convertColor(space.input$Lab[1,], "Lab", "Apple RGB")
+identical(cc2a, cc3a)
 
-space.input$Lab
+id <- Map(identical, cc2, cc3)
+attributes(id) <- attributes(cc3)
 
-jet1k <- cr1_lab(v)
-
-microbenchmark::microbenchmark(
-  cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab'),
-  cc.rgb.lab.2 <- ggbg:::convertColor2(jet1k, 'sRGB', 'Lab'),
-  cc.rgb.lab.3 <- grDevices::convertColor(jet1k, 'sRGB', 'Lab'),
-  cc3 <- farver::convert_colour(jet1k, 'rgb', 'lab')
+n <- 10
+cc1t <- replicate(
+  n, ggbg:::color_to_color(space.input, fun=ggbg:::convertColor, time=T)
+)
+cc2t <- replicate(
+  n, ggbg:::color_to_color(space.input, fun=ggbg:::convertColor2, time=T)
+)
+cc3t <- replicate(
+  n, ggbg:::color_to_color(space.input, fun=grDevices::convertColor, time=T)
 )
 
 
+n <- 1000
+v <- (0:n) / n
+cr1_lab <- ggbg:::colorRamp(rgb(ggbg:::jet), space='Lab')
+jet1k <- cr1_lab(v)
+
+microbenchmark::microbenchmark(
+  {
+    cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab')
+    ggbg:::convertColor(cc.rgb.lab.1, 'Lab', 'sRGB')
+  },
+  {
+    cc.rgb.lab.2 <- ggbg:::convertColor2(jet1k, 'sRGB', 'Lab')
+    ggbg:::convertColor2(cc.rgb.lab.2, 'Lab', 'sRGB')
+  },
+  {
+    cc.rgb.lab.3 <- farver::convert_colour(jet1k, 'rgb', 'lab')
+    farver::convert_colour(cc.rgb.lab.3,'lab', 'rgb')
+  }
+)
+ft <- function() {
+  cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab')
+  ggbg:::convertColor(cc.rgb.lab.1, 'Lab', 'sRGB')
+}
+treeprof::treeprof(ft())
+ft2 <- function() {
+  cc.rgb.lab.2 <- ggbg:::convertColor2(jet1k, 'sRGB', 'Lab')
+  ggbg:::convertColor2(cc.rgb.lab.2, 'Lab', 'sRGB')
+}
+treeprof::treeprof(ft2())
+
+
+x <- runif(1e5)
+y <- runif(1e5)
+z <- runif(1e5)
+
+microbenchmark::microbenchmark(
+  cbind(x, y, z),
+  matrix(c(x, y, z), ncol=3)
+)
 
 system.time(cr1_lab(v))
 treeprof::treeprof(ggbg:::convertColor2(jet1k, 'sRGB', 'Lab'))
