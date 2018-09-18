@@ -34,7 +34,7 @@ c2to3 <- function(col) c(col[1L]/col[2L], 1, (1 - sum(col))/col[2L])
 ## http://www.brucelindbloom.com/index.html?Equations.html
 
 
-make.rgb <-
+make.rgb2 <-
     function(red, green, blue, name = NULL, white = "D65", gamma = 2.2)
 {
     whitexyz <- c2to3(white.points[, white])
@@ -77,48 +77,12 @@ make.rgb <-
     rval
 }
 
-print.colorConverter <- function(x,...) {
-    cat(gettextf("Color space converter: %s", x$name), "\n", sep = "")
-    if (!is.null(x$reference.white))
-        cat(gettextf("Reference white: %s", x$reference.white), "\n", sep = "")
-    invisible(x)
-}
-
-print.RGBcolorConverter <- function(x,...) {
-    print.colorConverter(x, ...)
-    if (!is.null(x$gamma))
-        cat(gettextf("display gamma = %s", format(x$gamma)), "\n", sep = "")
-    invisible(x)
-}
-
-chromaticAdaptation <- function(xyz, from, to) {
-    ## bradford scaling algorithm
-    Ma <- matrix(c( 0.40024, -0.22630, 0.,
-                    0.70760,  1.16532, 0.,
-                   -0.08081,  0.04570, 0.91822), nrow = 3L, byrow = TRUE)
-    nWhite <- colnames(white.points)
-    from <- c2to3(white.points[, match.arg(from, nWhite)])
-    to   <- c2to3(white.points[, match.arg(to,   nWhite)])
-    from.cone <- drop(from %*% Ma)
-    to.cone   <- drop(to %*% Ma)
-    ## M <- Ma %*% diag(to.cone/from.cone) %*% solve(Ma)
-    M <- (Ma * rep(to.cone/from.cone, each=3)) %*% solve(Ma)
-    xyz %*% M
-}
-
-
-colorConverter <- function(toXYZ, fromXYZ, name, white = NULL) {
-    rval <- list(toXYZ = toXYZ, fromXYZ = fromXYZ,
-                 name = name, white = white)
-    class(rval) <- "colorConverter"
-    rval
-}
 # Each colorspace should define an fromXYZ and a toXYZ function.  Return values
 # should be a 3 long vector or a 3 column vector.  Functions should expect
 # either a thre long vector or a 3 column vector as an input, where each row
 # represents a color in 3D coordinates in the corresponding color space.
 
-colorspaces <-
+colorspaces.2 <-
     list("XYZ" =
          colorConverter(toXYZ = function(x,w) x,
                         fromXYZ = function(x,w) x,
@@ -251,7 +215,7 @@ colorspaces <-
 }
 
 
-convertColor <-
+convertColor2 <-
     function(color, from, to,
              from.ref.white = NULL, to.ref.white = NULL,
              scale.in = 1, scale.out = 1, clip = TRUE)
@@ -338,29 +302,4 @@ convertColor <-
       rval
   else
       rval*scale.out
-}
-
-##' @title Modify a vector of colors by "screwing" any of (r,g,b,alpha)
-##'   by multification by a factor
-##' @param col vector of colors, in any format that col2rgb() accepts
-##' @param alpha.f factor modifying the opacity alpha; typically in [0,1]
-##' @param red.f   factor modifying "red"ness
-##' @param green.f factor modifying "green"ness
-##' @param blue.f  factor modifying "blue"ness
-##' @return From rgb(), a color vector of the same length as 'col'.
-##' @author Thomas Lumley, Luke Tierney, Martin Maechler, Duncan Murdoch...
-adjustcolor <- function(col, alpha.f = 1, red.f = 1, green.f = 1,
-                        blue.f = 1, offset = c(0,0,0,0),
-                        transform = diag(c(red.f, green.f, blue.f, alpha.f)))
-{
-    stopifnot(exprs = {
-        length(offset) %% 4L == 0L
-        !is.null(d <- dim(transform))
-        d == c(4L, 4L)
-    })
-    x <- col2rgb(col, alpha = TRUE)/255
-    x[] <- pmax(0, pmin(1,
-                        transform %*% x +
-                        matrix(offset, nrow = 4L, ncol = ncol(x))))
-    rgb(x[1L,], x[2L,], x[3L,], x[4L,])
 }
