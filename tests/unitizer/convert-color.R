@@ -99,8 +99,8 @@ identical(cc2, cc3)
 
 cc2a <- cc2
 cc3a <- cc3
-cc2a[] <- lapply(cc2, function(x) {x[is.nan(x)] <- NA; x})
-cc3a[] <- lapply(cc2, function(x) {x[is.nan(x)] <- NA; x})
+cc2a[] <- lapply(cc2a, function(x) {x[is.nan(x)] <- NA; x})
+cc3a[] <- lapply(cc3a, function(x) {x[is.nan(x)] <- NA; x})
 
 identical(cc2a, cc3a)
 
@@ -185,4 +185,14 @@ grDevices::convertColor(matrix(numeric(), ncol=3), 'Lab', 'Luv')
 
 unitzer_sect(
 
+)
+
+
+x <- matrix(runif(3e5), ncol=3)
+
+microbenchmark::microbenchmark(
+  cbind(x[2,], x[2,], x[2,]),
+  {
+    y <- x[2,]; cbind(y, y, y)
+  }
 )

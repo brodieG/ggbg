@@ -100,18 +100,20 @@ colorspaces2 <-
              ## Matrix multiply with diag(1/white) would be faster
              ## but produce different results with Inf
 
-             xyzr <- cbind(
-               XYZ[, 1L] / white[1L],
-               XYZ[, 2L] / white[2L],
-               XYZ[, 3L] / white[3L]
-             )
+             X <- XYZ[,1L]
+             Y <- XYZ[,2L]
+             Z <- XYZ[,3L]
+
+             xyzr <- cbind(X / white[1L], Y / white[2L], Z / white[3L])
              xyzr.gt.ep <- xyzr > epsilon & !is.na(xyzr)
              fxyz <- (kappa*xyzr+16)/116
              fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
 
-             res <- cbind(L = 116*fxyz[, 2L]-16,
-               a = 500*(fxyz[, 1L]-fxyz[, 2L]),
-               b = 200*(fxyz[, 2L]-fxyz[, 3L]))
+             fxyz.2 <- fxyz[,2L]
+             res <- cbind(
+               L = 116*fxyz.2-16, a = 500*(fxyz[,1L]-fxyz.2),
+               b = 200*(fxyz.2-fxyz[,3L])
+             )
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          },
          toXYZ = function(Lab, white) {
@@ -157,21 +159,28 @@ colorspaces2 <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             X <- XYZ[, 1L]
-             Y <- XYZ[, 2L]
-             Z <- XYZ[, 3L]
+             X <- XYZ[,1L]
+             Y <- XYZ[,2L]
+             Z <- XYZ[,3L]
 
              yr <- Y/white[2L]
 
              denom  <- rowSums(cbind(X, Y * 15, Z * 3))
              wdenom <- sum(white*c(1,15,3))
+             denom.0 <- !is.na(denom) & denom == 0
 
-             u1 <- ifelse(denom == 0, 1, 4*XYZ[,1L]/denom)
-             v1 <- ifelse(denom == 0, 1, 9*XYZ[,2L]/denom)
+             u1 <- 4*X/denom
+             u1[denom.0] <- 1
+
+             v1 <- 9*Y/denom
+             v1[denom.0] <- 1
+
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 
-             L <- ifelse(yr <= epsilon, kappa*yr, 116*(yr^(1/3))-16)
+             yr.else <- !is.na(yr) & yr > epsilon
+             L <- kappa * yr
+             L[yr.else] <- 116*(yr[yr.else]^(1/3))-16
              res <- cbind(L = L, u = 13*L*(u1-ur), v = 13*L*(v1-vr))
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, toXYZ = function(Luv,white) {
@@ -181,19 +190,22 @@ colorspaces2 <-
              u0 <- 4*white[1L]/(white[1L]+15*white[2L]+3*white[3L])
              v0 <- 9*white[2L]/(white[1L]+15*white[2L]+3*white[3L])
 
-             Y <- ifelse(Luv[,1L] <= kappa*epsilon,
-                     Luv[,1L]/kappa, ((Luv[,1L]+16)/116)^3)
-             a <- (52*Luv[,1L]/(Luv[,2L]+13*Luv[,1L]*u0)-1)/3
+             L <- Luv[,1L]
+             L.nona <- !is.na(L)
+             L.else <-  L.nona & L > kappa*epsilon
+             Y <- L/kappa
+             Y[L.else] <- ((L[L.else]+16)/116)^3
+             a <- (52*L/(Luv[,2L]+13*L*u0)-1)/3
              b <- -5*Y
              c <- -1/3
-             d <- Y*(39*Luv[,1L]/(Luv[,3L]+13*Luv[,1L]*v0)-5)
+             d <- Y*(39*L/(Luv[,3L]+13*L*v0)-5)
 
              X <- (d-b)/(a-c)
              Z <- X*a+b
 
              res <- cbind(X = X,Y = Y,Z = Z)
 
-             res[!is.na(Luv[,1L]) & Luv[,1L] == 0L] <- c(0,0,0)
+             res[L.nona & L == 0L] <- c(0,0,0)
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, name = "Luv", white = NULL)
 
@@ -246,7 +258,7 @@ convertColor2 <-
       color <- color/scale.in
 
   trim <- function(rgb) {
-      rgb <- round(rgb,5)
+      rgb <- round(rgb,5) # round surprisingly slow, assume round to even
       rgb.lo <- rgb < 0
       rgb.hi <- rgb > 1
       any.lo <- any(rgb.lo)
