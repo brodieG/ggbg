@@ -119,6 +119,10 @@ cc3t <- replicate(
 )
 
 
+farver <- function(x, from, to) {
+
+}
+
 n <- 1000
 v <- (0:n) / n
 cr1_lab <- ggbg:::colorRamp(rgb(ggbg:::jet), space='Lab')

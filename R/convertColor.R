@@ -106,9 +106,13 @@ colorConverter <- function(toXYZ, fromXYZ, name, white = NULL) {
     rval
 }
 # Each colorspace should define an fromXYZ and a toXYZ function.  Return values
-# should be a 3 long vector or a 3 column vector.  Functions should expect
-# either a thre long vector or a 3 column vector as an input, where each row
+# should be a 3 long vector or a 3 column matrix  Functions should expect
+# either a 3 long vector or a 3 column matrix as an input, where each row
 # represents a color in 3D coordinates in the corresponding color space.
+#
+# The original code assumed 3 long vectors only, so there are some
+# idiosyncracies now to produce the same resuts whether 3 long vectors or three
+# column matrices are provided.
 
 colorspaces <-
     list("XYZ" =
@@ -140,22 +144,22 @@ colorspaces <-
              white <- rep(white, length.out=3L)
              if (is.null(nrow(XYZ)))
                XYZ <- matrix(XYZ, nrow = 1L)
+
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             ## Matrix multiply with diag(1/white) would be faster
-             ## but produce different results with Inf
-
+             # Alternate is `%*% diag(1/white)`, but produces different results
+             # if there are non-finite values
              xyzr <- cbind(
-               XYZ[, 1L] / white[1L],
-               XYZ[, 2L] / white[2L],
-               XYZ[, 3L] / white[3L]
+               XYZ[,1L] / white[1L],
+               XYZ[,2L] / white[2L],
+               XYZ[,3L] / white[3L]
              )
              fxyz <- ifelse(xyzr <= epsilon, (kappa*xyzr+16)/116, xyzr^(1/3))
 
-             res <- cbind(L = 116*fxyz[, 2L]-16,
-               a = 500*(fxyz[, 1L]-fxyz[, 2L]),
-               b = 200*(fxyz[, 2L]-fxyz[, 3L]))
+             res <- cbind(L = 116*fxyz[,2L]-16,
+               a = 500*(fxyz[,1L]-fxyz[,2L]),
+               b = 200*(fxyz[,2L]-fxyz[,3L]))
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          },
          toXYZ = function(Lab, white) {
@@ -187,17 +191,13 @@ colorspaces <-
              epsilon <- 216/24389
              kappa <- 24389/27
 
-             X <- XYZ[, 1L]
-             Y <- XYZ[, 2L]
-             Z <- XYZ[, 3L]
+             yr <- XYZ[,2L]/white[2L]
 
-             yr <- Y/white[2L]
-
-             denom  <- rowSums(cbind(X, Y * 15, Z * 3))
+             denom  <- rowSums(cbind(XYZ[,1L], XYZ[,2L] * 15, XYZ[,3L] * 3))
              wdenom <- sum(white*c(1,15,3))
 
-             u1 <- ifelse(denom == 0, 1, 4*X/denom)
-             v1 <- ifelse(denom == 0, 1, 9*Y/denom)
+             u1 <- ifelse(denom == 0, 1, 4*XYZ[,1L]/denom)
+             v1 <- ifelse(denom == 0, 1, 9*XYZ[,2L]/denom)
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 
