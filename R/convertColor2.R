@@ -90,7 +90,8 @@ colorspaces2 <-
 
          "Lab" =
          colorConverter(fromXYZ = function(XYZ, white) {
-             stopifnot(length(XYZ) == 3 | ncol(XYZ) == 3L)
+             if(!(length(XYZ) == 3 | ncol(XYZ) == 3L))
+               stop("Input must be a length 3 vector or a 3 column matrix")
              white <- rep(white, length.out=3L)
              if (is.null(nrow(XYZ)))
                XYZ <- matrix(XYZ, nrow = 1L)
@@ -117,7 +118,8 @@ colorspaces2 <-
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          },
          toXYZ = function(Lab, white) {
-             stopifnot(ncol(Lab) == 3L | length(Lab)==3)
+             if(!(length(Lab) == 3 | ncol(Lab) == 3L))
+               stop("Input must be a length 3 vector or a 3 column matrix")
              white <- rep(white, length.out=3L)
              if (is.null(nrow(Lab)))
                Lab <- matrix(Lab, nrow = 1L)
@@ -248,6 +250,8 @@ convertColor2 <-
   if (is.null(from.ref.white))
       from.ref.white <- to.ref.white
 
+  from.ref.white.chr <- from.ref.white
+  to.ref.white.chr <- to.ref.white
   from.ref.white <- c2to3(white.points[, from.ref.white])
   to.ref.white   <- c2to3(white.points[, to.ref.white])
 
@@ -280,7 +284,7 @@ convertColor2 <-
   if (is.null(nrow(xyz)))
     xyz <- matrix(xyz, nrow = 1L, dimnames=list(NULL, names(xyz)))
 
-  if (!isTRUE(all.equal(from.ref.white, to.ref.white))) {
+  if (!isTRUE(from.ref.white.chr == to.ref.white.chr)) {
       mc <- match.call()
       if (is.null(mc$from.ref.white) || is.null(mc$to.ref.white))
           warning("color spaces use different reference whites")
