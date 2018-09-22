@@ -27,8 +27,8 @@ make.rgb2 <-
     M <- S * rgb
 
     if (is.numeric(gamma) && length(gamma) == 1) {
-        dogamma <- function(x) x %^% gamma
-        ungamma <- function(x) x %^% (1/gamma)
+        dogamma <- function(x) x %^2% gamma
+        ungamma <- function(x) x %^2% (1/gamma)
     } else if (gamma == "sRGB") {
         dogamma <- function(x) {
           except <- !is.na(x) & x >= 0.04045
@@ -38,7 +38,7 @@ make.rgb2 <-
         }
         ungamma <- function(x) {
           except <- !is.na(x) & x <= .0031308
-          res <- (1.055 * (sign(x) * abs(x) ^ (1/2.4))) - 0.055
+          res <- (1.055 * x %^2% (1/2.4)) - 0.055
           res[except] <- 12.92 * x[except]
           res
         }
@@ -106,7 +106,9 @@ colorspaces2 <-
              Z <- XYZ[,3L]
 
              xyzr <- cbind(X / white[1L], Y / white[2L], Z / white[3L])
-             xyzr.gt.ep <- xyzr > epsilon & !is.na(xyzr)
+             xyzr.gt.ep <- if(anyNA(xyzr)) xyzr > epsilon & !is.na(xyzr)
+             else xyzr > epsilon
+
              fxyz <- (kappa*xyzr+16)/116
              fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
 
@@ -303,3 +305,30 @@ convertColor2 <-
   else
       rval*scale.out
 }
+
+`%^2%` <- function(a,b) sign(a) * (abs(a) ^ b)
+
+# faster, less flexible, and more dangerous version of ifelse
+#
+# Behavior is only "defined" iff:
+#
+# * `test` is logical
+# * `yes` and `no` are numeric
+# * `test`, `yes`, and `no` are the same length
+#
+# Additionally, unlike `ifelse`, `.ifelse` will return one of `yes` or `no` if
+# `test` is NA.
+#
+# The intended use case for this function is when `test`, `yes`, and `no` are
+# all expressions based on a single vector such as:
+#
+# .ifelse(x > 0, x * 2, abs(x) * 2)
+#
+# such that the result will be the same as `ifelse` except for the survival of
+# `NaN` values (`ifelse` turns those to NA).
+
+# .ifelse(test, yes, no) {
+#   if(anyNA(test)) no[!is.na(test) & test] <- yes
+#   else no[test] <- yes
+#   no
+# }
