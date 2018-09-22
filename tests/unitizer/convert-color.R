@@ -77,13 +77,19 @@ ranges <- array(
 # For each input space, generate permutation of values in range, outside of
 # range, along with NA, NaN, Inf, -Inf cases.
 
+space.input <- ggbg:::interpolate_space(ranges, na=FALSE, inf=FALSE)
 space.input <- ggbg:::interpolate_space(ranges)
 
 # because grDevices::convertColor can't handle NAs for Luv conversion, we need
-# to filter them out
+# to filter them out (and as of R 3.6 can't handle Lab either.
 
-space.input[['Luv']] <-
-  space.input[['Luv']][!is.na(rowSums(space.input[['Luv']])),,drop=FALSE]
+# space.input[['Luv']] <-
+#   space.input[['Luv']][!is.na(rowSums(space.input[['Luv']])),,drop=FALSE]
+# space.input[['Lab']] <-
+#   space.input[['Lab']][
+#     !is.na(rowSums(space.input[['Lab']])) &
+#     is.finite(rowSums(space.input[['Lab']])),,drop=FALSE
+#   ]
 
 # sapply(space.input, function(x) sum(duplicated(x, MARGIN=1)))
 
@@ -97,15 +103,17 @@ all.equal(cc1, cc3)
 identical(cc1, cc3)
 identical(cc2, cc3)
 
+cc1a <- cc1
 cc2a <- cc2
 cc3a <- cc3
+cc1a[] <- lapply(cc1a, function(x) {x[is.nan(x)] <- NA; x})
 cc2a[] <- lapply(cc2a, function(x) {x[is.nan(x)] <- NA; x})
 cc3a[] <- lapply(cc3a, function(x) {x[is.nan(x)] <- NA; x})
 
+identical(cc1a, cc3a)
 identical(cc2a, cc3a)
 
-id <- Map(identical, cc2, cc3)
-attributes(id) <- attributes(cc3)
+# Timings
 
 n <- 10
 cc1t <- replicate(
@@ -117,18 +125,40 @@ cc2t <- replicate(
 cc3t <- replicate(
   n, ggbg:::color_to_color(space.input, fun=grDevices::convertColor, time=T)
 )
+options(digits=2)
 
+## minimal changes to original R code
+rowSums(cc3t, dims=2)/rowSums(cc1t, dims=2)
 
-farver <- function(x, from, to) {
+## additional Optimizations
+rowSums(cc3t, dims=2)/rowSums(cc2t, dims=2)
 
-}
+x <- matrix(runif(3e5), ncol=3)
+treeprof::treeprof(ggbg:::convertColor2(x, 'sRGB', 'CIE RGB'))
+
+rowSums(cc1t, dims=2)/rowSums(cc2t, dims=2)
+
+rowSums(cc2t, dims=2)
+rowSums(cc3t, dims=2)
+
 
 n <- 1000
 v <- (0:n) / n
 cr1_lab <- ggbg:::colorRamp(rgb(ggbg:::jet), space='Lab')
 jet1k <- cr1_lab(v)
 
+## 1e3 colors along Jet color ramp, sRGB -> Lab -> sRGB round trimp
+##
+## 1: grDevices
+## 2: my patch, minimal changes
+## 3: my patch, more optimization
+## 4: compiled code (farver::convert_colour)
+
 microbenchmark::microbenchmark(
+  {
+    cc.rgb.lab.0 <- grDevices::convertColor(jet1k, 'sRGB', 'Lab')
+    grDevices::convertColor(cc.rgb.lab.0, 'Lab', 'sRGB')
+  },
   {
     cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab')
     ggbg:::convertColor(cc.rgb.lab.1, 'Lab', 'sRGB')
@@ -153,46 +183,18 @@ ft2 <- function() {
 }
 treeprof::treeprof(ft2())
 
+## convertColor2 millisecond timings:
+##
+##           Apple RGB sRGB CIE RGB XYZ Lab Luv
+## Apple RGB        72   79      86  29  58  91
+## sRGB             76   94      84  40  72  88
+## CIE RGB          83  101      83  29  69  87
+## XYZ              42   57      48   1  42  53
+## Lab              71   87      73  34  66  87
+## Luv              52   62      55  15  38  41
 
-x <- runif(1e5)
-y <- runif(1e5)
-z <- runif(1e5)
-
-microbenchmark::microbenchmark(
-  cbind(x, y, z),
-  matrix(c(x, y, z), ncol=3)
-)
-
-system.time(cr1_lab(v))
-treeprof::treeprof(ggbg:::convertColor2(jet1k, 'sRGB', 'Lab'))
-
-cc1k <- test_conv(jet1k, grDevices::convertColor)
-cc2k <- test_conv(jet1k, ggbg:::convertColor, time=T)
-
-
-cc1 <- test_conv(character(), grDevices::convertColor, 'Lab', 'XYZ')
-cc2 <- test_conv(character(), ggbg:::convertColor, 'Lab', 'XYZ')
-
-jet.16.rgb <- t(col2rgb(jet.16))/255
-jet.16.lab <- grDevices::convertColor(jet.16.rgb, 'sRGB', 'Lab')
-
-ggbg:::convertColor(jet.16.lab, 'Lab', 'Apple RGB')
-
-ggbg:::convertColor(matrix(c(1,1,1), ncol=3), 'Lab', 'Luv')
-ggbg:::convertColor(matrix(numeric(), ncol=3), 'Lab', 'Luv')
-grDevices:::convertColor(matrix(c(1,1,1), ncol=3), 'Lab', 'Luv')
-grDevices::convertColor(matrix(numeric(), ncol=3), 'Lab', 'Luv')
-
-unitzer_sect(
-
-)
-
-
-x <- matrix(runif(3e5), ncol=3)
-
-microbenchmark::microbenchmark(
-  cbind(x[2,], x[2,], x[2,]),
-  {
-    y <- x[2,]; cbind(y, y, y)
-  }
-)
+##     min     lq   mean median     uq    max neval
+##  144528 168521 187889 186223 201163 266396   100
+##    1612   1874   2047   1995   2151   3617   100
+##     917   1022   1129   1072   1132   2291   100
+##     297    355    385    382    394    636   100
