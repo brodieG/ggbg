@@ -28,7 +28,9 @@ color_to_color <- function(
 ##   end of the range, the second dimension represents the 3 dimensions of the
 ##   colorspace, and the last dimension the colorspaces.
 
-interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
+interpolate_space <- function(
+  ranges, steps=16, expand=c(0.2, 1e6), na=TRUE, inf=TRUE
+) {
   stopifnot(
     identical(head(dim(ranges), 2), c(2L, 3L)), length(dim(ranges)) == 3
   )
@@ -42,7 +44,7 @@ interpolate_space <- function(ranges, steps=16, expand=c(0.2, 1e6)) {
             seq(from=y[1], to=y[2], length.out=steps),
             min(y) - diff(range(y)) * expand,
             max(y) + diff(range(y)) * expand,
-            NA, NaN, Inf, -Inf
+            if(na) c(NA, NaN), if(inf) c(Inf, -Inf)
           )
         }
       )
