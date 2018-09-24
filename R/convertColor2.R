@@ -139,7 +139,7 @@ colorspaces2 <-
              L.nona <- if(L.anyNA <- anyNA(L)) !is.na(L)
 
              yr.raw <- ((L+16)/116)
-             yr <- yr.raw * y.raw * y.raw
+             yr <- yr.raw * yr.raw * yr.raw
              yr.else <- which(
                  if(L.anyNA) L < kappa*epsilon & L.nona
                  else L < kappa*epsilon
@@ -196,10 +196,8 @@ colorspaces2 <-
                  else denom != 0
              )
 
-             u1 <- 1
+             u1 <- v1 <- rep.int(1, length(X))
              u1[denom.not.0] <- 4*X[denom.not.0]/denom[denom.not.0]
-
-             v1 <-1
              v1[denom.not.0] <- 9*Y[denom.not.0]/denom[denom.not.0]
 
              ur <- 4*white[1L]/wdenom
@@ -296,7 +294,7 @@ convertColor2 <-
       color <- color/scale.in
 
   trim <- function(rgb) {
-      rgb <- round(rgb,5) # round surprisingly slow, assume round to even
+      rgb <- round(rgb,5)
       rgb.lo <- rgb < 0
       rgb.hi <- rgb > 1
       any.lo <- any(rgb.lo)
