@@ -31,15 +31,19 @@ make.rgb2 <-
         ungamma <- function(x) x %^2% (1/gamma)
     } else if (gamma == "sRGB") {
         dogamma <- function(x) {
-          except <- !is.na(x) & x >= 0.04045
+          x.else <- which(
+              if(anyNA(x)) !is.na(x) & x >= 0.04045 else x >= 0.04045
+          )
           res <- x/12.92
-          res[except] <- ((x[except]+0.055)/1.055)^2.4
+          res[x.else] <- ((x[x.else]+0.055)/1.055)^2.4
           res
         }
         ungamma <- function(x) {
-          except <- !is.na(x) & x <= .0031308
+          x.else <- which(
+              if(anyNA(x)) !is.na(x) & x <= .0031308 else x <= .0031308
+          )
           res <- (1.055 * x %^2% (1/2.4)) - 0.055
-          res[except] <- 12.92 * x[except]
+          res[x.else] <- 12.92 * x[x.else]
           res
         }
     } else stop("'gamma' must be a scalar or 'sRGB'")
@@ -106,16 +110,18 @@ colorspaces2 <-
              Z <- XYZ[,3L]
 
              xyzr <- cbind(X / white[1L], Y / white[2L], Z / white[3L])
-             xyzr.gt.ep <- if(anyNA(xyzr)) xyzr > epsilon & !is.na(xyzr)
-             else xyzr > epsilon
+             xyzr.else <- which(
+                 if(anyNA(xyzr)) xyzr > epsilon & !is.na(xyzr)
+                 else xyzr > epsilon
+             )
 
              fxyz <- (kappa*xyzr+16)/116
-             fxyz[xyzr.gt.ep] <- xyzr[xyzr.gt.ep]^(1/3)
+             fxyz[xyzr.else] <- xyzr[xyzr.else]^(1/3)
 
              fxyz.2 <- fxyz[,2L]
              res <- cbind(
-               L = 116*fxyz.2-16, a = 500*(fxyz[,1L]-fxyz.2),
-               b = 200*(fxyz.2-fxyz[,3L])
+                 L = 116*fxyz.2-16, a = 500*(fxyz[,1L]-fxyz.2),
+                 b = 200*(fxyz.2-fxyz[,3L])
              )
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          },
@@ -130,28 +136,42 @@ colorspaces2 <-
              kappa <- 24389/27
 
              L <- Lab[, 1L]
-             L.nona <- !is.na(L)
-             yr <- ((L+16)/116)^3
-             yr.except <- L < kappa*epsilon & L.nona
-             yr[yr.except] <- L[yr.except]/kappa
+             L.nona <- if(L.anyNA <- anyNA(L)) !is.na(L)
+
+             yr.raw <- ((L+16)/116)
+             yr <- yr.raw * y.raw * y.raw
+             yr.else <- which(
+                 if(L.anyNA) L < kappa*epsilon & L.nona
+                 else L < kappa*epsilon
+             )
+             yr[yr.else] <- L[yr.else]/kappa
 
              fy.pre <- L
-             fy.pre.except <- yr <= epsilon & L.nona
-             fy.pre[fy.pre.except] <- kappa*yr[fy.pre.except]
+             fy.pre.else <- which(
+                 if(L.anyNA) yr <= epsilon & L.nona
+                 else yr <= epsilon
+             )
+             fy.pre[fy.pre.else] <- kappa*yr[fy.pre.else]
              fy <- (fy.pre + 16) / 116
              fx <- Lab[,2L]/500+fy
              fz <- fy-Lab[,3L]/200
 
-             fz.3 <- fz^3
-             fx.3 <- fx^3
+             fz.3 <- fz * fz * fz
+             fx.3 <- fx * fx * fx
 
              zr <- fz.3
-             zr.except <- fz.3 <= epsilon & !is.na(fz.3)
-             zr[zr.except] <- (116*fz[zr.except]-16)/kappa
+             zr.else <- which(
+                 if(anyNA(fz.3)) !is.na(fz.3) & fz.3 <= epsilon
+                 else fz.3 <= epsilon
+             )
+             zr[zr.else] <- (116*fz[zr.else]-16)/kappa
 
              xr <- fx.3
-             xr.except <- fx.3 <= epsilon & !is.na(fx.3)
-             xr[xr.except] <- (116*fx[xr.except]-16)/kappa
+             xr.else <- which(
+                 if(anyNA(fx.3)) !is.na(fx.3) & fx.3 <= epsilon
+                 else fx.3 <= epsilon
+             )
+             xr[xr.else] <- (116*fx[xr.else]-16)/kappa
 
              res <- cbind(X = xr*white[1], Y = yr*white[2], Z = zr*white[3])
 
@@ -171,18 +191,24 @@ colorspaces2 <-
 
              denom  <- rowSums(cbind(X, Y * 15, Z * 3))
              wdenom <- sum(white*c(1,15,3))
-             denom.0 <- !is.na(denom) & denom == 0
+             denom.not.0 <- which(
+                 if(anyNA(denom)) !is.na(denom) & denom != 0
+                 else denom != 0
+             )
 
-             u1 <- 4*X/denom
-             u1[denom.0] <- 1
+             u1 <- 1
+             u1[denom.not.0] <- 4*X[denom.not.0]/denom[denom.not.0]
 
-             v1 <- 9*Y/denom
-             v1[denom.0] <- 1
+             v1 <-1
+             v1[denom.not.0] <- 9*Y[denom.not.0]/denom[denom.not.0]
 
              ur <- 4*white[1L]/wdenom
              vr <- 9*white[2L]/wdenom
 
-             yr.else <- !is.na(yr) & yr > epsilon
+             yr.else <- which(
+                 if(anyNA(yr)) !is.na(yr) & yr > epsilon
+                 else yr > epsilon
+             )
              L <- kappa * yr
              L[yr.else] <- 116*(yr[yr.else]^(1/3))-16
              res <- cbind(L = L, u = 13*L*(u1-ur), v = 13*L*(v1-vr))
@@ -195,10 +221,14 @@ colorspaces2 <-
              v0 <- 9*white[2L]/(white[1L]+15*white[2L]+3*white[3L])
 
              L <- Luv[,1L]
-             L.nona <- !is.na(L)
-             L.else <-  L.nona & L > kappa*epsilon
-             Y <- L/kappa
-             Y[L.else] <- ((L[L.else]+16)/116)^3
+             L.nona <- if(L.anyNA <- anyNA(L)) !is.na(L.nona)
+
+             L.else <-  which(
+               if(L.anyNA) L.nona & L <= kappa*epsilon else L <= kappa*epsilon
+             )
+             Y.raw <- ((L+16)/116)
+             Y <- Y.raw * Y.raw * Y.raw
+             Y[L.else] <- L[L.else]/kappa
              a <- (52*L/(Luv[,2L]+13*L*u0)-1)/3
              b <- -5*Y
              c <- -1/3
@@ -209,7 +239,9 @@ colorspaces2 <-
 
              res <- cbind(X = X,Y = Y,Z = Z)
 
-             res[L.nona & L == 0L] <- c(0,0,0)
+             if(L.anyNA) res[L.nona & L == 0L] <- c(0,0,0)
+             else res[L == 0L] <- c(0,0,0)
+
              if(nrow(res) == 1L) res[1L, ,drop=TRUE] else res
          }, name = "Luv", white = NULL)
 

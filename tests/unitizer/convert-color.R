@@ -78,7 +78,6 @@ ranges <- array(
 # range, along with NA, NaN, Inf, -Inf cases.
 
 space.input <- ggbg:::interpolate_space(ranges, na=FALSE, inf=FALSE)
-space.input <- ggbg:::interpolate_space(ranges)
 
 # because grDevices::convertColor can't handle NAs for Luv conversion, we need
 # to filter them out (and as of R 3.6 can't handle Lab either.
@@ -100,6 +99,7 @@ cc3 <- ggbg:::color_to_color(space.input, fun=grDevices::convertColor)
 all.equal(cc1, cc2)
 all.equal(cc1, cc3)
 
+identical(cc1, cc2)
 identical(cc1, cc3)
 identical(cc2, cc3)
 
@@ -172,6 +172,7 @@ microbenchmark::microbenchmark(
     farver::convert_colour(cc.rgb.lab.3,'lab', 'rgb')
   }
 )
+
 ft <- function() {
   cc.rgb.lab.1 <- ggbg:::convertColor(jet1k, 'sRGB', 'Lab')
   ggbg:::convertColor(cc.rgb.lab.1, 'Lab', 'sRGB')
@@ -182,6 +183,41 @@ ft2 <- function() {
   ggbg:::convertColor2(cc.rgb.lab.2, 'Lab', 'sRGB')
 }
 treeprof::treeprof(ft2())
+
+y <- runif(1e5)
+z.2 <- y < .2
+z.5 <- y < .5
+z.which.2 <- which(z.2)
+z.which.5 <- which(z.5)
+
+microbenchmark::microbenchmark(
+  v[z.2] <- y[z.2],
+  v[z.5] <- y[z.5],
+  v[z.which.2] <- y[z.which.2],
+  v[z.which.5] <- y[z.which.5],
+  which(z.2),
+  which(z.5)
+)
+
+y <- runif(1e4)
+
+microbenchmark::microbenchmark(
+  ifelse(y < .5, y, -y),
+  {
+    x <- y
+    y.else <- which(
+      if(anyNA(y)) !is.na(y) & y < .5 else y < .5
+    )
+    x[y.else] <- -y[y.else]
+    x
+  },
+  {
+    x <- y
+    y.else <- !is.na(y) & y < .5
+    x[y.else] <- -y[y.else]
+    x
+  }
+)
 
 ## convertColor2 millisecond timings:
 ##
@@ -198,3 +234,22 @@ treeprof::treeprof(ft2())
 ##    1612   1874   2047   1995   2151   3617   100
 ##     917   1022   1129   1072   1132   2291   100
 ##     297    355    385    382    394    636   100
+
+
+##> rowSums(cc3t, dims=2)/rowSums(cc1t, dims=2)
+##           Apple RGB sRGB CIE RGB XYZ Lab Luv
+## Apple RGB        45   38      42  32  59  46
+## sRGB             47   37      46  40  70  52
+## CIE RGB          48   38      41  31  58  47
+## XYZ              59   56      59 174 111 120
+## Lab              84   71      80 101 100 111
+## Luv              70   62      80 106 103  91
+
+## > rowSums(cc3t, dims=2)/rowSums(cc2t, dims=2)
+##           Apple RGB sRGB CIE RGB XYZ Lab Luv
+## Apple RGB        91   94      87  80 121 106
+## sRGB             87   99      74  67  99 100
+## CIE RGB          91   96      91  68 116 110
+## XYZ              84  116     111 Inf 151 269
+## Lab             155  154     161 257 207 257
+## Luv             131  129     124 211 184 203

@@ -1,4 +1,4 @@
-# Run all permutations of colorspace to colorspace translation
+## Run all permutations of colorspace to colorspace translation
 
 color_to_color <- function(
   col, fun, from=names(col), to=from,
@@ -74,3 +74,4 @@ test_conv <- function(
   col.all <- color_all(col, from)
   color_to_color(col.all, fun, from, to, strip.names, time)
 }
+
