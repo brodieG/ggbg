@@ -1,7 +1,99 @@
+## grDevices::convertColor and colorRamp(space='Lab') Performance Improvements
 
-First, thank you for marking R so full featured.  I'm still blown away daily by
-the things that come built right into it.  Lately, I've been taking advantage of
-the fantastic color management tools built into `grDevices`.
+There is room to improve `grDevices::convertColor` performance by 30-300x with
+small changes to the code.  `convertColor` vectorizes explicitly over the rows
+of the input color matrix using `apply`, but we can get the same result using
+standard R matrix and vector operations.  `colorRamp(space='Lab')` uses
+`convertColor` so it too benefits from substantial performance gains.
+
+The "level-1" patch [1] makes a minimal set of changes to achieve this,
+and yields speedups of 30-100x as shown in table 1:
+
+```
+           to
+from        Apple RGB  sRGB CIE RGB   XYZ  Lab  Luv
+  Apple RGB        NA  38.3    55.8  30.3 60.2 56.3
+  sRGB           38.7    NA    55.7  36.5 62.9 52.7
+  CIE RGB        45.2  44.4      NA  30.6 51.5 43.1
+  XYZ            73.4  57.5    69.1    NA 92.2 69.0
+  Lab            46.6  56.6    65.4  72.0   NA 61.3
+  Luv            73.2 107.3    67.3 105.8 97.8   NA
+
+## Table 1:
+## Ratios of `grDevices` to 'level-1' patch speeds for converting 8000 colors
+## from each supported color space to all other supported color spaces.
+```
+
+I also provide a github diff [3] as the word-diff therein makes it easier to see
+what is changing, and that only what is strictly necessary to remove `apply` is
+being done.
+
+A few additional changes as detailed in the level-2 patch [2]  yield additional performance improvements (for a word diff see [4]):
 
 
+```
+           to
+from        Apple RGB  sRGB CIE RGB   XYZ Lab   Luv
+  Apple RGB        NA  97.1   106.2  89.0 117  83.4
+  sRGB           92.5    NA    99.4  86.4 120  76.0
+  CIE RGB       119.2 184.2      NA  82.2 135  83.4
+  XYZ           122.3 209.8   140.9    NA 171 148.8
+  Lab           166.4 168.2   255.4 288.5  NA 265.1
+  Luv           141.7 173.6   279.6 310.1 195    NA
 
+## Table 2:
+## Ratios of `grDevices` to level-2 patch speeds for converting 8000 colors
+## from each supported color space to all other supported color spaces.
+```
+
+While the speedup is less noticeable with smaller inputs, the new versions
+remain faster than the current one.
+
+Similarly the improvements on `colorRamp(space='lab')` are on the order of 100x.
+
+I have posted reasonably comprehensive tests on github to show there are no
+meaningful output differences between the current function and the level-1 and
+level-2 patches.  Installation instructions are on the github landing page [5].
+
+
+There are some slight differences in behavior which boil down to:
+
+* Inputs that would previously stop with errors or work inconsistently now
+  work consistently (e.g. zero-row inputs or inputs containing NA/NaN/Inf).
+* Column names are consistently set to the color space initials; these were
+  previously inconsistently set / manged by `c`.
+
+For more discussion of the differences see [6].
+
+We could emulate the existing behavior on these, but this would require some
+contortion to preserve "bad" behavior that almost certainly very few rely on.
+Of course there is a cost to changing behavior, even in relatively minor ways,
+and even when the new behavior is arguably better, so I am happy to make changes
+to preserve prior behavior in these respects if that is deemed important.
+
+These patches should be coordinated with #17473, which I found while working on
+this issue.
+
+-----------------------------------------------
+
+'level-1' patch:
+[1]: https://raw.githubusercontent.com/brodieG/grDevices2/level-2/extra/level-1.txt
+
+'level-2' patch:
+[2]: https://raw.githubusercontent.com/brodieG/grDevices2/level-2/extra/level-2.txt
+
+Word-diffs, these are effectively the same in content as the patches, except
+they are generated with the github diff which makes it easier to see the word
+differences, and additionally the level-2 patch is shown relative to level-1,
+unlike the patches which are both relative to r-devel:
+[3]: https://github.com/brodieG/grDevices2/compare/master...level-1?expand=1#diff-f6806329bc0787316dbcc652530750b9
+[4]: https://github.com/brodieG/grDevices2/compare/level-1...level-2?expand=1#diff-f6806329bc0787316dbcc652530750b9
+
+Github landing page for this project:
+[5]: https://github.com/brodieG/grDevices2
+
+Discussion of differences introduces by patches: 
+[6]: https://htmlpreview.github.io/?https://raw.githubusercontent.com/brodieG/grDevices2/level-2/extra/differences.html
+
+Indirectly related bugzilla issue #17473:
+[7]: https://bugs.r-project.org/bugzilla/show_bug.cgi?id=17473

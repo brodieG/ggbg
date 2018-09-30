@@ -1,24 +1,26 @@
 ## Run all permutations of colorspace to colorspace translation
 
 color_to_color <- function(
-  col, fun, from=names(col), to=from,
-  strip.names=TRUE, time=FALSE
+  col, fun, spaces=names(col), strip.names=TRUE, time=FALSE
 ) {
-  from.to <- expand.grid(from=from, to=to, stringsAsFactors=FALSE)
+  from.to <- subset(
+    do.call(expand.grid, list(from=spaces, to=spaces, stringsAsFactors=FALSE)),
+    from != to
+  )
   fun_t <- function(...) {
     res <- try(if(time) system.time(fun(...))[3] else fun(...), silent=TRUE)
     if(inherits(res, 'try-error')) res <- 'error'
     if(strip.names) unname(res) else res
   }
-  args <- c(
-    list(fun_t, color=col[from.to$from]),
-    from.to
-  )
+  args <- c(list(fun_t, color=col[from.to$from]), from.to)
   res.raw <- do.call(Map, args)
   res <- matrix(
-    if(time) as.numeric(res.raw) else res.raw,
-    nrow=length(from), dimnames=list(from, to)
+    if(time) numeric() else list(),
+    nrow=length(spaces), ncol=length(spaces),
+    dimnames=list(from=spaces, to=spaces)
   )
+  if(time) res[as.matrix(from.to)] <- as.numeric(res.raw)
+  else res[as.matrix(from.to)] <- res.raw
   res
 }
 ## Given boundaries in a series of 3D spaces, interpolate points within them

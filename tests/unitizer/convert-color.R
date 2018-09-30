@@ -67,17 +67,21 @@ ranges.raw <- c(
   # Luv; supposed to be +- 100, but rgb conv suggests it's wider than that
   0, 100,-180, 180,-180, 180
 )
+spaces <- c('Apple RGB', 'sRGB', 'CIE RGB', 'XYZ', 'Lab', 'Luv')
+
 ranges <- array(
   ranges.raw, dim=c(2, 3, length(ranges.raw) / (2 * 3)),
-  dimnames=list(
-    range=c('lo', 'hi'), NULL,
-    space=c('Apple RGB', 'sRGB', 'CIE RGB', 'XYZ', 'Lab', 'Luv')
-  )
+  dimnames=list(range=c('lo', 'hi'), NULL, space=spaces)
 )
+# space.sub <- c('sRGB', 'XYZ', 'Lab', 'Luv')
+space.sub <- spaces
+ranges.sub <- ranges[,,match(space.sub, space.sub)]
+
 # For each input space, generate permutation of values in range, outside of
 # range, along with NA, NaN, Inf, -Inf cases.
 
-space.input <- ggbg:::interpolate_space(ranges, na=FALSE, inf=FALSE)
+space.input <-
+  ggbg:::interpolate_space(ranges.sub, na=FALSE, inf=FALSE, steps=32)
 
 # because grDevices::convertColor can't handle NAs for Luv conversion, we need
 # to filter them out (and as of R 3.6 can't handle Lab either.
@@ -94,9 +98,14 @@ space.input <- ggbg:::interpolate_space(ranges, na=FALSE, inf=FALSE)
 
 cc1 <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor)
 cc2 <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor2)
-cc3 <- ggbg:::color_to_color(space.input, fun=grDevices::convertColor)
+cc2a <- ggbg:::color_to_color(space.input, fun=ggbg:::convertColor3)
+cc2b <- ggbg:::color_to_color(space.input[space.sub], fun=ggbg:::convertColor3)
+ccfb <- ggbg:::color_to_color(space.input[space.sub], fun=fwrap)
+ccgr <- ggbg:::color_to_color(space.input, fun=grDevices::convertColor)
+ccgr0 <- ggbg:::color_to_color(space.input, fun=grDevices0::convertColor)
 
 all.equal(cc1, cc2)
+all.equal(cc1, cc2a)
 all.equal(cc1, cc3)
 
 identical(cc1, cc2)
@@ -113,22 +122,41 @@ cc3a[] <- lapply(cc3a, function(x) {x[is.nan(x)] <- NA; x})
 identical(cc1a, cc3a)
 identical(cc2a, cc3a)
 
-# Timings
+fwrap <- function(color, from, to) {
+  space.map <- c(Lab="lab", Luv="luv", sRGB='rgb', XYZ='xyz')
+  farver::convert_colour(color, space.map[from], space.map[to])
+}
 
 n <- 10
+# Timings
+gc()
+ccft <- replicate(
+  n,
+  ggbg:::color_to_color(space.input, fun=fwrap, time=T)
+)
+gc()
 cc1t <- replicate(
   n, ggbg:::color_to_color(space.input, fun=ggbg:::convertColor, time=T)
 )
+gc()
 cc2t <- replicate(
   n, ggbg:::color_to_color(space.input, fun=ggbg:::convertColor2, time=T)
 )
+gc()
+cc2ta <- replicate(
+  n, ggbg:::color_to_color(space.input, fun=ggbg:::convertColor3, time=T)
+)
+gc()
 cc3t <- replicate(
   n, ggbg:::color_to_color(space.input, fun=grDevices::convertColor, time=T)
 )
 options(digits=2)
 
 ## minimal changes to original R code
-rowSums(cc3t, dims=2)/rowSums(cc1t, dims=2)
+
+rowSums(cc2ta, dims=2)/rowSums(cc2t, dims=2)
+rowSums(cc2ta, dims=2)/rowSums(ccft, dims=2)
+
 
 ## additional Optimizations
 rowSums(cc3t, dims=2)/rowSums(cc2t, dims=2)
@@ -138,8 +166,9 @@ treeprof::treeprof(ggbg:::convertColor2(x, 'sRGB', 'CIE RGB'))
 
 rowSums(cc1t, dims=2)/rowSums(cc2t, dims=2)
 
-rowSums(cc2t, dims=2)
-rowSums(cc3t, dims=2)
+rowSums(cc1t, dims=2) / rowSums(cc2t, dims=2)
+rowSums(cc1t, dims=2) / rowSums(cc2ta, dims=2)
+rowSums(cc2ta, dims=2) / rowSums(cc2t, dims=2)
 
 
 n <- 1000
@@ -179,10 +208,14 @@ ft <- function() {
 }
 treeprof::treeprof(ft())
 ft2 <- function() {
-  cc.rgb.lab.2 <- ggbg:::convertColor2(jet1k, 'sRGB', 'Lab')
+  cc.rgb.lab.2 <- ggbg:::convertColor3(jet1k, 'sRGB', 'Lab')
   ggbg:::convertColor2(cc.rgb.lab.2, 'Lab', 'sRGB')
 }
-treeprof::treeprof(ft2())
+treeprof::treeprof(ggbg:::convertColor3(space.input$sRGB, 'sRGB', 'Lab'))
+
+ft3 <- function()
+  ggbg:::convertColor3(space.input$Lab, 'Lab', 'XYZ')
+treeprof::treeprof(ft3())
 
 y <- runif(1e5)
 z.2 <- y < .2
@@ -213,11 +246,22 @@ microbenchmark::microbenchmark(
   },
   {
     x <- y
+    y.else <- which(!is.na(y) & y < .5)
+    x[y.else] <- -y[y.else]
+    x
+  },
+  {
+    x <- y
     y.else <- !is.na(y) & y < .5
     x[y.else] <- -y[y.else]
     x
   }
 )
+
+## Things to think about:
+##
+## white points with zero, infinite, or NA values.  These aren't possible
+## because only the white.points can be used?
 
 ## convertColor2 millisecond timings:
 ##
@@ -228,6 +272,16 @@ microbenchmark::microbenchmark(
 ## XYZ              42   57      48   1  42  53
 ## Lab              71   87      73  34  66  87
 ## Luv              52   62      55  15  38  41
+##
+## @ -r 94633b6
+## > rowSums(cc2t, dims=2) * 1e3
+##           Apple RGB sRGB CIE RGB XYZ Lab Luv
+## Apple RGB        43   45      43  17  32  25
+## sRGB             47   45      41  19  30  31
+## CIE RGB          37   47      40  14  31  27
+## XYZ              26   36      27   2  19  13
+## Lab              35   36      35  10  24  21
+## Luv              35   37      35   8  22  20
 
 ##     min     lq   mean median     uq    max neval
 ##  144528 168521 187889 186223 201163 266396   100

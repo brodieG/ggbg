@@ -37,6 +37,7 @@ Collate:
     'colorRamp.R'
     'convertColor.R'
     'convertColor2.R'
+    'convertColor3.R'
     'deltae.R'
     'geom.car.data.R'
     'ggbg-package.R'
