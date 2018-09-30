@@ -1,0 +1,55 @@
+Index: R/convertColor.R
+===================================================================
+--- R/convertColor.R	(revision 75340)
++++ R/convertColor.R	(working copy)
+@@ -60,10 +60,8 @@
+     toRGB <- function(xyz,...) { ungamma(xyz %*% solve(M)) }
+ 
+     if (is.null(name)) name <- deparse(sys.call())[1L]
+-    rval <- list(toXYZ = toXYZ, fromXYZ = toRGB, gamma = gamma,
+-                 reference.white = white, name = name)
+-    class(rval) <- c("RGBcolorConverter", "colorConverter")
+-    rval
++    RGBcolorConverter(toXYZ = toXYZ, fromXYZ = toRGB, gamma = gamma,
++                      white = white, name = name)
+ }
+ 
+ print.colorConverter <- function(x,...) {
+@@ -94,11 +92,18 @@
+ 
+ 
+ colorConverter <- function(toXYZ, fromXYZ, name, white = NULL) {
++    ## redundant `white` / `reference.white` for backwards-compatibility
+     rval <- list(toXYZ = toXYZ, fromXYZ = fromXYZ,
+-                 name = name, white = white)
++                 name = name, white = white, reference.white = white)
+     class(rval) <- "colorConverter"
+     rval
+ }
++RGBcolorConverter <- function(..., gamma) {
++    rval <- colorConverter(...)
++    rval[['gamma']] <- gamma
++    class(rval) <- c("RGBcolorConverter", class(rval))
++    rval
++}
+ 
+ colorspaces <-
+     list("XYZ" =
+Index: man/convertColor.Rd
+===================================================================
+--- man/convertColor.Rd	(revision 75340)
++++ man/convertColor.Rd	(working copy)
+@@ -53,8 +53,11 @@
+   standard CIE illuminants supported are \code{B}, \code{C}, \code{E} and
+   \code{D55}.  RGB colour spaces are defined relative to a particular
+   reference white, and can be only approximately translated to other
+-  reference whites.  The Bradford chromatic adaptation algorithm is used
+-  for this.
++  reference whites.  The von Kries chromatic adaptation algorithm is used
++  for this.  Prior to R 3.6, color conversions involving color spaces
++  created with \code{\link{make.rgb}} were carried out assuming a \code{D65}
++  illuminant, irrespective of the actual illuminant used in the creation of the
++  color space.  This affected the built-in \code{"CIE RGB"} color space.
+ 
+   The RGB color spaces are specific to a particular class of display.
+   An RGB space cannot represent all colors, and the \code{clip} option
