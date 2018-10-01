@@ -1,13 +1,15 @@
 ## grDevices::convertColor and colorRamp(space='Lab') Performance Improvements
 
-There is room to improve `grDevices::convertColor` performance by 30-300x with
-small changes to the code.  `convertColor` vectorizes explicitly over the rows
-of the input color matrix using `apply`, but we can get the same result using
-standard R matrix and vector operations.  `colorRamp(space='Lab')` uses
+`grDevices::convertColor` performance can be improved by 30-300x with
+small changes to the code.  `colorRamp(space='Lab')` uses
 `convertColor` so it too benefits from substantial performance gains.
 
-The "level-1" patch [1] makes a minimal set of changes to achieve this,
-and yields speedups of 30-100x as shown in table 1:
+`convertColor` vectorizes explicitly over the rows of the input color matrix
+using `apply`. The level-1 patch [1] illustrates a possible minimal set of
+changes to achieve this with just R matrix and vector operations.  The changes
+consist primarily of switching `if/else` to `ifelse`, `c` to `cbind`, `sum` to
+`rowSums`, etc. (the github word diff [3] makes this clear).  This results in
+speedups of 30-100x as shown in table 1:
 
 ```
            to
@@ -24,12 +26,7 @@ from        Apple RGB  sRGB CIE RGB   XYZ  Lab  Luv
 ## from each supported color space to all other supported color spaces.
 ```
 
-I also provide a github diff [3] as the word-diff therein makes it easier to see
-what is changing, and that only what is strictly necessary to remove `apply` is
-being done.
-
-A few additional changes as detailed in the level-2 patch [2]  yield additional performance improvements (for a word diff see [4]):
-
+A few incremental changes as detailed in the level-2 patch [2] yield additional performance improvements (for a word diff see [4]):
 
 ```
            to
@@ -46,33 +43,39 @@ from        Apple RGB  sRGB CIE RGB   XYZ Lab   Luv
 ## from each supported color space to all other supported color spaces.
 ```
 
-While the speedup is less noticeable with smaller inputs, the new versions
-remain faster than the current one.
+Not shown here is that the patched versions of `convertColor` are faster with
+small inputs as well, though the difference is less marked.
 
-Similarly the improvements on `colorRamp(space='lab')` are on the order of 100x.
+I have posted reasonably comprehensive tests on github [5] to show there are no
+substantive output differences between the current function and the level-1 and
+level-2 patches.  While these tests are not proof that the patches preserve
+behavior, the tests combined with the narrow scope of the changes hopefully
+provides sufficient evidence this is the case.
 
-I have posted reasonably comprehensive tests on github to show there are no
-meaningful output differences between the current function and the level-1 and
-level-2 patches.  Installation instructions are on the github landing page [5].
+For those wanting to run the tests, installation and testing instructions are on
+the github landing page for this project [6].
 
-
-There are some slight differences in behavior which boil down to:
+There are some minor (in my opinion) changes in behavior that need to be
+discussed:
 
 * Inputs that would previously stop with errors or work inconsistently now
   work consistently (e.g. zero-row inputs or inputs containing NA/NaN/Inf).
 * Column names are consistently set to the color space initials; these were
-  previously inconsistently set / manged by `c`.
+  previously inconsistently set / mangled by `c`.
 
-For more discussion of the differences see [6].
+These are discussed at length with examples in [7].
 
-We could emulate the existing behavior on these, but this would require some
-contortion to preserve "bad" behavior that almost certainly very few rely on.
-Of course there is a cost to changing behavior, even in relatively minor ways,
-and even when the new behavior is arguably better, so I am happy to make changes
-to preserve prior behavior in these respects if that is deemed important.
+It would be possible to preserve the existing behavior, but doing so would
+require some contortions that serve no other purposes than that.  Additionally,
+in many cases the existing behavior is inconsistent across different
+input/output color spaces.  Finally, most of the differences involve corner case
+inputs such as those containing NA/NaN/Inf, or zero rows.
 
-These patches should be coordinated with #17473, which I found while working on
-this issue.
+I am entirely amenable to modify the patches to preserve existing behavior in
+these cases if that is considered desirable.
+
+These patches should be coordinated with #17473 [8], which I found while working
+on this issue.
 
 -----------------------------------------------
 
@@ -89,11 +92,14 @@ unlike the patches which are both relative to r-devel:
 [3]: https://github.com/brodieG/grDevices2/compare/master...level-1?expand=1#diff-f6806329bc0787316dbcc652530750b9
 [4]: https://github.com/brodieG/grDevices2/compare/level-1...level-2?expand=1#diff-f6806329bc0787316dbcc652530750b9
 
-Github landing page for this project:
-[5]: https://github.com/brodieG/grDevices2
+Tests on github
+[5]: https://github.com/brodieG/grDevices2/blob/level-2/tests/convertColor.R
 
-Discussion of differences introduces by patches: 
-[6]: https://htmlpreview.github.io/?https://raw.githubusercontent.com/brodieG/grDevices2/level-2/extra/differences.html
+Github landing page for this project:
+[6]: https://github.com/brodieG/grDevices2
+
+Discussion of differences introduces by patches:
+[7]: https://htmlpreview.github.io/?https://raw.githubusercontent.com/brodieG/grDevices2/level-2/extra/differences.html
 
 Indirectly related bugzilla issue #17473:
-[7]: https://bugs.r-project.org/bugzilla/show_bug.cgi?id=17473
+[8]: https://bugs.r-project.org/bugzilla/show_bug.cgi?id=17473
